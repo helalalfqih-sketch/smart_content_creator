@@ -1,0 +1,134 @@
+name: smart_content_creator
+description: صانع المحتوى Ai
+publish_to: "none"
+version: 1.1.0+3
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.22.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # مشاركة
+  share_plus: ^11.1.0
+  in_app_purchase: ^3.2.0
+
+  # أساسية
+  http: ^1.2.0
+  image_picker: ^1.1.2
+  cached_network_image: ^3.4.1
+
+  # مشغل الفيديو (Windows)
+  video_player: ^2.10.0
+  video_player_win: ^3.1.5
+  chewie: ^1.8.1
+  audioplayers: ^6.1.1
+  
+  # Media Kit for High Performance Video (tmp_lib)
+  media_kit: ^1.1.10
+  media_kit_video: ^1.2.4
+  media_kit_libs_video: ^1.0.4
+
+  # Gemini + التخزين
+  google_generative_ai: ^0.4.4
+  shared_preferences: ^2.2.3
+
+  # إدارة الحالة
+  get: ^4.6.6
+
+  # قاعدة البيانات
+  sqflite: ^2.3.0
+  sqflite_common_ffi: ^2.3.0
+  path: ^1.8.3
+  path_provider: ^2.1.5
+
+  # أدوات مساعدة
+  mime: ^2.0.0
+  url_launcher: ^6.3.1
+  file_selector: ^1.1.0
+  http_parser: ^4.1.2
+  dio: ^5.9.0
+  file_picker: ^8.1.4
+  open_filex: ^4.7.0
+  video_editor: ^3.0.0
+  video_thumbnail: ^0.5.3 # For AI Analysis frames
+  crypto: ^3.0.3 # For password hashing
+  google_fonts: ^6.2.0 # Professional typography
+  flutter_linkify: ^6.0.0 # Clickable links in chat
+  lucide_icons: ^0.257.0 # Soft UI Icon System
+
+  # Execution (for FFmpeg on Windows)
+  process_run: ^0.13.0
+  archive: ^3.3.7 # To unzip ffmpeg if we download it (future proofing)
+  flutter_secure_storage: ^10.0.0
+  ffmpeg_kit_flutter_new: ^4.1.0
+  firebase_core: ^4.4.0
+  firebase_auth: ^6.1.4
+  cloud_firestore: ^6.1.2
+  firebase_storage: ^13.0.6
+  google_sign_in: ^6.2.1
+  app_links: ^6.3.2
+  permission_handler: ^12.0.1
+  gal: ^2.3.0
+  receive_sharing_intent: ^1.8.1
+  flutter_image_compress: ^2.4.0
+  connectivity_plus: ^6.0.0
+  flutter_markdown: ^0.7.7+1
+  image: ^4.2.0 # Image processing
+  shimmer: ^3.0.0
+  flutter_screenutil: ^5.9.3
+  vector_math: ^2.1.4
+  responsive_framework: ^1.5.1
+  flutter_staggered_grid_view: ^0.7.0
+  fl_chart: ^0.69.0
+  youtube_explode_dart: ^3.0.5
+  webview_flutter: ^4.13.1
+  webview_flutter_android: ^4.0.0
+  google_mlkit_selfie_segmentation: ^0.10.1
+  get_storage: ^2.1.1
+  logger: ^2.7.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  lints: ^6.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter:
+  uses-material-design: true
+
+  fonts:
+    - family: IBMPlexSansArabic
+      fonts:
+        - asset: assets/fonts/IBMPlexSansArabic-Regular.ttf
+        - asset: assets/fonts/IBMPlexSansArabic-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/IBMPlexSansArabic-Light.ttf
+        - asset: assets/fonts/IBMPlexSansArabic-Medium.ttf
+        - asset: assets/fonts/IBMPlexSansArabic-SemiBold.ttf
+        - asset: assets/fonts/IBMPlexSansArabic-ExtraLight.ttf
+        - asset: assets/fonts/IBMPlexSansArabic-Thin.ttf
+    - family: NotoSansArabic
+      fonts:
+        - asset: assets/fonts/NotoSansArabic-Regular.ttf
+        - asset: assets/fonts/NotoSansArabic-Bold.ttf
+          weight: 700
+
+  assets:
+    - assets/fonts/
+    - assets/images/background.jpg
+    - assets/images/logoapp.jpg
+    - assets/images/styles/
+    - lib/services/data/mock_tiktok_trends.json
+flutter_launcher_icons:
+  android: true
+  ios: true
+  windows:
+    generate: true
+    icon_size: 256
+  image_path: "assets/images/logoapp.jpg"

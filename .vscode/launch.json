@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Connect to server",
+      "type": "go",
+      "request": "attach",
+      "mode": "remote",
+      "remotePath": "${workspaceFolder}",
+      "port": 2345,
+      "host": "127.0.0.1"
+    },
+    {"name":"Python Debugger: Current File","type":"debugpy","request":"launch","program":"${file}","console":"integratedTerminal"},
+    {
+      "type": "dart",
+      "request": "launch",
+      "name": "Flutter (Chrome, html renderer)",
+      "program": "lib/main.dart",
+      "args": ["--web-renderer", "html"]
+    }
+  ]
+}

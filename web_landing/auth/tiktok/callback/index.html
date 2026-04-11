@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>جاري الربط مع تيك توك...</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #000000;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 5px solid #FFF;
+            border-bottom-color: #FE2C55;
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes rotation {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        p {
+            color: #aaa;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            background-color: #FE2C55;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: bold;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="loader"></div>
+        <h1>نجح الاتصال بتيك توك!</h1>
+        <p>جاري العودة للتطبيق لإكمال عملية المزامنة...</p>
+        <a id="deepLink" href="#" class="btn">العودة للتطبيق يدوياً</a>
+    </div>
+
+    <script>
+        // استخراج الرموز من الرابط
+        const urlParams = new URLSearchParams(window.location.search);
+        const code = urlParams.get('code');
+        const state = urlParams.get('state');
+
+        if (code) {
+            // إنشاء الرابط العميق (Deep Link) الخاص بتطبيقك
+            // نستخدم نفس الـ Scheme المعرف في الـ AndroidManifest
+            const deepLinkUrl = `smartcc://tiktok-callback?code=${code}&state=${state}`;
+
+            // تحديث الزر
+            document.getElementById('deepLink').href = deepLinkUrl;
+
+            // محاولة التحويل التلقائي
+            setTimeout(() => {
+                window.location.href = deepLinkUrl;
+            }, 1000);
+        } else {
+            document.querySelector('h1').innerText = "حدث خطأ!";
+            document.querySelector('p').innerText = "لم يتم العثور على رمز الاستجابة. يرجى المحاولة مرة أخرى.";
+        }
+    </script>
+</body>
+
+</html>

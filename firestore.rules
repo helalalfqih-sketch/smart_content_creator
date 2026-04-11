@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ✅ Helper: Check if Admin exists and has role
+    function isAdmin() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+    }
+
+    // ✅ Recursive User Data Access (Covers chats, messages, profile, etc.)
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+    }
+
+    // ✅ Global Collections
+    match /ui_controls/{id} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+    
+    match /user_permissions/{id} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    match /global_config/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

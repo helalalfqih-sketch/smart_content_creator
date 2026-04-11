@@ -1,0 +1,1194 @@
+{
+  "folders": {
+    "lib": {
+      "file_count": 2,
+      "loc": 211,
+      "avg_loc": 105
+    },
+    "lib\\ai": {
+      "file_count": 4,
+      "loc": 1569,
+      "avg_loc": 392
+    },
+    "lib\\ai\\agents": {
+      "file_count": 1,
+      "loc": 50,
+      "avg_loc": 50
+    },
+    "lib\\ai\\core": {
+      "file_count": 6,
+      "loc": 941,
+      "avg_loc": 156
+    },
+    "lib\\ai\\memory": {
+      "file_count": 1,
+      "loc": 22,
+      "avg_loc": 22
+    },
+    "lib\\ai\\mixins": {
+      "file_count": 3,
+      "loc": 660,
+      "avg_loc": 220
+    },
+    "lib\\ai\\models": {
+      "file_count": 1,
+      "loc": 74,
+      "avg_loc": 74
+    },
+    "lib\\ai\\ui": {
+      "file_count": 6,
+      "loc": 1564,
+      "avg_loc": 260
+    },
+    "lib\\controllers": {
+      "file_count": 12,
+      "loc": 4116,
+      "avg_loc": 343
+    },
+    "lib\\core\\api": {
+      "file_count": 1,
+      "loc": 232,
+      "avg_loc": 232
+    },
+    "lib\\core\\bindings": {
+      "file_count": 1,
+      "loc": 158,
+      "avg_loc": 158
+    },
+    "lib\\core\\data": {
+      "file_count": 1,
+      "loc": 212,
+      "avg_loc": 212
+    },
+    "lib\\core\\models": {
+      "file_count": 3,
+      "loc": 773,
+      "avg_loc": 257
+    },
+    "lib\\core\\services": {
+      "file_count": 4,
+      "loc": 245,
+      "avg_loc": 61
+    },
+    "lib\\core\\storage": {
+      "file_count": 2,
+      "loc": 164,
+      "avg_loc": 82
+    },
+    "lib\\core\\theme\\animations": {
+      "file_count": 1,
+      "loc": 93,
+      "avg_loc": 93
+    },
+    "lib\\core\\theme\\ui_kit": {
+      "file_count": 5,
+      "loc": 420,
+      "avg_loc": 84
+    },
+    "lib\\core\\utils": {
+      "file_count": 9,
+      "loc": 1113,
+      "avg_loc": 123
+    },
+    "lib\\core\\widgets": {
+      "file_count": 1,
+      "loc": 52,
+      "avg_loc": 52
+    },
+    "lib\\database": {
+      "file_count": 1,
+      "loc": 836,
+      "avg_loc": 836
+    },
+    "lib\\models": {
+      "file_count": 10,
+      "loc": 920,
+      "avg_loc": 92
+    },
+    "lib\\screens": {
+      "file_count": 15,
+      "loc": 9892,
+      "avg_loc": 659
+    },
+    "lib\\screens\\admin": {
+      "file_count": 1,
+      "loc": 198,
+      "avg_loc": 198
+    },
+    "lib\\screens\\ai_chat\\mixins": {
+      "file_count": 3,
+      "loc": 480,
+      "avg_loc": 160
+    },
+    "lib\\screens\\auth": {
+      "file_count": 3,
+      "loc": 998,
+      "avg_loc": 332
+    },
+    "lib\\services": {
+      "file_count": 33,
+      "loc": 10852,
+      "avg_loc": 328
+    },
+    "lib\\services\\ai": {
+      "file_count": 10,
+      "loc": 1728,
+      "avg_loc": 172
+    },
+    "lib\\services\\ai\\data": {
+      "file_count": 6,
+      "loc": 600,
+      "avg_loc": 100
+    },
+    "lib\\services\\api": {
+      "file_count": 3,
+      "loc": 571,
+      "avg_loc": 190
+    },
+    "lib\\services\\media": {
+      "file_count": 1,
+      "loc": 87,
+      "avg_loc": 87
+    },
+    "lib\\theme": {
+      "file_count": 1,
+      "loc": 195,
+      "avg_loc": 195
+    },
+    "lib\\utils": {
+      "file_count": 1,
+      "loc": 12,
+      "avg_loc": 12
+    },
+    "lib\\widgets": {
+      "file_count": 18,
+      "loc": 5469,
+      "avg_loc": 303
+    },
+    "lib\\widgets\\animations": {
+      "file_count": 1,
+      "loc": 35,
+      "avg_loc": 35
+    },
+    "lib\\widgets\\chat": {
+      "file_count": 5,
+      "loc": 1123,
+      "avg_loc": 224
+    },
+    "lib\\widgets\\settings": {
+      "file_count": 1,
+      "loc": 244,
+      "avg_loc": 244
+    },
+    "lib\\widgets\\social": {
+      "file_count": 1,
+      "loc": 269,
+      "avg_loc": 269
+    },
+    "lib\\widgets\\ui_kit": {
+      "file_count": 3,
+      "loc": 195,
+      "avg_loc": 65
+    }
+  },
+  "files": [
+    {
+      "file": "lib\\screens\\trend_screen.dart",
+      "loc": 1658,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\screens\\admin_dashboard_screen.dart",
+      "loc": 1617,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\controllers\\settings_controller.dart",
+      "loc": 1085,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\controllers\\auth_controller.dart",
+      "loc": 1012,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\screens\\creator_profile_screen.dart",
+      "loc": 1008,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\screens\\ai_chat_screen.dart",
+      "loc": 997,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\screens\\home_screen.dart",
+      "loc": 991,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\widgets\\chat_bubble.dart",
+      "loc": 955,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\services\\ai_image_generation_service.dart",
+      "loc": 946,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\services\\gemini_service.dart",
+      "loc": 909,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\screens\\product_photography_screen.dart",
+      "loc": 837,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\database\\database_helper.dart",
+      "loc": 836,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\services\\unified_ai_service.dart",
+      "loc": 798,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\screens\\media_merge_screen.dart",
+      "loc": 786,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\screens\\settings_screen.dart",
+      "loc": 779,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\ai\\ai_orchestrator.dart",
+      "loc": 772,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\services\\tiktok_service.dart",
+      "loc": 750,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\controllers\\admin_controller.dart",
+      "loc": 743,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\widgets\\chat\\chat_input_area.dart",
+      "loc": 716,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\services\\product_photography_service.dart",
+      "loc": 654,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\widgets\\chat_drawer.dart",
+      "loc": 648,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\widgets\\modern_video_bubble.dart",
+      "loc": 616,
+      "status": "CRITICAL"
+    },
+    {
+      "file": "lib\\services\\ai\\intent_classifier_service.dart",
+      "loc": 574,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\ai\\core\\agent_models.dart",
+      "loc": 567,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\services\\serpapi_services.dart",
+      "loc": 560,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\services\\ai_provider.dart",
+      "loc": 545,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\services\\tiktok_account_service.dart",
+      "loc": 528,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\widgets\\standard_provider_form.dart",
+      "loc": 524,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\ai\\ui\\image_gallery_widget.dart",
+      "loc": 501,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\services\\api\\tiktok_api_client.dart",
+      "loc": 450,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\controllers\\api_controller.dart",
+      "loc": 442,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\services\\instagram_service.dart",
+      "loc": 429,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\screens\\auth\\login_screen.dart",
+      "loc": 423,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\ai\\chat_smart_agent.dart",
+      "loc": 417,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\ai\\ui\\expert_research_widget.dart",
+      "loc": 402,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\services\\media_merge_service.dart",
+      "loc": 398,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\widgets\\tiktok_settings_form.dart",
+      "loc": 394,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\services\\db_service.dart",
+      "loc": 393,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\services\\permissions_sync_service.dart",
+      "loc": 376,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\services\\kling_service.dart",
+      "loc": 352,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\widgets\\scenario_display_widget.dart",
+      "loc": 342,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\core\\utils\\image_utils.dart",
+      "loc": 337,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\widgets\\tiktok_video_widget.dart",
+      "loc": 331,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\services\\openai_service.dart",
+      "loc": 328,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\core\\models\\api_provider.dart",
+      "loc": 325,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\services\\ai\\data\\google_ai_mode_models.dart",
+      "loc": 308,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\services\\auth_service.dart",
+      "loc": 305,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\screens\\auth\\edit_profile_screen.dart",
+      "loc": 304,
+      "status": "LARGE"
+    },
+    {
+      "file": "lib\\widgets\\provider_selection_list.dart",
+      "loc": 291,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\managed_ai_service.dart",
+      "loc": 289,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\models\\chat_message.dart",
+      "loc": 287,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\mixins\\agent_core_mixin.dart",
+      "loc": 284,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\tiktok_video_grid.dart",
+      "loc": 273,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\ai_decision_engine.dart",
+      "loc": 271,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\screens\\auth\\signup_screen.dart",
+      "loc": 271,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\social\\social_profile_dashboard.dart",
+      "loc": 269,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\media_action_bar.dart",
+      "loc": 256,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\screens\\general_settings_screen.dart",
+      "loc": 254,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\settings\\gemini_smart_auth_card.dart",
+      "loc": 244,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\models\\product_photo_models.dart",
+      "loc": 243,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\screens\\splash_screen.dart",
+      "loc": 243,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\screens\\brand_settings_screen.dart",
+      "loc": 240,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\utils\\result.dart",
+      "loc": 235,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\firestore_user_service.dart",
+      "loc": 234,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\ai\\gemini_vision_service.dart",
+      "loc": 233,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\api\\enterprise_api_client.dart",
+      "loc": 232,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\ui\\video_discovery_widget.dart",
+      "loc": 219,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\ffmpeg_service.dart",
+      "loc": 217,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\ai\\vision_product_service.dart",
+      "loc": 216,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\screens\\subscription_screen.dart",
+      "loc": 214,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\data\\chat_repository.dart",
+      "loc": 212,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\mixins\\agent_search_mixin.dart",
+      "loc": 211,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\ui\\content_plan_widget.dart",
+      "loc": 210,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\screens\\admin\\users_list_screen.dart",
+      "loc": 198,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\screens\\ai_chat\\mixins\\chat_media_mixin.dart",
+      "loc": 198,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\main.dart",
+      "loc": 196,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\theme\\app_theme.dart",
+      "loc": 195,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\smart_ad_bubble.dart",
+      "loc": 195,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\anthropic_service.dart",
+      "loc": 188,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\serpapi_master_service.dart",
+      "loc": 188,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\controllers\\permissions_controller.dart",
+      "loc": 184,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\controllers\\chat_history_controller.dart",
+      "loc": 168,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\mixins\\agent_media_mixin.dart",
+      "loc": 165,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\models\\tiktok_video.dart",
+      "loc": 161,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\subscription_service.dart",
+      "loc": 161,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\product_memory_service.dart",
+      "loc": 159,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\youtube_settings_form.dart",
+      "loc": 159,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\bindings\\initial_binding.dart",
+      "loc": 158,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\core\\ai_constants.dart",
+      "loc": 153,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\chat\\full_screen_viewer.dart",
+      "loc": 151,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\screens\\ai_chat\\mixins\\chat_enhancement_mixin.dart",
+      "loc": 150,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\utils\\error_handler.dart",
+      "loc": 147,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\utils\\snackbar_utils.dart",
+      "loc": 145,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\ai\\gemini_audio_service.dart",
+      "loc": 142,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\groq_service.dart",
+      "loc": 141,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\google_veo_service.dart",
+      "loc": 137,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\ai\\google_ai_mode_service.dart",
+      "loc": 137,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\deepseek_service.dart",
+      "loc": 133,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\controllers\\home_controller.dart",
+      "loc": 132,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\screens\\ai_chat\\mixins\\chat_action_mixin.dart",
+      "loc": 132,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\services\\share_receiver_service.dart",
+      "loc": 130,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\ui\\product_gallery_widget.dart",
+      "loc": 129,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\video_pipeline_service.dart",
+      "loc": 128,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\scanning_overlay_painter.dart",
+      "loc": 127,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\core\\ai_helpers_mixin.dart",
+      "loc": 126,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\storage\\app_storage_service.dart",
+      "loc": 119,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\screens\\privacy_policy_screen.dart",
+      "loc": 118,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\azure_openai_service.dart",
+      "loc": 117,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\screens\\terms_of_service_screen.dart",
+      "loc": 114,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\secure_storage_service.dart",
+      "loc": 111,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\chat_task_distributor.dart",
+      "loc": 109,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\theme\\ui_kit\\smart_stat_box.dart",
+      "loc": 108,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\ui\\agent_result_renderer.dart",
+      "loc": 103,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\models\\product_memory_model.dart",
+      "loc": 103,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\utils\\json_utils.dart",
+      "loc": 102,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\profile_sync_service.dart",
+      "loc": 102,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\controllers\\home_dashboard_controller.dart",
+      "loc": 101,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\ai\\gemini_director_service.dart",
+      "loc": 100,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\controllers\\trend_controller.dart",
+      "loc": 99,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\ai\\background_removal_service.dart",
+      "loc": 99,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\chat\\swipe_to_reply.dart",
+      "loc": 99,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\models\\user_model.dart",
+      "loc": 97,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\theme\\ui_kit\\smart_bouncy_wrapper.dart",
+      "loc": 95,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\theme\\animations\\galactic_background_unified.dart",
+      "loc": 93,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\theme\\ui_kit\\smart_neon_button.dart",
+      "loc": 92,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\permission_controlled_widget.dart",
+      "loc": 91,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\recommendation_panel.dart",
+      "loc": 91,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\models\\content_model.dart",
+      "loc": 90,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\referral_service.dart",
+      "loc": 87,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\ai\\naive_bayes_classifier.dart",
+      "loc": 87,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\media\\youtube_stream_service.dart",
+      "loc": 87,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\ui_kit\\smart_card.dart",
+      "loc": 87,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\chat\\chat_action_button.dart",
+      "loc": 83,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\models\\brand_identity_model.dart",
+      "loc": 81,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\firebase_storage_service.dart",
+      "loc": 81,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\ai\\model_capability_service.dart",
+      "loc": 77,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\ai\\data\\google_reverse_image_models.dart",
+      "loc": 75,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\models\\app_context.dart",
+      "loc": 74,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\models\\api_key_model.dart",
+      "loc": 74,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\chat\\context_preview_bar.dart",
+      "loc": 74,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\ui_kit\\smart_loading_overlay.dart",
+      "loc": 73,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\chat_loading_shimmer.dart",
+      "loc": 72,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\services\\chat_state_service.dart",
+      "loc": 70,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\theme\\ui_kit\\smart_neon_text_field.dart",
+      "loc": 69,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\gatekeeper_service.dart",
+      "loc": 68,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\ai\\data\\bing_image_models.dart",
+      "loc": 68,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\controllers\\navigation_controller.dart",
+      "loc": 67,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\models\\log_model.dart",
+      "loc": 63,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\models\\media_model.dart",
+      "loc": 63,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\models\\setting_model.dart",
+      "loc": 63,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\ai\\scene_director_service.dart",
+      "loc": 63,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\ai\\data\\google_shopping_models.dart",
+      "loc": 63,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\api\\jina_service.dart",
+      "loc": 62,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\api\\social_media_api_client.dart",
+      "loc": 59,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\theme\\ui_kit\\smart_glass_card.dart",
+      "loc": 56,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\utils\\responsive_helper.dart",
+      "loc": 52,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\widgets\\glass_container.dart",
+      "loc": 52,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\api_key_status_indicator.dart",
+      "loc": 52,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\tiktok_logo_icon.dart",
+      "loc": 52,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\agents\\mock_product_research_agent.dart",
+      "loc": 50,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\core\\agent_router.dart",
+      "loc": 49,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\ai\\data\\google_short_videos_models.dart",
+      "loc": 47,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\controllers\\social_profile_controller.dart",
+      "loc": 45,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\storage\\storage_keys.dart",
+      "loc": 45,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\models\\user_activity.dart",
+      "loc": 43,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\utils\\key_routing_helper.dart",
+      "loc": 41,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\utils\\log_service.dart",
+      "loc": 40,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\activity_log_service.dart",
+      "loc": 40,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\services\\ai\\data\\naive_bayes_data.dart",
+      "loc": 39,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\controllers\\theme_controller.dart",
+      "loc": 38,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\screens\\main_wrapper.dart",
+      "loc": 36,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\services\\log_service.dart",
+      "loc": 35,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\animations\\vip_message_entry.dart",
+      "loc": 35,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\widgets\\ui_kit\\smart_badge.dart",
+      "loc": 35,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\core\\agent_feature_flags.dart",
+      "loc": 25,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\memory\\agent_memory.dart",
+      "loc": 22,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\ai\\core\\base_agent.dart",
+      "loc": 21,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\config.dart",
+      "loc": 15,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\utils\\smart_exception.dart",
+      "loc": 14,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\utils\\logger.dart",
+      "loc": 12,
+      "status": "NORMAL"
+    },
+    {
+      "file": "lib\\core\\services\\chat_brain_service.dart",
+      "loc": 10,
+      "status": "NORMAL"
+    }
+  ],
+  "duplicated_names": {
+    "log_service.dart": [
+      "lib\\core\\services\\log_service.dart",
+      "lib\\core\\utils\\log_service.dart"
+    ]
+  },
+  "duplicated_loc_count": {
+    "271": [
+      "lib\\ai\\ai_decision_engine.dart",
+      "lib\\screens\\auth\\signup_screen.dart"
+    ],
+    "74": [
+      "lib\\ai\\models\\app_context.dart",
+      "lib\\models\\api_key_model.dart",
+      "lib\\widgets\\chat\\context_preview_bar.dart"
+    ],
+    "103": [
+      "lib\\ai\\ui\\agent_result_renderer.dart",
+      "lib\\models\\product_memory_model.dart"
+    ],
+    "132": [
+      "lib\\controllers\\home_controller.dart",
+      "lib\\screens\\ai_chat\\mixins\\chat_action_mixin.dart"
+    ],
+    "99": [
+      "lib\\controllers\\trend_controller.dart",
+      "lib\\services\\ai\\background_removal_service.dart",
+      "lib\\widgets\\chat\\swipe_to_reply.dart"
+    ],
+    "161": [
+      "lib\\core\\models\\tiktok_video.dart",
+      "lib\\services\\subscription_service.dart"
+    ],
+    "102": [
+      "lib\\core\\utils\\json_utils.dart",
+      "lib\\services\\profile_sync_service.dart"
+    ],
+    "52": [
+      "lib\\core\\utils\\responsive_helper.dart",
+      "lib\\core\\widgets\\glass_container.dart",
+      "lib\\widgets\\api_key_status_indicator.dart",
+      "lib\\widgets\\tiktok_logo_icon.dart"
+    ],
+    "81": [
+      "lib\\models\\brand_identity_model.dart",
+      "lib\\services\\firebase_storage_service.dart"
+    ],
+    "63": [
+      "lib\\models\\log_model.dart",
+      "lib\\models\\media_model.dart",
+      "lib\\models\\setting_model.dart",
+      "lib\\services\\ai\\scene_director_service.dart",
+      "lib\\services\\ai\\data\\google_shopping_models.dart"
+    ],
+    "243": [
+      "lib\\models\\product_photo_models.dart",
+      "lib\\screens\\splash_screen.dart"
+    ],
+    "198": [
+      "lib\\screens\\admin\\users_list_screen.dart",
+      "lib\\screens\\ai_chat\\mixins\\chat_media_mixin.dart"
+    ],
+    "188": [
+      "lib\\services\\anthropic_service.dart",
+      "lib\\services\\serpapi_master_service.dart"
+    ],
+    "68": [
+      "lib\\services\\gatekeeper_service.dart",
+      "lib\\services\\ai\\data\\bing_image_models.dart"
+    ],
+    "137": [
+      "lib\\services\\google_veo_service.dart",
+      "lib\\services\\ai\\google_ai_mode_service.dart"
+    ],
+    "159": [
+      "lib\\services\\product_memory_service.dart",
+      "lib\\widgets\\youtube_settings_form.dart"
+    ],
+    "87": [
+      "lib\\services\\referral_service.dart",
+      "lib\\services\\ai\\naive_bayes_classifier.dart",
+      "lib\\services\\media\\youtube_stream_service.dart",
+      "lib\\widgets\\ui_kit\\smart_card.dart"
+    ],
+    "195": [
+      "lib\\theme\\app_theme.dart",
+      "lib\\widgets\\smart_ad_bubble.dart"
+    ],
+    "91": [
+      "lib\\widgets\\permission_controlled_widget.dart",
+      "lib\\widgets\\recommendation_panel.dart"
+    ]
+  }
+}

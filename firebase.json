@@ -1,0 +1,18 @@
+{
+    "firestore": {
+        "rules": "firestore.rules",
+        "indexes": "firestore.indexes.json"
+    },
+    "hosting": {
+        "site": "smartcontentcreator-d49f2",
+        "public": "web_landing",
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**"
+        ]
+    },
+    "storage": {
+        "rules": "storage.rules"
+    }
+}

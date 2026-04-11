@@ -1,0 +1,1 @@
+This folder contains app_theme.dart with lightTheme and darkTheme used by MaterialApp in main.dart.
