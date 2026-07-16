@@ -42,15 +42,19 @@ jobs:
       - name: 📦 Get Flutter Dependencies
         run: flutter pub get
 
-      # 6. بناء الـ App Bundle والـ APKs
-      - name: 🏗️ Build Release APKs & App Bundle
-        run: |
-          flutter build apk --release --split-per-abi --no-tree-shake-icons
-          flutter build appbundle --release --no-tree-shake-icons
+      # 6. بناء الـ APKs فقط بشكل منفصل وبصيغة تفصيلية
+      - name: 🏗️ Build Release APKs (Split per ABI)
+        run: flutter build apk --release --split-per-abi --no-tree-shake-icons --verbose
         env:
-          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -Duser.language=en -Duser.country=US"
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g -Duser.language=en -Duser.country=US"
 
-      # 7. إعادة تسمية ملفات الـ APK لتسهيل تنزيلها بأسماء واضحة
+      # 7. بناء الـ App Bundle بشكل منفصل وبصيغة تفصيلية
+      - name: 🏗️ Build Release App Bundle (AAB)
+        run: flutter build appbundle --release --no-tree-shake-icons --verbose
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g -Duser.language=en -Duser.country=US"
+
+      # 8. إعادة تسمية ملفات الـ APK لتسهيل تنزيلها بأسماء واضحة
       - name: 🏷️ Rename APK Assets
         run: |
           mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/smart-content-creator-arm64.apk
