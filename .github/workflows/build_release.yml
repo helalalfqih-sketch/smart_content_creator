@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - shorebird-test
   workflow_dispatch: # يسمح بتشغيل يدوي من GitHub UI
 
 jobs:
