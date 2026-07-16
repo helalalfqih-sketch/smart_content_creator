@@ -11,7 +11,6 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../services/db_service.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_user_service.dart';
-import '../services/managed_ai_service.dart';
 import '../services/permissions_sync_service.dart';
 import '../core/utils/error_handler.dart';
 import 'chat_history_controller.dart';
@@ -19,7 +18,9 @@ import 'permissions_controller.dart';
 import '../services/secure_storage_service.dart';
 import '../services/instagram_service.dart';
 import '../services/tiktok_account_service.dart';
+import '../core/utils/auth_validation.dart';
 import 'settings_controller.dart';
+import '../services/subscription_service.dart';
 
 class AuthController extends GetxController {
   final DBService _db = Get.find<DBService>();
@@ -29,14 +30,27 @@ class AuthController extends GetxController {
   final AppStorageService _storage = Get.find<AppStorageService>();
   
   final Rxn<Map<String, dynamic>> _currentUser = Rxn<Map<String, dynamic>>();
+  Rxn<Map<String, dynamic>> get rxUser => _currentUser;
   final RxBool isLoading = false.obs;
   final RxBool isCheckingSession = true.obs;
   
   final RxnString firebaseUidRx = RxnString(); // 🆕 Reactive UID for listeners
   StreamSubscription<DocumentSnapshot>? _userSubscription;
+  bool _isProcessingProfile = false;
+  String? _lastProfileHash;
 
   // 🔑 Gemini OAuth Token (Magic UX)
   final RxString geminiAccessToken = "".obs;
+  final RxnString authErrorRx = RxnString();
+  final RxnString _pendingOobCode = RxnString(); // 🔑 رمز معلق لاستعادة كلمة المرور
+  final RxnString _pendingLinkMode = RxnString(); // 🔑 نوع الرابط المعلق
+  
+  RxnString get authError => authErrorRx;
+  RxnString get currentError => authErrorRx;
+
+  void clearError() {
+    authErrorRx.value = null;
+  }
 
   Map<String, dynamic>? get user => _currentUser.value;
   bool get isLoggedIn => _currentUser.value != null;
@@ -52,9 +66,37 @@ class AuthController extends GetxController {
   bool get isPremium {
     if (_currentUser.value == null) return false;
     final user = _currentUser.value!;
-    // يمكن أن يكون الحقل بولين أو 1/0 حسب المصدر (SQLite/Firestore)
     final result = user['isPremium'] == true || user['isPremium'] == 1;
     return result;
+  }
+
+  /// 💎 SaaS: التحقق مما إذا كان الاشتراك نشطاً فعلياً (غير منتهٍ)
+  bool get isSubscriptionActive {
+    if (_currentUser.value == null) return false;
+    if (isAdmin) return true; // الأدمن دائماً نشط
+
+    final user = _currentUser.value!;
+    final sub = user['subscription'];
+    
+    if (sub == null) return isPremium; // Fallback to old field
+
+    final status = sub['status']?.toString() ?? 'inactive';
+    final int endDate = sub['endDate'] ?? 0;
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    return status == 'active' && now < endDate;
+  }
+
+  /// الحصول على حالة الاشتراك كنص
+  String get subscriptionStatus {
+    if (_currentUser.value == null) return 'free';
+    if (isAdmin) return 'admin';
+    
+    final user = _currentUser.value!;
+    final sub = user['subscription'];
+    if (sub == null) return isPremium ? 'premium' : 'free';
+
+    return sub['status']?.toString() ?? 'free';
   }
 
   /// الحصول على معرف Firebase UID الحالي (Unified ID)
@@ -71,6 +113,13 @@ class AuthController extends GetxController {
     ensureUserRegistered();
     // 🔑 Magic UX: Load saved Gemini token
     _loadSavedGeminiToken();
+
+    // 🎧 الاستماع لحالة الفحص لتنفيذ الإجراءات المؤجلة
+    ever(isCheckingSession, (bool checking) {
+      if (!checking) {
+        _checkPendingActions();
+      }
+    });
   }
 
   Future<void> _loadSavedGeminiToken() async {
@@ -159,16 +208,34 @@ class AuthController extends GetxController {
   }
 
   Future<void> _processAuthLink(String link) async {
-    if (link.contains('apiKey') && link.contains('oobCode')) {
-      if (kDebugMode) debugPrint("🔗 Potential Auth Link detected");
+    if (link.contains('oobCode')) {
+      if (kDebugMode) debugPrint("🔗 Potential Auth Link detected: $link");
 
-      final Uri uri = Uri.parse(link);
-      final String? oobCode = uri.queryParameters['oobCode'];
-      final String? mode = uri.queryParameters['mode'];
+      final Uri uri = Uri.parse(link.replaceFirst('//', '/'));
+      
+      // محاولة استخراج المعلمات من الرابط الأصلي أو الرابط المضمن (Nested Link)
+      String? oobCode = uri.queryParameters['oobCode'];
+      String? mode = uri.queryParameters['mode'];
+      
+      if (oobCode == null && link.contains('link=')) {
+        final nestedLink = uri.queryParameters['link'];
+        if (nestedLink != null) {
+          final nestedUri = Uri.parse(nestedLink);
+          oobCode = nestedUri.queryParameters['oobCode'];
+          mode = nestedUri.queryParameters['mode'];
+        }
+      }
 
       // 1. Handle Password Reset
       if (mode == 'resetPassword' && oobCode != null) {
-        _showNewPasswordDialog(oobCode);
+        // 🛡️ إذا كان التطبيق لا يزال في مرحلة الفحص، نؤجل الإجراء
+        if (isCheckingSession.value) {
+          debugPrint("⏳ Delaying Password Reset dialog until session check completes...");
+          _pendingOobCode.value = oobCode;
+          _pendingLinkMode.value = mode;
+        } else {
+          _showNewPasswordDialog(oobCode);
+        }
         return;
       }
 
@@ -198,51 +265,81 @@ class AuthController extends GetxController {
     }
   }
 
+  void _checkPendingActions() {
+    if (_pendingOobCode.value != null && _pendingLinkMode.value == 'resetPassword') {
+      final code = _pendingOobCode.value!;
+      _pendingOobCode.value = null;
+      _pendingLinkMode.value = null;
+      
+      if (kDebugMode) debugPrint("🚀 Executing pending Password Reset action...");
+      
+      // تأخير بسيط إضافي لضمان انتهاء الانتقال بين الشاشات واستقرار السياق
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        _showNewPasswordDialog(code);
+      });
+    }
+  }
+
   void _showNewPasswordDialog(String oobCode) {
+    if (Get.context == null) {
+      debugPrint("⚠️ Cannot show New Password dialog: context is null.");
+      // Retry once after a short delay if context was null
+      Future.delayed(const Duration(milliseconds: 1000), () {
+        if (Get.context != null) _showNewPasswordDialog(oobCode);
+      });
+      return;
+    }
+
     final newPasswordController = TextEditingController();
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(24),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('كلمة مرور جديدة',
-                style: GoogleFonts.cairo(
-                    fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: newPasswordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'أدخل كلمة المرور الجديدة',
-                border: OutlineInputBorder(),
+    
+    // 🛡️ صيانة الأمان: التأكد من استقرار الواجهة قبل عرض الحوار
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (Get.context == null) return;
+      
+      Get.bottomSheet(
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('كلمة مرور جديدة',
+                  style: GoogleFonts.cairo(
+                      fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              TextField(
+                controller: newPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'أدخل كلمة المرور الجديدة',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: () async {
-                if (newPasswordController.text.length < 6) {
-                  Get.snackbar(
-                      'تنبيه', 'كلمة المرور يجب أن تكون 6 أحرف على الأقل');
-                  return;
-                }
-                final success = await resetPassword(
-                    oobCode, newPasswordController.text.trim());
-                if (success) {
-                  Get.back();
-                  Get.offAllNamed('/login');
-                }
-              },
-              child: const Text('تحديث كلمة المرور'),
-            ),
-          ],
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () async {
+                  if (newPasswordController.text.length < 6) {
+                    Get.snackbar(
+                        'تنبيه', 'كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+                    return;
+                  }
+                  final success = await resetPassword(
+                      oobCode, newPasswordController.text.trim());
+                  if (success) {
+                    Get.back();
+                    Get.offAllNamed('/login');
+                  }
+                },
+                child: const Text('تحديث كلمة المرور'),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   Future<bool> resetPassword(String oobCode, String newPassword) async {
@@ -293,7 +390,8 @@ class AuthController extends GetxController {
           'isPremium': localUser?['isPremium'] == 1 || localUser?['isPremium'] == true,
           'role': localUser?['role'] ?? 'user',
           'firestore_role': localUser?['role'] ?? 'user',
-          'name': localUser?['name'] ?? firebaseUser.displayName ?? 'مبدع SMART',
+          'name': localUser?['name'] ?? localUser?['username'] ?? firebaseUser.displayName ?? 'مبدع SMART',
+          'username': localUser?['username'],
           'photo_url': localUser?['photo_url'] ?? firebaseUser.photoURL ?? '',
         });
         firebaseUidRx.value = firebaseUser.uid;
@@ -303,9 +401,17 @@ class AuthController extends GetxController {
 
         // 2. مزامنة البيانات في الخلفية
         _syncRoleFromFirestore(
-            firebaseUser.uid, firebaseUser.email ?? "anonymous");
+            firebaseUser.uid, 
+            firebaseUser.email ?? "anonymous",
+            name: firebaseUser.displayName,
+            photoUrl: firebaseUser.photoURL,
+        );
         for (var table in ['conversations', 'chat_sessions', 'chat_history', 'users']) {
-          await _db.updateRecord(table, {'firebase_uid': firebaseUser.uid}, where: 'firebase_uid IS NULL', whereArgs: []);
+          try {
+            await _db.updateRecord(table, {'firebase_uid': firebaseUser.uid}, where: 'firebase_uid IS NULL', whereArgs: []);
+          } catch (_) {
+            // Ignore if table doesn't exist yet
+          }
         }
         _syncPermissionsAfterLogin(localId.toString(),
             firebaseUid: firebaseUser.uid);
@@ -324,13 +430,7 @@ class AuthController extends GetxController {
 
   /// 🧠 مساعد لتحديث الرصيد في الخلفية دون تعطيل البداية
   Future<void> _checkCreditsInBackground(String uid) async {
-    try {
-      if (Get.isRegistered<ManagedAiService>()) {
-        await Get.find<ManagedAiService>().checkAndResetCredits(uid);
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('⚠️ Credit check error: $e');
-    }
+    // ManagedAiService is currently disabled or integrated into UnifiedAIService
   }
 
   // _checkSavedSession removed (unused)
@@ -342,14 +442,11 @@ class AuthController extends GetxController {
     try {
       // 1. تسجيل الدخول عبر Firebase (أو الربط إذا كان مجهولاً)
       final credential = firebase_auth.EmailAuthProvider.credential(
-          email: email, password: password);
-      
+          email: email, password: password);     
       // نستخدم linkWithCredential لضمان انتقال البيانات من الحساب المجهول إن وجد
       final userCred = await _authService.linkWithCredential(credential);
-
       if (userCred != null && userCred.user != null) {
-        final user = userCred.user!;
-        
+        final user = userCred.user!;   
         // 🛡️ التحقق الإلزامي: هل البريد مفعل؟
         if (!user.emailVerified) {
           Get.snackbar(
@@ -406,6 +503,17 @@ class AuthController extends GetxController {
       isLoading.value = false;
     }
     return false;
+  }
+
+  Future<bool> loginWithValidation(String email, String password) async {
+    clearError();
+    final error = AuthValidation.validateEmail(email) ?? 
+                  AuthValidation.validatePassword(password);
+    if (error != null) {
+      authError.value = error;
+      return false;
+    }
+    return await login(email, password);
   }
 
   /// 🟢 إنشاء حساب جديد أو ترقية الحساب المجهول (Registration/Upgrade)
@@ -488,9 +596,16 @@ class AuthController extends GetxController {
   /// Central Logic: Sync Firestore Role -> Sync Permissions -> Reset Chat -> Redirect
   Future<void> _handleLoginSuccess(String userId,
       {String? firebaseUid, String? email}) async {
-    // 1. Sync role from Firestore (if Firebase user)
+    final firebaseUser = firebase_auth.FirebaseAuth.instance.currentUser;
+    
+    // 1. Sync role and profile from Firestore (if Firebase user)
     if (firebaseUid != null && email != null) {
-      await _syncRoleFromFirestore(firebaseUid, email);
+      await _syncRoleFromFirestore(
+        firebaseUid, 
+        email, 
+        name: firebaseUser?.displayName,
+        photoUrl: firebaseUser?.photoURL,
+      );
       firebaseUidRx.value = firebaseUid; // Update reactive UID
 
       // 🗝️ Migrate local keys to the new UID
@@ -502,13 +617,7 @@ class AuthController extends GetxController {
     // 2. Sync Permissions
     await _syncPermissionsAfterLogin(userId, firebaseUid: firebaseUid);
 
-    // 3. 🛠️ Admin Key Sync (Firebase -> Local)
-    if (isAdmin) {
-      if (Get.isRegistered<SettingsController>()) {
-        Get.find<SettingsController>().syncManagedKeysToLocal();
-      }
-    }
-
+    // 3. Reset Conversation (Fresh Start)
     // 4. Reset Conversation (Fresh Start)
     if (Get.isRegistered<ChatHistoryController>()) {
       Get.find<ChatHistoryController>().resetConversation();
@@ -517,19 +626,48 @@ class AuthController extends GetxController {
     // 4. Redirect to Home (Main Dynamic Wrapper)
     // We use offAllNamed to clear stack and show bottom bar
     Get.offAllNamed('/home');
+
+    // 5. إظهار رسالة النجاح
+    Get.snackbar(
+      'مرحباً بك',
+      'تم تسجيل الدخول بنجاح! 🎉',
+      snackPosition: SnackPosition.TOP,
+      backgroundColor: Colors.green.withValues(alpha: 0.1),
+      colorText: Colors.white,
+      duration: const Duration(seconds: 3),
+      margin: const EdgeInsets.all(15),
+      borderRadius: 15,
+      icon: const Icon(Icons.check_circle_outline, color: Colors.greenAccent),
+    );
   }
 
   /// Sync role from Firestore (source of truth)
-  Future<void> _syncRoleFromFirestore(String firebaseUid, String email) async {
+  Future<void> _syncRoleFromFirestore(String firebaseUid, String email, {String? name, String? photoUrl}) async {
     try {
       if (Get.isRegistered<FirestoreUserService>()) {
         final firestoreService = Get.find<FirestoreUserService>();
         if (kDebugMode) debugPrint('🔄 Syncing role from Firestore...');
 
-        // Get or create user in Firestore
+        // 1. Update Profile first if we have new data from Google/Provider
+        if (name != null || photoUrl != null) {
+          await firestoreService.updateUserProfile(
+            uid: firebaseUid,
+            data: {
+              if (name != null) 'name': name,
+              if (photoUrl != null) 'photo_url': photoUrl,
+              'email': email,
+            },
+          );
+        }
+
+        // 2. SaaS: Check expiry before fetching
+        await _subService.checkAndRefreshSubscription(firebaseUid);
+
+        // 3. Get or create user in Firestore
         final cloudUser = await firestoreService.getOrCreateUser(
           uid: firebaseUid,
           email: email,
+          name: name,
         );
 
         // Update local user object with Firestore role
@@ -576,16 +714,29 @@ class AuthController extends GetxController {
       if (Get.isRegistered<FirestoreUserService>()) {
         final firestoreService = Get.find<FirestoreUserService>();
         _userSubscription = firestoreService.watchUser(uid).listen((snapshot) {
+          if (_isProcessingProfile) return;
+          
           if (snapshot.exists && snapshot.data() != null) {
             final data = snapshot.data()!;
-            if (kDebugMode) debugPrint("🔄 Real-time Profile update received");
+            
+            // 🧩 Data Hash Guard: Deduplicate profile updates
+            final currentHash = data.toString().hashCode.toString();
+            if (currentHash == _lastProfileHash) return;
+            _lastProfileHash = currentHash;
 
-            _currentUser.value = _sanitizeUserData({
-              ..._currentUser.value ?? {},
-              ...data,
-              'firestore_role': data['role'],
-              'isPremium': data['isPremium'] ?? false,
-            });
+            if (kDebugMode) debugPrint("🔄 Real-time Profile update received (Hash: $currentHash)");
+
+            _isProcessingProfile = true;
+            try {
+              _currentUser.value = _sanitizeUserData({
+                ..._currentUser.value ?? {},
+                ...data,
+                'firestore_role': data['role'],
+                'isPremium': data['isPremium'] ?? false,
+              });
+            } finally {
+              _isProcessingProfile = false;
+            }
           }
         }, onError: (e) {
           if (kDebugMode) {
@@ -670,11 +821,19 @@ class AuthController extends GetxController {
 
       _initPermissionsListener(targetFirebaseUid, targetLocalId);
 
-      // (Optional) One-time sync for legacy data migration
+      // 2. Sync Permissions from Cloud
       if (Get.isRegistered<PermissionsSyncService>()) {
         final syncService = Get.find<PermissionsSyncService>();
         await syncService.syncUserPermissionsFromCloud(
             targetFirebaseUid, targetLocalId);
+      }
+
+      // 3. 🛠️ Managed Key Sync (Firebase -> Local)
+      if (Get.isRegistered<SettingsController>()) {
+        final permCtrl = Get.find<PermissionsController>();
+        if (isAdmin || permCtrl.isVisible('use_managed_keys')) {
+          unawaited(Get.find<SettingsController>().syncManagedKeysToLocal());
+        }
       }
     } catch (e) {
       if (kDebugMode) debugPrint('❌ Permission Sync Error: $e');
@@ -790,7 +949,7 @@ class AuthController extends GetxController {
   }
 
   Future<bool> updateProfile({
-    String? username,
+    String? name,
     String? bio,
     String? photoUrl,
     String? coverUrl,
@@ -798,7 +957,9 @@ class AuthController extends GetxController {
     if (user == null) return false;
     final id = user!['id'] as int;
     final data = <String, dynamic>{};
-    if (username != null) data['username'] = username;
+    
+    // 🛡️ mapping 'name' to DB column 'username'
+    if (name != null) data['username'] = name;
     if (bio != null) data['bio'] = bio;
     if (photoUrl != null) data['photo_url'] = photoUrl;
     if (coverUrl != null) data['cover_url'] = coverUrl;
@@ -807,10 +968,13 @@ class AuthController extends GetxController {
 
     final result = await _db.updateRecord('users', data, where: 'id = ?', whereArgs: [id]);
     if (result > 0) {
-      // Refresh local user state
+      // 🔄 Refresh and ensure BOTH keys are present for UI compatibility
       final updatedUser = await _db.getRecord('users', where: 'id = ?', whereArgs: [id]);
       if (updatedUser != null) {
-        _currentUser.value = _sanitizeUserData(updatedUser);
+        final sanitized = _sanitizeUserData(updatedUser);
+        // 🏗️ Dual-Key Stability: ensure 'name' exists in memory even if DB is 'username'
+        sanitized['name'] = updatedUser['username'] ?? updatedUser['name'];
+        _currentUser.value = sanitized;
         return true;
       }
     }
@@ -843,6 +1007,43 @@ class AuthController extends GetxController {
     } catch (e) {
       debugPrint('❌ fetchAllUsers error: $e');
       return await _db.getRecords('users', orderBy: 'created_at DESC'); // Fallback to local
+    }
+  }
+
+  final SubscriptionService _subService = SubscriptionService();
+
+  Future<bool> grantUserSubscription({
+    required dynamic userId,
+    required String planId,
+    required int durationDays,
+  }) async {
+    if (!isAdmin) return false;
+    try {
+      if (userId is String) {
+        return await _subService.grantSubscription(
+          uid: userId,
+          planId: planId,
+          durationDays: durationDays,
+          source: "admin",
+        );
+      }
+      return false;
+    } catch (e) {
+      debugPrint('❌ grantUserSubscription error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> revokeUserSubscription(dynamic userId) async {
+    if (!isAdmin) return false;
+    try {
+      if (userId is String) {
+        return await _subService.revokeSubscription(userId);
+      }
+      return false;
+    } catch (e) {
+      debugPrint('❌ revokeUserSubscription error: $e');
+      return false;
     }
   }
 
@@ -1008,5 +1209,56 @@ class AuthController extends GetxController {
       geminiAccessToken.value = "";
       return "";
     }
+  }
+
+  Future<bool> signUpWithValidation(String email, String password, String confirmPassword, [String? name]) async {
+    clearError();
+    final error = AuthValidation.validateEmail(email) ?? 
+                  AuthValidation.validatePassword(password) ??
+                  AuthValidation.validateConfirmPassword(password, confirmPassword);
+    if (error != null) {
+      authErrorRx.value = error;
+      return false;
+    }
+    return await signUp(email, password);
+  }
+
+  // --- Password Reset Methods (V4.0 Link-Based) ---
+
+  Future<bool> requestPasswordResetOtp(String email) async {
+    if (!await ErrorHandler.hasInternetConnection()) return false;
+    isLoading.value = true;
+    try {
+      await _authService.requestPasswordResetOtp(email);
+      
+      Get.snackbar(
+        'تم إرسال الرابط',
+        'يرجى مراجعة بريدك الإلكتروني والضغط على الرابط لإعادة تعيين كلمة المرور.',
+        backgroundColor: Colors.greenAccent.withValues(alpha: 0.2),
+        colorText: Colors.white,
+      );
+      return true;
+    } catch (e) {
+      Get.snackbar('خطأ', 'فشل إرسال البريد: $e');
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Compatibility Stubs for Legacy Screens
+  Future<bool> confirmPasswordResetWithOtp({required String email, required String otp, required String newPassword}) async {
+    Get.snackbar('نظام جديد', 'يرجى استخدام الرابط المرسل لبريدك الإلكتروني لتغيير كلمة المرور مباشرة.');
+    return false;
+  }
+
+  Future<bool> requestRegistrationOtp(String email) async {
+    await _authService.sendEmailVerification();
+    return true;
+  }
+
+  Future<bool> confirmRegistrationOtp({required String otp, required String email, String? password}) async {
+    Get.snackbar('تنبيه', 'يرجى الضغط على رابط التفعيل المرسل لبريدك الإلكتروني بدلاً من الرمز.');
+    return false;
   }
 }

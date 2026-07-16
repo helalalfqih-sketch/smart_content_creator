@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:convert';
 import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
@@ -16,6 +15,7 @@ import '../controllers/auth_controller.dart';
 import '../core/utils/image_utils.dart';
 import 'unified_ai_service.dart';
 import 'product_memory_service.dart';
+import '../core/utils/json_utils.dart';
 
 /// 🎬 خدمة التصوير الإعلاني الذكي للمنتجات
 /// Intelligent Product Photography Service
@@ -151,21 +151,14 @@ $brandContext
       }
 
       // محاولة استخراج JSON من الرد
-      Map<String, dynamic> analysisData;
-      try {
-        // إزالة markdown code blocks إذا وجدت
-        String cleanResponse = response.description
-            .replaceAll('```json', '')
-            .replaceAll('```', '')
-            .trim();
-
-        analysisData = jsonDecode(cleanResponse);
-      } catch (e) {
-        // إذا فشل الـ parsing، نستخدم fallback
+      final Map<String, dynamic> analysisData = JsonUtils.parseSafe(response.description);
+      
+      // إذا فشل الـ parsing (أعاد فقط حقل text)، نستخدم fallback
+      if (analysisData.length == 1 && analysisData.containsKey('text')) {
         if (kDebugMode) {
-          debugPrint('⚠️ Failed to parse JSON, using fallback analysis');
+          debugPrint('⚠️ JSON parsing returned only text, using fallback analysis');
         }
-        analysisData = _createFallbackAnalysis(response.description);
+        return ProductAnalysis.fromJson(_createFallbackAnalysis(response.description));
       }
 
       return ProductAnalysis.fromJson(analysisData);
@@ -231,19 +224,13 @@ $brandContext
       }
 
       // استخراج JSON
-      List<dynamic> scenesData;
-      try {
-        String cleanResponse = response.description
-            .replaceAll('```json', '')
-            .replaceAll('```', '')
-            .trim();
-
-        scenesData = jsonDecode(cleanResponse);
-      } catch (e) {
+      final List<dynamic> scenesData = JsonUtils.parseListSafe(response.description);
+      
+      if (scenesData.isEmpty) {
         if (kDebugMode) {
-          debugPrint('⚠️ Failed to parse scenes JSON, using fallback');
+          debugPrint('⚠️ Failed to parse scenes JSON or empty, using fallback');
         }
-        scenesData = _createFallbackScenes(analysis);
+        return _createFallbackScenes(analysis).map((s) => ScenePrompt.fromJson(s)).toList();
       }
 
       return scenesData.map((s) => ScenePrompt.fromJson(s)).toList();

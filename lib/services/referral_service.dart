@@ -71,16 +71,17 @@ class ReferralService extends GetxService {
 
   void shareApp() async {
     final user = Get.find<AuthController>().user;
-    final myCode = user?['id'] ?? 'GUEST'; // Use User ID as ref code
+    final myCode = user?['id'] ?? 'GUEST'; 
     
-    // Simulate a store link or custom scheme
-    // For testing: smartcreator://open?ref=MY_CODE
-    // For Prod: https://play.google.com/store/apps/details?id=com.smart.creator&referrer=ref=$myCode
-    final String inviteLink = "https://smartcontentcreator.com/invite?ref=$myCode";
+    // الرابط المحدث (MediaFire)
+    const String downloadLink = "https://www.mediafire.com/file/erl25nent8bfsxl/app-arm64-v8a-release.apk/file";
     
     await SharePlus.instance.share(
       ShareParams(
-        text: "جرب تطبيق 'صانع المحتوى الذكي'! 🚀\nأنشئ فيديوهات وإعلانات بالذكاء الاصطناعي في ثوانٍ.\n\nاستخدم الرابط للتسجيل: \n$inviteLink",
+        text: "🚀 جرب تطبيق 'صانع المحتوى الذكي' (Smart Content Creator)!\n\n"
+              "أنشئ فيديوهات وإعلانات احترافية بالذكاء الاصطناعي في ثوانٍ.\n\n"
+              "حمل التطبيق الآن من الرابط المباشر:\n$downloadLink\n\n"
+              "🎁 استخدم كود الدعوة الخاص بي: $myCode",
         subject: "انضم إلي في Smart Content Creator! 🚀",
       ),
     );

@@ -10,6 +10,7 @@ import 'package:dio/dio.dart' as dio;
 import '../controllers/settings_controller.dart';
 import '../core/models/api_provider.dart';
 import 'kling_service.dart';
+import 'higgsfield_service.dart';
 import 'google_veo_service.dart';
 import 'ai/model_capability_service.dart';
 import '../core/api/enterprise_api_client.dart';
@@ -25,6 +26,7 @@ class AiImageGenerationService extends GetxService {
   static const String providerGemini = 'gemini';
   static const String providerStability = 'stability';
   static const String providerDalle = 'dalle';
+  static const String providerOpenRouter = 'openrouter';
   static const String providerMock = 'mock';
 
   // Demo mode flag - automatically disabled in production logic
@@ -59,14 +61,21 @@ class AiImageGenerationService extends GetxService {
         if (capability.isModelAvailable('veo-3.1-fast')) {
           final veoService = Get.find<GoogleVeoService>();
           return await veoService.generateVideo(prompt,
-              imagePath: originalImage?.path, fastMode: true);
+              imagePath: originalImage?.path, model: 'veo-3.1-fast');
         } else {
-          // 🔄 Fallback to Kling if Veo is not enabled in this API project
-          final kling = Get.find<KlingService>();
-          debugPrint(
-              "⚠️ Veo not available in this project, falling back to Kling...");
-          return await kling.generateVideoFromText(prompt,
-              imagePath: originalImage?.path);
+          // 🔄 Fallback to Active Video Provider if Veo is not enabled
+          final settings = Get.find<SettingsController>();
+          final isHiggsfield = settings.getActiveVideoProvider() == ProviderType.higgsfield;
+          
+          if (isHiggsfield) {
+            debugPrint("⚠️ Veo not available, falling back to Higgsfield...");
+            final higgsfield = Get.find<HiggsfieldService>();
+            return await higgsfield.generateVideo(prompt, imagePath: originalImage?.path);
+          } else {
+            debugPrint("⚠️ Veo not available, falling back to Kling...");
+            final kling = Get.find<KlingService>();
+            return await kling.generateVideo(prompt, imagePath: originalImage?.path);
+          }
         }
 
       case "stability":
@@ -199,6 +208,8 @@ class AiImageGenerationService extends GetxService {
             style: style, aspectRatio: aspectRatio, cancelToken: cancelToken);
       case providerDalle:
         return await _generateWithDalle(prompt, style: style, cancelToken: cancelToken);
+      case providerOpenRouter:
+        return await _generateWithOpenRouter(prompt, style: style, cancelToken: cancelToken);
       default:
         return await _generateMockImage(prompt, style: style);
     }
@@ -296,7 +307,8 @@ class AiImageGenerationService extends GetxService {
     }
 
     // Enhanced prompt with style
-    final enhancedPrompt = _enhancePrompt(prompt, style);
+    final cleanedPrompt = _sanitizeImagePrompt(prompt);
+    final enhancedPrompt = _enhancePrompt(cleanedPrompt, style);
 
     try {
       // استخدام المحرك المركزي
@@ -380,7 +392,10 @@ class AiImageGenerationService extends GetxService {
       );
     }
 
-    final enhancedPrompt = _enhancePrompt(prompt, style);
+    final cleanedPrompt = _sanitizeImagePrompt(prompt);
+    final enhancedPrompt = _enhancePrompt(cleanedPrompt, style);
+    const negativePrompt =
+        'nsfw, nude, naked, erotic, lingerie, sexual, explicit, porn, genitalia, nipples, fetish, underage, child, teen, loli';
 
     try {
       final response = await _apiClient.request(
@@ -396,7 +411,8 @@ class AiImageGenerationService extends GetxService {
         cancelToken: cancelToken,
         data: {
           'text_prompts': [
-            {'text': enhancedPrompt, 'weight': 1}
+            {'text': enhancedPrompt, 'weight': 1},
+            {'text': negativePrompt, 'weight': -1}
           ],
           'cfg_scale': 7,
           'height': 1024,
@@ -405,6 +421,22 @@ class AiImageGenerationService extends GetxService {
           'steps': 30,
         },
       );
+
+      // Some providers may return a JSON body with moderation info.
+      // We defensively detect it even when the status code mapping isn't explicit.
+      try {
+        final raw = response.data?.toString().toLowerCase() ?? '';
+        if (raw.contains('content_moderation') ||
+            raw.contains('flagged') ||
+            raw.contains('denied') ||
+            raw.contains('moderation')) {
+          return ImageGenerationResult(
+            success: false,
+            error:
+                'تم رفض توليد الصورة بواسطة نظام الأمان (Content Moderation). عدّل الوصف ليكون أكثر حيادية وتجنّب الكلمات الحساسة.',
+          );
+        }
+      } catch (_) {}
 
       if (response.statusCode == 200) {
         final artifacts = response.data['artifacts'] as List?;
@@ -440,6 +472,25 @@ class AiImageGenerationService extends GetxService {
         error: 'خطأ في Stability: $e',
       );
     }
+  }
+
+  String _sanitizeImagePrompt(String prompt) {
+    var p = prompt;
+
+    // Remove common unsafe / product-description noise
+    p = p.replaceAll(RegExp(r'\b(erotic|sexy|sex|nude|naked|porn|lingerie|fetish)\b', caseSensitive: false), '');
+    p = p.replaceAll(RegExp(r'\b(adult|xxx)\b', caseSensitive: false), '');
+
+    // Remove typical marketing / overlay text patterns that can leak into the prompt
+    p = p.replaceAll(RegExp(r'\b(free shipping|best price|limited offer|discount|sale)\b', caseSensitive: false), '');
+
+    // Collapse whitespace and punctuation noise
+    p = p.replaceAll(RegExp(r'[\n\r\t]+'), ' ');
+    p = p.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+
+    // Safety fallback: always keep a neutral subject
+    if (p.isEmpty) return 'Professional product photo, studio background';
+    return p;
   }
 
   /// 🎭 OpenAI DALL·E
@@ -516,6 +567,93 @@ class AiImageGenerationService extends GetxService {
       );
     }
   }
+ 
+  /// 🎨 OpenRouter Image Generation (SOTA Models)
+  Future<ImageGenerationResult> _generateWithOpenRouter(
+    String prompt, {
+    String style = 'cinematic',
+    dio.CancelToken? cancelToken,
+  }) async {
+    final settings = Get.find<SettingsController>();
+    final apiKey = settings.getApiKey(ProviderType.openrouter);
+
+    if (apiKey.isEmpty) {
+      return ImageGenerationResult(
+        success: false,
+        error: 'مفتاح OpenRouter غير موجود',
+      );
+    }
+
+    final enhancedPrompt = _enhancePrompt(prompt, style);
+    
+    // Choose a default high-end model based on availability
+    // Flux 1.1 Pro or FLUX.2 Klein/Max based on the shared list
+    String modelId = "black-forest-labs/flux-1.1-pro"; 
+
+    try {
+      final response = await _apiClient.request(
+        url: 'https://openrouter.ai/api/v1/chat/completions',
+        method: 'POST',
+        providerName: 'openrouter-image',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $apiKey',
+          'HTTP-Referer': 'https://smartcontentcreator-d49f2.web.app',
+          'X-Title': 'Smart Content Creator',
+        },
+        data: {
+          'model': modelId,
+          'messages': [
+            {'role': 'user', 'content': enhancedPrompt}
+          ],
+          'modalities': ['image'],
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final content = response.data['choices']?[0]?['message']?['content'] as String?;
+        
+        String? imageUrl;
+        if (content != null) {
+          final match = RegExp(r'!\[.*?\]\((.*?)\)').firstMatch(content);
+          if (match != null) {
+            imageUrl = match.group(1);
+          } else if (content.trim().startsWith('http')) {
+            imageUrl = content.trim();
+          }
+        }
+
+        if (imageUrl != null) {
+          // Download and save locally
+          final imageResponse = await http.get(Uri.parse(imageUrl));
+          if (imageResponse.statusCode == 200) {
+            final dir = await getTemporaryDirectory();
+            final fileName = 'openrouter_${DateTime.now().millisecondsSinceEpoch}.png';
+            final file = File('${dir.path}/$fileName');
+            await file.writeAsBytes(imageResponse.bodyBytes);
+
+            return ImageGenerationResult(
+              success: true,
+              localPath: file.path,
+              imageUrl: imageUrl,
+              prompt: prompt,
+              provider: providerOpenRouter,
+            );
+          }
+        }
+      }
+
+      return ImageGenerationResult(
+        success: false,
+        error: 'فشل OpenRouter: ${response.statusCode}',
+      );
+    } catch (e) {
+      return ImageGenerationResult(
+        success: false,
+        error: 'خطأ في OpenRouter: $e',
+      );
+    }
+  }
 
   /// 🎨 Enhance prompt with style modifiers (Refined to avoid duplication)
   String _enhancePrompt(String prompt, String style) {
@@ -562,7 +700,7 @@ class AiImageGenerationService extends GetxService {
 
   /// 🔄 Switch provider
   void switchProvider(String provider) {
-    if ([providerGemini, providerStability, providerDalle, providerMock]
+    if ([providerGemini, providerStability, providerDalle, providerOpenRouter, providerMock]
         .contains(provider)) {
       currentProvider = provider;
       demoMode = provider == providerMock;
@@ -576,6 +714,7 @@ class AiImageGenerationService extends GetxService {
       {'id': providerGemini, 'name': 'Gemini Imagen', 'icon': '🌟'},
       {'id': providerStability, 'name': 'Stability AI', 'icon': '🎨'},
       {'id': providerDalle, 'name': 'DALL·E 3', 'icon': '🎭'},
+      {'id': providerOpenRouter, 'name': 'OpenRouter (FLUX/Riverflow)', 'icon': '🌐'},
     ];
   }
 
@@ -918,6 +1057,22 @@ extension ProductPhotographyExtension on AiImageGenerationService {
 
       );
 
+      // Some error responses arrive as JSON but still get returned as bytes.
+      // Detect that early to avoid saving a corrupted "image" file.
+      try {
+        final data = response.data;
+        if (data is List<int> && data.isNotEmpty) {
+          final first = data.first;
+          if (first == 123 || first == 91) {
+            final text = utf8.decode(data, allowMalformed: true);
+            return ImageGenerationResult(
+              success: false,
+              error: 'فشل Stability Inpainting: $text',
+            );
+          }
+        }
+      } catch (_) {}
+
       if (response.statusCode == 200) {
         final dir = await getTemporaryDirectory();
         final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -933,7 +1088,22 @@ extension ProductPhotographyExtension on AiImageGenerationService {
         );
       }
 
-      return ImageGenerationResult(success: false, error: "فشل غير معروف");
+      // Non-200 response but no exception thrown: attempt to decode readable error.
+      try {
+        final data = response.data;
+        if (data is List<int> && data.isNotEmpty) {
+          final text = utf8.decode(data, allowMalformed: true);
+          return ImageGenerationResult(
+            success: false,
+            error: 'فشل Stability Inpainting (${response.statusCode}): $text',
+          );
+        }
+      } catch (_) {}
+
+      return ImageGenerationResult(
+        success: false,
+        error: 'فشل Stability Inpainting: ${response.statusCode}',
+      );
     } on dio.DioException catch (e) {
       if (kDebugMode && e.response != null) {
         debugPrint('❌ Stability AI Error Response (${e.response?.statusCode}): ${e.response?.data}');
@@ -950,4 +1120,71 @@ extension ProductPhotographyExtension on AiImageGenerationService {
     }
   }
 
+  /// 🔥 المستوى 5: توليد مشهد متقدم (شخص + منتج) مع حماية التشريح
+  /// يستخدم استراتيجية فصل العناصر لضمان عدم حدوث Latent Space Collision
+  Future<ImageGenerationResult> generateAdvancedHighFidelityScene({
+    required File productFile,
+    required String userPrompt,
+    dio.CancelToken? cancelToken,
+  }) async {
+    try {
+      if (kDebugMode) debugPrint('🎭 بدء نظام التوليد الأوركسترالي (Stage 1: Analysis)...');
+
+      // 1. تحليل سياق المنتج (Context Analysis) لضمان وضعية بشرية صحيحة
+      final analysisPrompt = """
+      Analyze this product and the user request: "$userPrompt".
+      Describe the ideal human interaction with this product. 
+      If it's a sofa, a person should be sitting. If it's a bag, a person should be holding it.
+      Return ONLY a detailed English prompt for a background scene that includes a human in a professional pose, 
+      BUT LEAVE the area where the product should be as a clean, empty space or a generic placeholder.
+      Example: "A professional model sitting on an invisible chair in a luxury living room, arms resting, soft lighting."
+      """;
+      
+      final productBytes = await productFile.readAsBytes();
+      final sceneAnalysis = await AIProviderFactory.analyzeWithSmartFallback(
+        productBytes, 
+        analysisPrompt, 
+        cancelToken: cancelToken
+      );
+      
+      final String scenePrompt = sceneAnalysis.description.trim();
+      if (kDebugMode) debugPrint('🎬 تم تصميم المشهد: $scenePrompt');
+
+      // 2. توليد "المسرح" (The Stage) - صورة الشخص والخلفية بدون المنتج الفعلي
+      if (kDebugMode) debugPrint('🎨 جاري توليد المسرح البشري...');
+      final stageResult = await generateImage(
+        scenePrompt, 
+        provider: AiImageGenerationService.providerStability, 
+        style: 'realistic',
+        cancelToken: cancelToken
+      );
+
+      if (!stageResult.success || stageResult.localPath == null) {
+        return stageResult;
+      }
+
+      // 3. الدمج (Compositing Stage) - زرع المنتج في المسرح
+      if (kDebugMode) debugPrint('🧩 جاري دمج المنتج في المسرح المولد...');
+      
+      // إزالة خلفية المنتج الأصلي أولاً
+      final transparentProductBytes = await removeBackground(productBytes);
+      if (transparentProductBytes == null) throw Exception("فشل عزل المنتج");
+      
+      // إنشاء القناع للمنتج
+      final productMaskBytes = await compute(ImageUtils.generateMaskTask, transparentProductBytes);
+      if (productMaskBytes == null) throw Exception("فشل إنشاء القناع");
+
+      // إرسال طلب Inpainting لزرع المنتج في المشهد المولد
+      // نستخدم الـ stageResult كخلفية (Base Image)
+      return await _editWithStabilityInpaintingV2(
+        imageBytes: await File(stageResult.localPath!).readAsBytes(), 
+        maskBytes: productMaskBytes, 
+        prompt: "Perfectly integrate this product into the scene, match lighting and shadows, high fidelity.",
+      );
+
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ Advanced Scene Error: $e');
+      return ImageGenerationResult(success: false, error: e.toString());
+    }
+  }
 }

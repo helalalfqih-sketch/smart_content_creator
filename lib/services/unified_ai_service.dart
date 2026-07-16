@@ -7,9 +7,8 @@ import 'package:get/get.dart';
 import '../services/gemini_service.dart';
 import '../services/db_service.dart';
 import 'kling_service.dart';
+import 'higgsfield_service.dart';
 import '../controllers/settings_controller.dart';
-import '../services/managed_ai_service.dart';
-import '../controllers/auth_controller.dart';
 import '../services/ai_provider.dart';
 import '../core/models/api_provider.dart';
 import '../core/utils/json_utils.dart';
@@ -34,19 +33,17 @@ class UnifiedAIService extends GetxService {
   GeminiService get _gemini => Get.find<GeminiService>();
   DBService get _db => Get.find<DBService>();
   SettingsController get _settings => Get.find<SettingsController>();
-  ManagedAiService get _managedAi => Get.find<ManagedAiService>();
-  AuthController get _auth => Get.find<AuthController>();
   GoogleLensService get _lens => Get.find<GoogleLensService>();
 
-  /// جلب المفتاح الفعال (يدوي أو مدار)
+  /// 🤖 اسم النموذج أو المزود الأخير الذي تم استخدامه بنجاح
+  String lastUsedProvider = 'gemini';
+
+  /// جلب المفتاح الفعال (يدوي)
   Future<String?> _getEffectiveKey(ProviderType provider) async {
+    // 1. المفتاح المحلي اليدوي (Manual Key)
     final localKey = _settings.getApiKey(provider);
     if (localKey.isNotEmpty) return localKey;
 
-    if (_auth.firebaseUid != null) {
-      return await _managedAi.getManagedKey(_auth.firebaseUid,
-          provider: provider);
-    }
     return null;
   }
 
@@ -56,7 +53,7 @@ class UnifiedAIService extends GetxService {
 
   /// 🧠 Smart Router: Classify User Intent (Enhanced v4.0)
   /// Returns a structured AIIntentResult with confidence and parameters
-  Future<AIIntentResult> classifyUserIntent(String userText, {dio.CancelToken? cancelToken}) async {
+  Future<AIIntentResult> classifyUserIntent(String userText, {File? image, dio.CancelToken? cancelToken}) async {
     try {
       final apiKey = await _getGeminiKey();
       if (apiKey.isEmpty) {
@@ -70,6 +67,7 @@ class UnifiedAIService extends GetxService {
 
       final routerPrompt = """
 You are the Brain of a high-end AI Content Creation OS. Analyze the user's input and determine the optimal routing package.
+${image != null ? "CONTEXT: The user has attached an image. If they ask to animate it, generate a video from it, or describe a scene with it, prioritize VIDEO_GEN." : ""}
 User Input: "$userText"
 
 Intents:
@@ -102,12 +100,7 @@ JSON Template:
       // يضمن بقاء "عقل" النظام يعمل حتى عند تعطل Gemini (429)
       final response = await AIProviderFactory.generateWithSmartFallback(routerPrompt, cancelToken: cancelToken);
       
-      final cleanJson = response.description
-          .replaceAll('```json', '')
-          .replaceAll('```', '')
-          .trim();
-      
-      final Map<String, dynamic> data = jsonDecode(cleanJson);
+      final Map<String, dynamic> data = JsonUtils.parseSafe(response.description);
       return AIIntentResult.fromJson(data);
     } catch (e) {
       debugPrint("⚠️ Intent Classification Error: $e");
@@ -388,6 +381,7 @@ IMPORTANT:
         history: history,
         cancelToken: cancelToken,
       );
+      lastUsedProvider = res.provider; // 🤖 حفظ اسم المحرك الفعلي المستخدم
       return res.description;
     } catch (e) {
       if (kDebugMode) debugPrint("❌ UnifiedAIService.generateText Fallback Error: $e");
@@ -407,22 +401,26 @@ If the product in the image looks like it belongs to this brand or category (${b
 
     final prompt = """
 $brandContext
-انظر إلى الصورة واستخرج بيانات المنتج بدقة.
-تنبيه: إذا لم تكن متأكداً من الاسم، قدم أدق وصف بصري ممكن للمنتج (مثلاً: وسادة زرقاء مريحة). لا تترك الاسم فارغاً أبداً.
+You are an expert visual analyst. Analyze the image and extract details.
+CRITICAL: Distinguish between a commercial product (for sale) and a personal item/person (selfie, person wearing clothes, casual photo).
 
-المطلوب JSON فقط ببيانات المنتج:
+Return ONLY JSON:
 {
-  "name": "اسم المنتج بوصف دقيق بالإنجليزية (Descriptive Original Name)",
-  "category": "التصنيف (مثلاً Home & Lifestyle)",
-  "brand": "اسم البراند أو 'Unknown'",
-  "search_query": "كلمات بحث إنجليزية دقيقة للمنتج"
+  "name": "Specific product name OR visual description (e.g., 'Person wearing grey shawl')",
+  "category": "Category (Electronics, Fashion, Person, Home, Selfie, Food)",
+  "brand": "Brand or 'Unknown'",
+  "is_commercial": true/false, // True ONLY if it looks like a studio product photo or ad. False for selfies/people.
+  "search_query": "Detailed English search query including [Brand] [Product Name] [Model] for best search results",
+  "description": "Brief description in Arabic",
+  "teaser": "A smart, unique marketing teaser or friendly comment in Arabic based SPECIFICALLY on this image (Max 15 words)"
 }
-تنبيه: لا تضف أي نص خارج الـ JSON. لا تستخدم Markdown (```json).
+NO MARKDOWN. NO EXTRA TEXT.
 """;
 
     try {
       final res = await _analyzeImageWithFallback(image, prompt, isJson: true, cancelToken: cancelToken);
-      final data = await JsonUtils.parseAsync(res.description);
+      final data = JsonUtils.parseSafe(res.description);
+      data['provider'] = res.provider; // 🤖 تضمين اسم النموذج في البيانات المرجعة
       if (kDebugMode) debugPrint("✅ [UnifiedAI]: Extraction Complete: ${data['name']}");
       return data;
     } catch (e) {
@@ -463,7 +461,7 @@ NO MARKDOWN. NO EXTRA TEXT.
     try {
       final bytesList = await ImageUtils.batchPrepareForVision(images);
       final res = await analyzeBatchImages(bytesList, prompt, maxTokens: 800, cancelToken: cancelToken);
-      final data = await JsonUtils.parseAsync(res.description);
+      final data = JsonUtils.parseSafe(res.description);
       if (kDebugMode) {
         debugPrint("✅ [UnifiedAI]: Batch Extraction Complete: ${data['name']} in ${data['detected_template_theme']}");
       }
@@ -498,12 +496,14 @@ NO MARKDOWN. NO EXTRA TEXT.
     try {
       // 🚀 استخدام نظام التبديل الذكي للرؤية (Vision Smart Fallback)
       // يحاول استخدام Gemini Vision أولاً، وفي حال فشله (403/429)، ينتقل لـ GitHub GPT-4o أو OpenRouter
-      return await AIProviderFactory.analyzeWithSmartFallback(
+      final res = await AIProviderFactory.analyzeWithSmartFallback(
         bytes,
         prompt,
         history: history,
         cancelToken: cancelToken,
       );
+      lastUsedProvider = res.provider; // 🤖 حفظ اسم المحرك الفعلي المستخدم للتحليل البصري
+      return res;
     } catch (e) {
       // 🛡️ خطة الإنقاذ القصوى: إذا فشل كل من Gemini و GitHub/OpenRouter (مثلاً بسبب القوتا)
       // نلجأ لـ Google Lens + SerpApi كحل أخير
@@ -534,7 +534,9 @@ CRITICAL INSTRUCTIONS:
 - Never return "There is no structural data available". If data is sparse, provide generic but valid JSON fields (e.g., {"name": "Unknown Product", "category": "General"}).
 """;
 
-        return await AIProviderFactory.generateWithSmartFallback(fallbackPrompt, history: history, cancelToken: cancelToken);
+        final res = await AIProviderFactory.generateWithSmartFallback(fallbackPrompt, history: history, cancelToken: cancelToken);
+        lastUsedProvider = res.provider; // 🤖 حفظ اسم المحرك البديل المستخدم
+        return res;
       } catch (fallbackError) {
         if (kDebugMode) debugPrint("❌ [FALLBACK ERROR]: Visual fallback failed: $fallbackError");
         rethrow;
@@ -542,22 +544,31 @@ CRITICAL INSTRUCTIONS:
     }
   }
 
-  /// جديد: توليد فيديو إعلاني باستخدام Kling AI
+  /// جديد: توليد فيديو إعلاني باستخدام مزود الفيديو الفعال (Kling أو Higgsfield)
   Future<String> generateVideo(File image, {String? prompt, dio.CancelToken? cancelToken}) async {
-    final kling = Get.find<KlingService>();
-
     // 1. استخراج برومبت محسّن إذا لم يتم توفيره أو إذا كان برومبتاً بسيطاً
     String finalPrompt = prompt ?? "";
     if (finalPrompt.isEmpty ||
         finalPrompt.contains('High-end commercial') ||
         finalPrompt.length < 50) {
-      finalPrompt = await _generateKlingPromptFromImage(image, cancelToken: cancelToken);
+      finalPrompt = await generateVideoPrompt(image, cancelToken: cancelToken);
     }
 
     // 2. طلب توليد الفيديو
-    final effectiveKlingKey = await _getEffectiveKey(ProviderType.kling);
-    final result = await kling.generateVideoFromText(finalPrompt,
-        imagePath: image.path, apiKey: effectiveKlingKey);
+    final isHiggsfield = _settings.getActiveVideoProvider() == ProviderType.higgsfield;
+    String result = "";
+
+    if (isHiggsfield) {
+      final higgsfield = Get.find<HiggsfieldService>();
+      final effectiveKey = await _getEffectiveKey(ProviderType.higgsfield);
+      result = await higgsfield.generateVideo(finalPrompt,
+          imagePath: image.path, apiKey: effectiveKey);
+    } else {
+      final kling = Get.find<KlingService>();
+      final effectiveKey = await _getEffectiveKey(ProviderType.kling);
+      result = await kling.generateVideo(finalPrompt,
+          imagePath: image.path, apiKey: effectiveKey);
+    }
 
     // حفظ في قاعدة البيانات
     await _db.insertRecord('generated_content', {
@@ -571,7 +582,7 @@ CRITICAL INSTRUCTIONS:
   }
 
   /// 🎬 توليد برومبت فيديو احترافي بناءً على وصف الصورة (Visual-to-Video Prompting)
-  Future<String> _generateKlingPromptFromImage(File image, {dio.CancelToken? cancelToken}) async {
+  Future<String> generateVideoPrompt(File image, {dio.CancelToken? cancelToken}) async {
     try {
       // IMAGE COMPRESSION NOT NEEDED HERE IF PROMPT ONLY
       // final compressedFile = await ImageUtils.compressForAi(image);

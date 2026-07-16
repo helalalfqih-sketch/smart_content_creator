@@ -148,7 +148,14 @@ class ScenarioDisplayWidget extends StatelessWidget {
              ),
              IconButton(
                icon: const Icon(Icons.play_circle_fill_rounded, color: AppTheme.colorTrust, size: 32),
-               onPressed: () {}, 
+               onPressed: () {
+                 SnackBarUtils.showSmartSnackBar(
+                   title: 'قريباً',
+                   message: 'ميزة الاستماع للتوجيه غير متاحة حالياً',
+                   isError: false,
+                   durationSeconds: 2,
+                 );
+               },
                tooltip: 'استماع للتوجيه',
              )
            ],

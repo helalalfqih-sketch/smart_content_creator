@@ -14,6 +14,7 @@ import '../core/models/api_provider.dart';
 import '../services/product_memory_service.dart';
 import '../controllers/auth_controller.dart';
 import '../core/widgets/glass_container.dart';
+import '../theme/app_theme.dart';
 
 // =============================================================================
 // 🎮 Controller: منطق التحكم الخاص بهذه الشاشة
@@ -41,6 +42,12 @@ class ProductStudioController extends GetxController {
   // الأنماط الجاهزة (Presets)
   final RxString selectedStyle = "Professional".obs;
   final List<Map<String, String>> styles = [
+    {
+      'name': 'Advantage+',
+      'label': '✨ Advantage+',
+      'image': 'assets/images/styles/advantage.png',
+      'prompt': 'Advantage+ creative layout, high converting ad style, photorealistic commercial production, crisp product studio lighting, conversion-optimized background'
+    },
     {
       'name': 'Professional',
       'label': '🎯 إعلان احترافي',
@@ -311,13 +318,13 @@ class ProductPhotographyScreen extends StatelessWidget {
           backgroundColor: Colors.transparent,
           appBar: AppBar(
             title: Text(
-              "استوديو المنتجات AI 🎨",
+              "استوديو المنتجات الذكي",
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1.2,
                 foreground: Paint()
-                  ..shader = const LinearGradient(
-                    colors: [Colors.purpleAccent, Colors.blueAccent],
+                  ..shader = LinearGradient(
+                    colors: [AppTheme.primary, AppTheme.accent],
                   ).createShader(const Rect.fromLTWH(0.0, 0.0, 200.0, 70.0)),
               ),
             ),
@@ -387,7 +394,7 @@ class ProductPhotographyScreen extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         GlassContainer(
-          borderRadius: 20.r,
+          borderRadius: 28.r,
           padding: EdgeInsets.zero,
           child: TextField(
             controller: controller.promptController,
@@ -399,7 +406,7 @@ class ProductPhotographyScreen extends StatelessWidget {
               filled: false,
               border: InputBorder.none,
               contentPadding: EdgeInsets.all(16.r),
-              prefixIcon: const Icon(Icons.auto_awesome, color: Colors.purpleAccent),
+              prefixIcon: Icon(Icons.auto_awesome, color: AppTheme.primary),
             ),
           ),
         ),
@@ -411,7 +418,7 @@ class ProductPhotographyScreen extends StatelessWidget {
           padding: EdgeInsets.all(12.r),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.03),
-            borderRadius: BorderRadius.circular(15.r),
+            borderRadius: BorderRadius.circular(28.r),
             border: Border.all(color: Colors.white12),
           ),
           child: Row(
@@ -419,7 +426,7 @@ class ProductPhotographyScreen extends StatelessWidget {
             children: [
               Row(
                 children: [
-                   Icon(Icons.verified_user_rounded, color: Colors.orange, size: 20.sp),
+                    Icon(Icons.verified_user_rounded, color: AppTheme.accent, size: 20.sp),
                    SizedBox(width: 8.w),
                    Text("دمج معلومات الهوية والشعار", style: TextStyle(color: Colors.white, fontSize: 13.sp)),
                 ],
@@ -427,11 +434,164 @@ class ProductPhotographyScreen extends StatelessWidget {
               Switch(
                 value: controller.useBranding.value,
                 onChanged: (v) => controller.useBranding.value = v,
-                activeThumbColor: Colors.orange,
-                activeTrackColor: Colors.orange.withValues(alpha: 0.3),
+                activeThumbColor: AppTheme.primary,
+                activeTrackColor: AppTheme.primary.withValues(alpha: 0.3),
               ),
             ],
           ),
+        )),
+
+        const SizedBox(height: 16),
+
+        // 📈 بطاقة معلومات Advantage+ والأداء بالذكاء الاصطناعي
+        Obx(() => AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: controller.selectedStyle.value == "Advantage+"
+              ? Container(
+                  key: const ValueKey("advantage_info"),
+                  padding: EdgeInsets.all(16.r),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF00D2FF).withValues(alpha: 0.15),
+                        const Color(0xFF00FF88).withValues(alpha: 0.05),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(28.r),
+                    border: Border.all(
+                      color: const Color(0xFF00D2FF).withValues(alpha: 0.3),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.auto_awesome, color: const Color(0xFF00D2FF), size: 20.sp),
+                          SizedBox(width: 8.w),
+                          Text(
+                            "تصميم Advantage+ بالذكاء الاصطناعي",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 10.h),
+                      Text(
+                        "في تجربتنا، حققت الحملات الإعلانية التي تحتوي على جميع الإعلانات التي تضيف صورًا منشأة بواسطة الذكاء الاصطناعي:",
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12.sp,
+                          height: 1.4,
+                        ),
+                      ),
+                      SizedBox(height: 12.h),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: EdgeInsets.all(8.r),
+                              decoration: BoxDecoration(
+                                color: Colors.black26,
+                                borderRadius: BorderRadius.circular(15.r),
+                                border: Border.all(color: const Color(0xFF00FF88).withValues(alpha: 0.2)),
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    "+10% CTR",
+                                    style: TextStyle(
+                                      color: const Color(0xFF00FF88),
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2.h),
+                                  Text(
+                                    "زيادة نسبة النقر (CTR)",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: Colors.white60, fontSize: 10.sp),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Expanded(
+                            child: Container(
+                              padding: EdgeInsets.all(8.r),
+                              decoration: BoxDecoration(
+                                color: Colors.black26,
+                                borderRadius: BorderRadius.circular(15.r),
+                                border: Border.all(color: const Color(0xFF00D2FF).withValues(alpha: 0.2)),
+                              ),
+                              child: Column(
+                                children: [
+                                  Text(
+                                    "+6% CVR",
+                                    style: TextStyle(
+                                      color: const Color(0xFF00D2FF),
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  SizedBox(height: 2.h),
+                                  Text(
+                                    "زيادة التحويل (CVR)",
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: Colors.white60, fontSize: 10.sp),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 8.h),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          onPressed: () {
+                            Get.dialog(
+                              AlertDialog(
+                                backgroundColor: const Color(0xFF1A1A2E),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.r)),
+                                title: const Text("شروط وأحكام الخدمة", style: TextStyle(color: Colors.white)),
+                                content: SingleChildScrollView(
+                                  child: Text(
+                                    "هذه النسب مستندة إلى اختبارات وتجارب داخلية لحملات إعلانية مُحسّنة بالكامل عبر تقنيات توليد الصور المتقدمة. قد تختلف النتائج الفعلية لكل معلن بناءً على جودة المنتج الأصلي، دقة الاستهداف، الميزانية، وطبيعة الجمهور المستهدف.",
+                                    style: TextStyle(color: Colors.white70, fontSize: 13.sp, height: 1.5),
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Get.back(),
+                                    child: const Text("موافق", style: TextStyle(color: Color(0xFF00D2FF))),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                          child: Text(
+                            "عرض الشروط",
+                            style: TextStyle(
+                              color: const Color(0xFF00D2FF),
+                              fontSize: 11.sp,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : const SizedBox.shrink(),
         )),
 
         const SizedBox(height: 24),
@@ -494,15 +654,15 @@ class ProductPhotographyScreen extends StatelessWidget {
                     duration: const Duration(milliseconds: 300),
                     width: 100.w,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20.r),
+                      borderRadius: BorderRadius.circular(28.r),
                       border: Border.all(
-                        color: isSelected ? Colors.purpleAccent : Colors.white10,
+                        color: isSelected ? AppTheme.primary : Colors.white10,
                         width: isSelected ? 2.5 : 1,
                       ),
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: Colors.purpleAccent.withValues(alpha: 0.3),
+                                color: AppTheme.primary.withValues(alpha: 0.3),
                                 blurRadius: 10,
                                 spreadRadius: 2,
                               )
@@ -564,10 +724,10 @@ class ProductPhotographyScreen extends StatelessWidget {
         // 4️⃣ زر التوليد
         Obx(() => Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20.r),
+                borderRadius: BorderRadius.circular(28.r),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.purpleAccent.withValues(alpha: 0.4),
+                    color: AppTheme.primary.withValues(alpha: 0.4),
                     blurRadius: 20,
                     spreadRadius: -5,
                   )
@@ -582,7 +742,7 @@ class ProductPhotographyScreen extends StatelessWidget {
                   shadowColor: Colors.transparent,
                   padding: EdgeInsets.symmetric(vertical: 20.h),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20.r)),
+                      borderRadius: BorderRadius.circular(28.r)),
                 ).copyWith(
                   backgroundColor: WidgetStateProperty.resolveWith((states) {
                     return null; // Handle via decoration
@@ -590,12 +750,12 @@ class ProductPhotographyScreen extends StatelessWidget {
                 ),
                 child: Ink(
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Colors.purpleAccent, Colors.blueAccent],
+                    gradient: LinearGradient(
+                      colors: [AppTheme.primary, AppTheme.accent],
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                     ),
-                    borderRadius: BorderRadius.circular(20.r),
+                    borderRadius: BorderRadius.circular(28.r),
                   ),
                   child: Container(
                     padding: EdgeInsets.symmetric(vertical: 20.h),
@@ -616,7 +776,7 @@ class ProductPhotographyScreen extends StatelessWidget {
                             ],
                           )
                         : Text(
-                            "توليد السحر الفني ✨",
+                            "توليد",
                             style: TextStyle(
                               fontSize: 18.sp,
                               fontWeight: FontWeight.bold,
@@ -641,7 +801,7 @@ class ProductPhotographyScreen extends StatelessWidget {
 
       return GlassContainer(
         height: 380.h,
-        borderRadius: 30.r,
+        borderRadius: 28.r,
         opacity: 0.05,
         border: Border.all(color: Colors.white12),
         child: !hasOriginal
@@ -653,11 +813,11 @@ class ProductPhotographyScreen extends StatelessWidget {
                     Container(
                       padding: EdgeInsets.all(20.r),
                       decoration: BoxDecoration(
-                        color: Colors.purpleAccent.withValues(alpha: 0.1),
+                        color: AppTheme.primary.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(Icons.add_a_photo_rounded,
-                          size: 50.r, color: Colors.purpleAccent),
+                        size: 50.r, color: AppTheme.primary),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -675,7 +835,7 @@ class ProductPhotographyScreen extends StatelessWidget {
                 children: [
                   // الصورة المعروضة
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(30.r),
+                    borderRadius: BorderRadius.circular(28.r),
                     child: Image.file(
                       hasGenerated
                           ? controller.generatedImage.value!
@@ -747,16 +907,16 @@ class ProductPhotographyScreen extends StatelessWidget {
                       blur: 10,
                       opacity: 0.6,
                       color: Colors.black,
-                      borderRadius: 30.r,
+                      borderRadius: 28.r,
                       child: Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const CircularProgressIndicator(
-                                color: Colors.purpleAccent),
+                            CircularProgressIndicator(
+                                color: AppTheme.primary),
                             const SizedBox(height: 20),
                             Text(
-                              "جاري إبراز الجمال...",
+                              "جارٍ المعالجة...",
                               style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 16.sp,

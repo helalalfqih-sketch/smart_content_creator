@@ -1,0 +1,64 @@
+name: 🚀 Build Android Release (App Bundle)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # يسمح بتشغيل يدوي من GitHub UI
+
+jobs:
+  build-android:
+    name: Build AAB on Linux
+    runs-on: ubuntu-latest # ← Linux = لا مشاكل مع strip أبداً!
+
+    steps:
+      # 1. تحميل الكود
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. إعداد Java 17
+      - name: ☕ Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      # 3. إعداد Flutter (نفس إصدارك المحلي)
+      - name: 🐦 Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.6'
+          channel: 'stable'
+          cache: true # تسريع البناء بالـ Cache
+
+      # 4. تحميل الـ Android NDK المطلوب
+      - name: 📦 Set up Android NDK 28
+        run: |
+          echo "ANDROID_NDK_VERSION=28.2.13676358" >> $GITHUB_ENV
+          ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager "ndk;28.2.13676358"
+
+      # 5. تحميل التبعيات
+      - name: 📦 Get Flutter Dependencies
+        run: flutter pub get
+
+      # 6. بناء الـ App Bundle
+      - name: 🏗️ Build Release App Bundle
+        run: flutter build appbundle --release --no-tree-shake-icons
+        env:
+          GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx4g -Duser.language=en -Duser.country=US"
+
+      # 7. رفع الـ AAB كـ Artifact جاهز للتنزيل
+      - name: 📤 Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-${{ github.run_number }}
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30 # الاحتفاظ بالملف 30 يوم
+
+      # 8. (اختياري) عرض ملخص البناء في GitHub UI
+      - name: 📊 Build Summary
+        if: success()
+        run: |
+          echo "✅ Build successful!" >> $GITHUB_STEP_SUMMARY
+          echo "📦 AAB file is ready for download from the Artifacts section." >> $GITHUB_STEP_SUMMARY
+          ls -lh build/app/outputs/bundle/release/app-release.aab

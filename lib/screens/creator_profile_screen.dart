@@ -1,16 +1,18 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
+import 'package:google_fonts/google_fonts.dart';
 import 'package:sqflite/sqflite.dart';
 import '../services/db_service.dart';
-import '../services/instagram_service.dart';
-import '../services/tiktok_account_service.dart';
-import '../theme/app_theme.dart';
 import '../controllers/auth_controller.dart';
 import '../services/firestore_user_service.dart';
 import '../services/referral_service.dart';
 import '../controllers/settings_controller.dart';
 import 'brand_settings_screen.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'auth/edit_profile_screen.dart';
+import '../widgets/account_picker_sheet.dart';
 
 class CreatorProfileScreen extends StatefulWidget {
   const CreatorProfileScreen({super.key});
@@ -24,6 +26,15 @@ class _CreatorProfileScreenState extends State<CreatorProfileScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _profile;
 
+  // 🎨 لوحة ألوان هادئة مستوحاة من Gemini/ChatGPT
+  static const Color _bgColor = Color(0xFF0D0D0D);
+  static const Color _cardColor = Color(0xFF1A1A1A);
+  static const Color _dividerColor = Color(0xFF262626);
+  static const Color _accent = Color(0xFF3B59FF);
+  static const Color _textPrimary = Colors.white;
+  static const Color _textSecondary = Color(0xFF9E9E9E);
+  static const Color _textTertiary = Color(0xFF616161);
+
   @override
   void initState() {
     super.initState();
@@ -34,51 +45,80 @@ class _CreatorProfileScreenState extends State<CreatorProfileScreen> {
     try {
       final db = Get.find<DBService>();
       final d = await db.db;
-      // d is non-nullable from DBService.db getter
+      final uid = _auth.firebaseUid;
 
-      // 1. Get Generated Content Count
-      final uploads =
-          await d.rawQuery('SELECT COUNT(*) as count FROM generated_content');
-      final uploadsCount = Sqflite.firstIntValue(uploads) ?? 0;
+      // 1. جلب البيانات المحلية (SQLite)
+      // نجمع كل سطر في تاريخ الدردشة كنشاط
+      final generatedRes = await d.rawQuery('SELECT COUNT(*) as count FROM generated_content');
+      final chatRes = await d.rawQuery('SELECT COUNT(*) as count FROM chat_history');
+      int localTotal = (Sqflite.firstIntValue(generatedRes) ?? 0) + (Sqflite.firstIntValue(chatRes) ?? 0);
 
-      // 2. Get Viral Reports for scores
       final reports = await d.query('viral_booster_reports');
-      double totalScore = 0;
-      for (var r in reports) {
-        totalScore += (r['viral_score'] as num? ?? 0).toDouble();
+      double localAvgScore = 0;
+      if (reports.isNotEmpty) {
+        double total = 0;
+        for (var r in reports) {
+          total += (r['viral_score'] as num? ?? 0).toDouble();
+        }
+        localAvgScore = total / reports.length;
       }
-      double avgScore = reports.isEmpty ? 0 : totalScore / reports.length;
+
+      final downloadsRes = await d.rawQuery('SELECT COUNT(*) as count FROM downloaded_videos');
+      int localDownloads = Sqflite.firstIntValue(downloadsRes) ?? 0;
+
+      if (kDebugMode) {
+        debugPrint('📊 [Stats Debug]: Local Content: $localTotal, Local Score: $localAvgScore, Downloads: $localDownloads');
+      }
+
+      // 2. جلب البيانات من السحابة (Firestore)
+      Map<String, dynamic>? cloudStats;
+      if (uid != null) {
+        try {
+          cloudStats = await Get.find<FirestoreUserService>().getCreatorStats(uid);
+        } catch (e) {
+          debugPrint('⚠️ Firestore Stats Error: $e');
+        }
+      }
+
+      // 3. دمج البيانات (نأخذ القيمة الأكبر لضمان عدم ضياع البيانات عند تبديل الأجهزة)
+      int finalTotal = localTotal > (cloudStats?['total_content'] ?? 0) ? localTotal : (cloudStats?['total_content'] ?? 0);
+      double finalAvg = localAvgScore > (cloudStats?['avg_viral_score'] ?? 0) ? localAvgScore : (cloudStats?['avg_viral_score'] ?? 0).toDouble();
+      int finalDownloads = localDownloads > (cloudStats?['downloads_count'] ?? 0) ? localDownloads : (cloudStats?['downloads_count'] ?? 0);
 
       if (!mounted) return;
       setState(() {
         _profile = {
-          'avg_viral_score': avgScore,
-          'content_strengths': {
-            'upload_count': uploadsCount,
-            'primary_format': 'فيديو ذكي'
-          },
-          'top_niches': 'عام'
+          'avg_viral_score': finalAvg,
+          'total_content': finalTotal,
+          'download_count': finalDownloads,
+          'top_niche': _detectTopNiche(finalTotal),
         };
         _isLoading = false;
       });
 
-      // ☁️ مزامنة الإحصائيات مع Firestore لكي يراها المدير
-      final uid = _auth.firebaseUid;
-      if (uid != null) {
-        final firestore = Get.find<FirestoreUserService>();
-        firestore.updateCreatorStats(
+      // تحديث السحابة بالقيم الأحدث
+      if (uid != null && (localTotal > 0 || localDownloads > 0)) {
+        Get.find<FirestoreUserService>().updateCreatorStats(
           uid: uid,
           stats: {
-            'avg_viral_score': avgScore,
-            'uploads_count': uploadsCount,
+            'avg_viral_score': finalAvg,
+            'total_content': finalTotal,
+            'downloads_count': finalDownloads,
             'last_sync': DateTime.now().toIso8601String(),
           },
         );
       }
     } catch (e) {
+      debugPrint('❌ Profile Fetch Error: $e');
       if (!mounted) return;
       setState(() => _isLoading = false);
     }
+  }
+
+  String _detectTopNiche(int total) {
+    if (total > 50) return 'خبير محتوى';
+    if (total > 10) return 'مبدع نشط';
+    return 'مبدع صاعد';
   }
 
   @override
@@ -86,263 +126,195 @@ class _CreatorProfileScreenState extends State<CreatorProfileScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: const Color(0xFF000000),
-        extendBodyBehindAppBar: true,
-        resizeToAvoidBottomInset: false,
+        backgroundColor: _bgColor,
         appBar: AppBar(
-          automaticallyImplyLeading: false, // 🛡️ شريط التنقل يدير المسار
-          centerTitle: true,
-          title: const Text('ملف ذكاء المبدع 🧠',
-              style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontFamily: 'IBMPlexSansArabic')),
-          backgroundColor: Colors.transparent,
+          backgroundColor: _bgColor,
           elevation: 0,
-        ),
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: RadialGradient(
-              center: Alignment.topLeft,
-              radius: 1.5,
-              colors: [
-                const Color(0xFF2DD486).withValues(alpha: 0.05),
-                Colors.black,
-              ],
+          centerTitle: true,
+          title: Text(
+            'الملف الشخصي',
+            style: GoogleFonts.tajawal(
+              color: _textPrimary,
+              fontSize: 17.sp,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          child: _isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(color: Color(0xFF2DD486)))
-              : _profile == null || _profile!.containsKey('message')
-                  ? _buildEmptyState()
-                  : SafeArea(
-                      child: SingleChildScrollView(
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          children: [
-                            _buildUserHeader(),
-                            const SizedBox(height: 24),
-                            _buildCreditsCard(),
-                            const SizedBox(height: 24),
-                            _buildShareAppButton(),
-                            const SizedBox(height: 24),
-                            _buildConnectedAccounts(),
-                            const SizedBox(height: 24),
-                            _buildStatsGrid(),
-                            const SizedBox(height: 24),
-                            _buildContentStrengths(),
-                            const SizedBox(height: 24),
-                            _buildNicheCard(),
-                            const SizedBox(height: 40),
-                          ],
-                        ),
-                      ),
-                    ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.edit_outlined,
+                  color: _textPrimary, size: 22),
+              onPressed: () => Get.to(() => const EditProfileScreen()),
+            ),
+          ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.analytics_outlined,
-              size: 80, color: Theme.of(context).colorScheme.outline),
-          const SizedBox(height: 16),
-          Text('لا توجد بيانات كافية بعد.',
-              style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontSize: 16)),
-          const SizedBox(height: 8),
-          const Text('ابدأ برفع الملفات واستخدام الترندات لبناء ملفك!',
-              style: TextStyle(color: Colors.grey, fontSize: 14)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUserHeader() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          )
-        ],
-      ),
-      child: Obx(() => Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2DD486), Color(0xFF00E5FF)],
-                  ),
-                ),
-                child: CircleAvatar(
-                  radius: 40,
-                  backgroundColor: const Color(0xFF0D0D10),
-                  child: const Icon(Icons.person_rounded,
-                      size: 45, color: Colors.white70),
-                ),
-              ),
-              const SizedBox(width: 20),
-              Expanded(
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: _accent))
+            : SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_auth.user?['username'] ?? 'المبدع VIP',
-                        style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white,
-                            fontFamily: 'IBMPlexSansArabic')),
-                    const SizedBox(height: 4),
-                    Text(
-                        _auth.user?['bio']?.toString().isNotEmpty == true
-                            ? _auth.user!['bio']
-                            : 'مبدع محتوى ذكي • Premium 2026',
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            fontSize: 13,
-                            fontFamily: 'IBMPlexSansArabic')),
+                    const SizedBox(height: 16),
+                    _buildUserHeader(),
+                    const SizedBox(height: 28),
+                    _buildCreditsCard(),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('الإحصائيات'),
+                    _buildSection([
+                      _buildStatTile(
+                        icon: Icons.trending_up_rounded,
+                        title: 'متوسط Viral Score',
+                        value:
+                            '${_profile?['avg_viral_score']?.toStringAsFixed(1) ?? '0.0'}%',
+                      ),
+                      _buildDivider(),
+                      _buildStatTile(
+                        icon: Icons.auto_awesome_outlined,
+                        title: 'إجمالي المحتوى المولد',
+                        value: '${_profile?['total_content'] ?? 0}',
+                      ),
+                      _buildDivider(),
+                      _buildStatTile(
+                        icon: Icons.download_done_rounded,
+                        title: 'الفيديوهات المحملة',
+                        value: '${_profile?['download_count'] ?? 0}',
+                      ),
+                      _buildDivider(),
+                      _buildStatTile(
+                        icon: Icons.psychology_outlined,
+                        title: 'المجال المقترح',
+                        value: _profile?['top_niche'] ?? 'منوع',
+                      ),
+                    ]),
+                    const SizedBox(height: 24),
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('عام'),
+                    _buildSection([
+                      if (_auth.isAdmin) ...[
+                        _buildNavTile(
+                          icon: Icons.admin_panel_settings_rounded,
+                          title: 'لوحة التحكم الإدارية (الأدمن)',
+                          subtitle: 'إدارة المستخدمين وصلاحياتهم ونشاطاتهم',
+                          color: Colors.amber,
+                          onTap: () => Get.toNamed('/admin'),
+                        ),
+                        _buildDivider(),
+                      ],
+                      _buildNavTile(
+                        icon: Icons.tune_rounded,
+                        title: 'إعدادات العلامة التجارية',
+                        onTap: () => Get.to(() => const BrandSettingsScreen()),
+                      ),
+                      _buildDivider(),
+                      _buildNavTile(
+                        icon: Icons.share_outlined,
+                        title: 'مشاركة التطبيق',
+                        subtitle: 'ادعُ أصدقاءك لتجربة صانع المحتوى',
+                        onTap: () => Get.find<ReferralService>().shareApp(),
+                      ),
+                      _buildDivider(),
+                      _buildNavTile(
+                        icon: Icons.info_outline_rounded,
+                        title: 'حول التطبيق',
+                        trailing: Text(
+                          'v1.2.0',
+                          style: GoogleFonts.tajawal(
+                            color: _textTertiary,
+                            fontSize: 13.sp,
+                          ),
+                        ),
+                        onTap: () {},
+                      ),
+                      _buildDivider(),
+                      _buildNavTile(
+                        icon: Icons.logout_rounded,
+                        title: 'تسجيل الخروج',
+                        color: Colors.redAccent,
+                        onTap: () => _confirmLogout(),
+                      ),
+                    ]),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
-              // 🏷️ زر إعدادات البراند
-              IconButton(
-                onPressed: () => Get.to(() => const BrandSettingsScreen()),
-                icon: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2DD486).withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.settings_suggest_rounded, color: Color(0xFF2DD486)),
-                ),
-                tooltip: 'إعدادات البراند والهوية',
+      ),
+    );
+  }
+
+  // 👤 رأس المستخدم (أفاتار كبير + اسم + بريد) بنمط ChatGPT
+  Widget _buildUserHeader() {
+    return Obx(() {
+      final name = _auth.user?['username'] ?? _auth.user?['name'] ?? 'المستخدم';
+      final email = _auth.user?['email'] ?? _auth.user?['bio'] ?? '';
+
+      return Column(
+        children: [
+          GestureDetector(
+            onTap: () => Get.bottomSheet(
+              const AccountPickerSheet(),
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: _dividerColor, width: 1),
               ),
-            ],
-          )),
-    );
-  }
-
-  Widget _buildStatsGrid() {
-    return Row(
-      children: [
-        Expanded(
-            child: _statCard(
-                'متوسط Viral Score',
-                '${_profile!['avg_viral_score'].toStringAsFixed(1)}%',
-                Colors.orange)),
-        const SizedBox(width: 16),
-        Expanded(
-            child: _statCard(
-                'إجمالي المحتوى',
-                '${_profile!['content_strengths']['upload_count']}',
-                Colors.blue)),
-      ],
-    );
-  }
-
-  Widget _statCard(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Column(
-        children: [
-          Text(label,
-              style: TextStyle(
-                  color: color, fontSize: 12, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          Text(value,
-              style: TextStyle(
-                  color: color, fontSize: 24, fontWeight: FontWeight.bold)),
+              child: CircleAvatar(
+                radius: 46,
+                backgroundColor: _cardColor,
+                backgroundImage: _getImageProvider(
+                  (_auth.user?['photo_url'] ?? _auth.user?['profile_url'] ?? '')
+                      .toString(),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            name,
+            style: GoogleFonts.tajawal(
+              color: _textPrimary,
+              fontSize: 20.sp,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          if (email.toString().isNotEmpty)
+            Text(
+              email,
+              style: GoogleFonts.tajawal(
+                color: _textSecondary,
+                fontSize: 13.sp,
+              ),
+            ),
+          const SizedBox(height: 14),
+          GestureDetector(
+            onTap: () => Get.to(() => const EditProfileScreen()),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              decoration: BoxDecoration(
+                color: _cardColor,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _dividerColor),
+              ),
+              child: Text(
+                'تعديل الملف الشخصي',
+                style: GoogleFonts.tajawal(
+                  color: _textPrimary,
+                  fontSize: 13.sp,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
         ],
-      ),
-    );
+      );
+    });
   }
 
-  Widget _buildContentStrengths() {
-    final strengths = _profile!['content_strengths'];
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('تحليل نقاط القوة ✨',
-              style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 18,
-                  color: Colors.white,
-                  fontFamily: 'IBMPlexSansArabic')),
-          const SizedBox(height: 20),
-          _strengthRow('التنسيق الأكثر نجاحاً',
-              strengths['primary_format'] ?? 'فيديو ذكي'),
-          _strengthRow('مستوى التفاعل المتوقع', 'مرتفع جداً 🔥'),
-        ],
-      ),
-    );
-  }
-
-  Widget _strengthRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNicheCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient:
-            LinearGradient(colors: [AppTheme.primary, Colors.blue.shade700]),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('المجال المقترح (Niche) 🎯',
-              style: TextStyle(color: Colors.white70)),
-          const SizedBox(height: 8),
-          Text(_profile!['top_niches'] ?? 'عام',
-              style: const TextStyle(
-                  color: Color.fromARGB(255, 0, 0, 0),
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
+  // ⚡ بطاقة الرصيد بنمط "Upgrade to Plus"
   Widget _buildCreditsCard() {
     if (!Get.isRegistered<SettingsController>()) return const SizedBox.shrink();
 
@@ -353,11 +325,12 @@ class _CreatorProfileScreenState extends State<CreatorProfileScreen> {
       final progress = (credits / maxCredits).clamp(0.0, 1.0);
 
       return Container(
-        padding: const EdgeInsets.all(24),
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.03),
-          borderRadius: BorderRadius.circular(32),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          color: _cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _dividerColor),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,59 +338,48 @@ class _CreatorProfileScreenState extends State<CreatorProfileScreen> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.purple.withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
+                    color: _accent.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  child:
-                      const Icon(Icons.offline_bolt, color: Colors.purpleAccent),
+                  child: const Icon(Icons.bolt_rounded,
+                      color: _accent, size: 20),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'رصيد الذكاء الاصطناعي 🧠',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, color: Colors.white),
+                        'رصيد الذكاء الاصطناعي',
+                        style: GoogleFonts.tajawal(
+                          color: _textPrimary,
+                          fontSize: 14.sp,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
-                        'اشتراك Premium النشط',
-                        style: TextStyle(color: Colors.white54, fontSize: 11),
+                        '$credits وحدة متبقية',
+                        style: GoogleFonts.tajawal(
+                          color: _textSecondary,
+                          fontSize: 12.sp,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border:
-                        Border.all(color: Colors.green.withValues(alpha: 0.5)),
-                  ),
-                  child: Text(
-                    '$credits وحدة',
-                    style: const TextStyle(
-                        color: Colors.greenAccent,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12),
-                  ),
-                ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: progress,
-                minHeight: 8,
-                backgroundColor: Colors.white10,
-                valueColor:
-                    const AlwaysStoppedAnimation<Color>(Colors.purpleAccent),
+                minHeight: 5,
+                backgroundColor: _dividerColor,
+                valueColor: const AlwaysStoppedAnimation(_accent),
               ),
             ),
           ],
@@ -426,583 +388,165 @@ class _CreatorProfileScreenState extends State<CreatorProfileScreen> {
     });
   }
 
-  Widget _buildConnectedAccounts() {
-    final instagramService = Get.find<InstagramService>();
-    final tiktokService = Get.find<TikTokAccountService>();
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2DD486).withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.link_rounded,
-                    color: Color(0xFF2DD486), size: 20),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'الحسابات المرتبطة 🔗',
-                style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                    color: Colors.white,
-                    fontFamily: 'IBMPlexSansArabic'),
-              ),
-            ],
+  Widget _buildDivider() => Container(
+        height: 1,
+        margin: const EdgeInsets.only(right: 50),
+        color: _dividerColor,
+      );
+
+  // 📋 عنوان قسم
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(22, 0, 22, 10),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Text(
+          title,
+          style: GoogleFonts.tajawal(
+            color: _textSecondary,
+            fontSize: 12.sp,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
           ),
-          const SizedBox(height: 20),
-
-          // 📸 بطاقة انستقرام
-          Obx(() => _buildInstagramCard(instagramService)),
-
-          const SizedBox(height: 12),
-
-          // 🎵 بطاقة تيك توك
-          Obx(() => _buildTikTokCard(tiktokService)),
-        ],
+        ),
       ),
     );
   }
 
-  /// 📸 بطاقة انستقرام الاحترافية
-  Widget _buildInstagramCard(InstagramService service) {
-    final isConnected = service.isConnected.value;
-    final profile = service.instagramProfile.value;
-    final isLoading = service.isLoading.value;
-
+  // 📦 حاوية القسم (Grouped list)
+  Widget _buildSection(List<Widget> children) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isConnected
-              ? [
-                  const Color(0xFFC13584).withValues(alpha: 0.15),
-                  const Color(0xFFE1306C).withValues(alpha: 0.08),
-                ]
-              : [
-                  Colors.white.withValues(alpha: 0.04),
-                  Colors.white.withValues(alpha: 0.02),
-                ],
-        ),
-        border: Border.all(
-          color: isConnected
-              ? const Color(0xFFE1306C).withValues(alpha: 0.3)
-              : Colors.white.withValues(alpha: 0.08),
-        ),
+        color: _cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _dividerColor),
       ),
-      child: Column(
+      child: Column(children: children),
+    );
+  }
+
+  // 📊 عنصر إحصائية (غير قابل للنقر)
+  Widget _buildStatTile({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
         children: [
-          Row(
-            children: [
-              // أيقونة انستقرام
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                    colors: [
-                      Color(0xFF405DE6),
-                      Color(0xFF5851DB),
-                      Color(0xFF833AB4),
-                      Color(0xFFC13584),
-                      Color(0xFFE1306C),
-                      Color(0xFFFD1D1D),
-                      Color(0xFFF56040),
-                      Color(0xFFF77737),
-                      Color(0xFFFCAF45),
-                      Color(0xFFFFDC80),
-                    ],
-                  ),
-                ),
-                child: const Icon(Icons.camera_alt_rounded,
-                    color: Colors.white, size: 22),
-              ),
-
-              const SizedBox(width: 14),
-
-              // معلومات الحساب
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Instagram',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        fontFamily: 'IBMPlexSansArabic',
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    if (isConnected && profile != null) ...[
-                      Text(
-                        '@${profile['username'] ?? ''}',
-                        style: TextStyle(
-                          color: const Color(0xFFE1306C),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ] else ...[
-                      Text(
-                        'غير مرتبط',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.4),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              // زر الربط / الفصل
-              if (isLoading)
-                const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Color(0xFFE1306C),
-                  ),
-                )
-              else
-                GestureDetector(
-                  onTap: isConnected
-                      ? () => _showDisconnectDialog(service)
-                      : () => service.connectInstagram(),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: isConnected
-                          ? Colors.white.withValues(alpha: 0.05)
-                          : const Color(0xFFE1306C).withValues(alpha: 0.2),
-                      border: Border.all(
-                        color: isConnected
-                            ? Colors.white.withValues(alpha: 0.1)
-                            : const Color(0xFFE1306C).withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Text(
-                      isConnected ? 'مرتبط ✓' : 'ربط الآن',
-                      style: TextStyle(
-                        color: isConnected
-                            ? const Color(0xFF2DD486)
-                            : const Color(0xFFE1306C),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                        fontFamily: 'IBMPlexSansArabic',
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-
-          // إحصائيات الحساب المربوط
-          if (isConnected && profile != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.03),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildProfileStat(
-                    _formatNumber(profile['followers_count'] ?? 0),
-                    'متابع',
-                  ),
-                  Container(
-                      width: 1,
-                      height: 30,
-                      color: Colors.white.withValues(alpha: 0.08)),
-                  _buildProfileStat(
-                    _formatNumber(profile['follows_count'] ?? 0),
-                    'متابَع',
-                  ),
-                  Container(
-                      width: 1,
-                      height: 30,
-                      color: Colors.white.withValues(alpha: 0.08)),
-                  _buildProfileStat(
-                    _formatNumber(profile['media_count'] ?? 0),
-                    'منشور',
-                  ),
-                ],
+          Icon(icon, color: _textSecondary, size: 20),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              title,
+              style: GoogleFonts.tajawal(
+                color: _textPrimary,
+                fontSize: 14.sp,
+                fontWeight: FontWeight.w500,
               ),
             ),
-          ],
+          ),
+          Text(
+            value,
+            style: GoogleFonts.tajawal(
+              color: _textSecondary,
+              fontSize: 13.sp,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  /// 📊 عنصر إحصائية صغير
-  Widget _buildProfileStat(String value, String label) {
-    return Column(
-      children: [
-        Text(value,
-            style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w800,
-                fontSize: 16)),
-        const SizedBox(height: 2),
-        Text(label,
-            style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.4), fontSize: 11)),
-      ],
-    );
-  }
-
-  /// 🔢 تنسيق الأرقام الكبيرة (1200 -> 1.2K)
-  String _formatNumber(dynamic count) {
-    final num n = count is num ? count : 0;
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
-    return n.toInt().toString();
-  }
-
-  /// 🎵 بطاقة تيك توك الاحترافية
-  Widget _buildTikTokCard(TikTokAccountService service) {
-    final connected = service.isConnected.value;
-    final loading = service.isLoading.value;
-    final profile = service.tiktokProfile.value;
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: connected
-              ? [
-                  const Color(0xFF00F2EA).withValues(alpha: 0.12),
-                  const Color(0xFFFF0050).withValues(alpha: 0.08),
-                ]
-              : [
-                  Colors.white.withValues(alpha: 0.03),
-                  Colors.white.withValues(alpha: 0.01),
-                ],
-        ),
-        border: Border.all(
-          color: connected
-              ? const Color(0xFF00F2EA).withValues(alpha: 0.25)
-              : Colors.white.withValues(alpha: 0.06),
-        ),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF00F2EA), Color(0xFFFF0050)],
+  // ➡️ عنصر قابل للنقر
+  Widget _buildNavTile({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    Widget? trailing,
+    Color? color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, color: color ?? _textSecondary, size: 20),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.tajawal(
+                      color: color ?? _textPrimary,
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                child: const Icon(Icons.music_note_rounded,
-                    color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('TikTok',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                            fontFamily: 'IBMPlexSansArabic')),
+                  if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(
-                      connected
-                          ? '✅ مرتبط${profile?['display_name'] != null ? ' • @${profile!['display_name']}' : ''}'
-                          : 'غير مرتبط',
-                      style: TextStyle(
-                        color: connected
-                            ? const Color(0xFF00F2EA)
-                            : Colors.white.withValues(alpha: 0.4),
-                        fontSize: 12,
+                      subtitle,
+                      style: GoogleFonts.tajawal(
+                        color: _textTertiary,
+                        fontSize: 11.sp,
                       ),
                     ),
                   ],
-                ),
-              ),
-              loading
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Color(0xFF00F2EA)))
-                  : connected
-                      ? GestureDetector(
-                          onTap: () => _showTikTokDisconnectDialog(service),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 7),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              color: const Color(0xFFEF4444)
-                                  .withValues(alpha: 0.12),
-                              border: Border.all(
-                                  color: const Color(0xFFEF4444)
-                                      .withValues(alpha: 0.3)),
-                            ),
-                            child: const Text('فصل',
-                                style: TextStyle(
-                                    color: Color(0xFFEF4444),
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12)),
-                          ),
-                        )
-                      : GestureDetector(
-                          onTap: () => service.connectTikTok(),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 7),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF00F2EA), Color(0xFFFF0050)],
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFF00F2EA)
-                                      .withValues(alpha: 0.3),
-                                  blurRadius: 8,
-                                ),
-                              ],
-                            ),
-                            child: const Text('ربط الآن',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12)),
-                          ),
-                        ),
-            ],
-          ),
-
-          // عرض الإحصائيات عند الاتصال
-          if (connected && profile != null) ...[
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.04),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildProfileStat(
-                    _formatNumber(profile['follower_count'] ?? 0),
-                    'متابع',
-                  ),
-                  Container(
-                      width: 1,
-                      height: 30,
-                      color: Colors.white.withValues(alpha: 0.08)),
-                  _buildProfileStat(
-                    _formatNumber(profile['following_count'] ?? 0),
-                    'متابَع',
-                  ),
-                  Container(
-                      width: 1,
-                      height: 30,
-                      color: Colors.white.withValues(alpha: 0.08)),
-                  _buildProfileStat(
-                    _formatNumber(profile['likes_count'] ?? 0),
-                    'إعجاب',
-                  ),
-                  Container(
-                      width: 1,
-                      height: 30,
-                      color: Colors.white.withValues(alpha: 0.08)),
-                  _buildProfileStat(
-                    _formatNumber(profile['video_count'] ?? 0),
-                    'فيديو',
-                  ),
                 ],
               ),
             ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  /// ⚠️ حوار تأكيد فصل حساب انستقرام
-  void _showDisconnectDialog(InstagramService service) {
-    Get.dialog(
-      Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('فصل حساب انستقرام؟',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'IBMPlexSansArabic')),
-          content: const Text(
-            'سيتم إلغاء ربط حساب انستقرام. يمكنك إعادة الربط في أي وقت.',
-            style: TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Get.back(),
-              child:
-                  const Text('إلغاء', style: TextStyle(color: Colors.white54)),
-            ),
-            TextButton(
-              onPressed: () {
-                Get.back();
-                service.disconnectInstagram();
-              },
-              child: const Text('فصل الحساب',
-                  style: TextStyle(color: Color(0xFFEF4444))),
-            ),
+            trailing ??
+                Icon(Icons.arrow_back_ios_rounded,
+                    color: _textTertiary, size: 14),
           ],
         ),
       ),
     );
   }
 
-  /// ⚠️ حوار تأكيد فصل حساب تيك توك
-  void _showTikTokDisconnectDialog(TikTokAccountService service) {
-    Get.dialog(
-      Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('فصل حساب تيك توك؟',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontFamily: 'IBMPlexSansArabic')),
-          content: const Text(
-            'سيتم إلغاء ربط حساب تيك توك. يمكنك إعادة الربط في أي وقت.',
-            style: TextStyle(color: Colors.white70),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Get.back(),
-              child:
-                  const Text('إلغاء', style: TextStyle(color: Colors.white54)),
-            ),
-            TextButton(
-              onPressed: () {
-                Get.back();
-                service.disconnectTikTok();
-              },
-              child: const Text('فصل الحساب',
-                  style: TextStyle(color: Color(0xFFEF4444))),
-            ),
-          ],
+  void _confirmLogout() {
+    Get.defaultDialog(
+      title: "تسجيل الخروج",
+      titleStyle: GoogleFonts.tajawal(
+        color: _textPrimary,
+        fontWeight: FontWeight.bold,
+      ),
+      backgroundColor: _cardColor,
+      content: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Text(
+          "هل أنت متأكد من تسجيل الخروج؟",
+          textAlign: TextAlign.center,
+          style: GoogleFonts.tajawal(color: _textSecondary),
         ),
       ),
+      textConfirm: "خروج",
+      textCancel: "إلغاء",
+      confirmTextColor: Colors.white,
+      buttonColor: Colors.redAccent,
+      cancelTextColor: _textSecondary,
+      onConfirm: () => _auth.logout(),
     );
   }
 
-  Widget _buildShareAppButton() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF2DD486).withValues(alpha: 0.15),
-            const Color(0xFF00E5FF).withValues(alpha: 0.05),
-          ],
-        ),
-        border:
-            Border.all(color: const Color(0xFF2DD486).withValues(alpha: 0.2)),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(24),
-          onTap: () => Get.find<ReferralService>().shareApp(),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2DD486),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                          color: const Color(0xFF2DD486).withValues(alpha: 0.3),
-                          blurRadius: 10)
-                    ],
-                  ),
-                  child: const Icon(Icons.share_rounded,
-                      color: Colors.black, size: 22),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'انشر الإبداع الذكي 🚀',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16,
-                            fontFamily: 'IBMPlexSansArabic'),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'شارك البرنامج مع المبدعين حول العالم',
-                        style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.arrow_forward_ios_rounded,
-                    size: 16, color: Colors.white30),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+
+  ImageProvider _getImageProvider(String path) {
+    if (path.isEmpty) {
+      return const AssetImage('assets/images/styles/logoapp.jpeg');
+    }
+    if (path.startsWith('http')) return NetworkImage(path);
+    final file = File(path);
+    if (file.existsSync()) return FileImage(file);
+    return const AssetImage('assets/images/styles/logoapp.jpeg');
   }
 }
+

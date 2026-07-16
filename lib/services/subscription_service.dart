@@ -1,161 +1,127 @@
-import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
-import 'package:in_app_purchase/in_app_purchase.dart';
-import '../controllers/auth_controller.dart';
-import 'firestore_user_service.dart';
 
-class SubscriptionService extends GetxService {
-  final InAppPurchase _iap = InAppPurchase.instance;
-  late StreamSubscription<List<PurchaseDetails>> _subscription;
+/// 💎 نظام إدارة الاشتراكات (SaaS Engine)
+/// يدير الخطط، الصلاحيات، والمزامنة مع Firestore
+class SubscriptionService extends GetxController {
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  static const String _subCollection = 'subscriptions';
+  static const String _usersCollection = 'users';
 
-  final RxList<ProductDetails> products = <ProductDetails>[].obs;
-  final RxList<PurchaseDetails> purchases = <PurchaseDetails>[].obs;
-  final RxBool isAvailable = false.obs;
+  // 🛍️ IAP UI State (Placeholders for SubscriptionScreen)
   final RxBool isLoading = false.obs;
+  final RxBool isAvailable = false.obs; // Set to false to trigger WhatsApp fallback by default
+  final RxList<dynamic> products = <dynamic>[].obs;
 
-  // 🛡️ التبعيات المطلوبة للإتمام
-  AuthController get _auth => Get.find<AuthController>();
-  FirestoreUserService get _firestoreUser => Get.find<FirestoreUserService>();
-
-  // Define your product IDs here (match Google Play Console / App Store Connect)
-  static const String _monthlySubscriptionId = 'smart_content_creator_monthly';
-  static const Set<String> _kIds = {_monthlySubscriptionId};
-
-  @override
-  void onInit() {
-    super.onInit();
-    _initialize();
-  }
-
-  @override
-  void onClose() {
-    _subscription.cancel();
-    super.onClose();
-  }
-
-  Future<void> _initialize() async {
-    isAvailable.value = await _iap.isAvailable();
-    if (isAvailable.value) {
-      final Stream<List<PurchaseDetails>> purchaseUpdated = _iap.purchaseStream;
-      _subscription = purchaseUpdated.listen(
-        _onPurchaseUpdates,
-        onDone: () {
-          _subscription.cancel();
-        },
-        onError: (error) {
-          debugPrint('IAP Error: $error');
-        },
-      );
-      await _loadProducts();
-    }
-  }
-
-  Future<void> _loadProducts() async {
+  /// 🛒 شراء اشتراك (In-App Purchase Placeholder)
+  Future<void> buySubscription() async {
     isLoading.value = true;
     try {
-      final ProductDetailsResponse response =
-          await _iap.queryProductDetails(_kIds);
-      if (response.notFoundIDs.isNotEmpty) {
-        debugPrint('Products not found: ${response.notFoundIDs}');
-      }
-      products.assignAll(response.productDetails);
-    } catch (e) {
-      debugPrint('Error loading products: $e');
+      // Logic for Apple/Google Pay would go here
+      debugPrint('🛒 Buy subscription triggered...');
+      await Future.delayed(const Duration(seconds: 2));
     } finally {
       isLoading.value = false;
     }
   }
 
-  Future<void> buySubscription() async {
-    if (products.isEmpty) {
-      Get.snackbar('خطأ', 'المنتجات غير متوفرة حالياً');
-      return;
-    }
-
-    // Assuming single product for now
-    final ProductDetails productDetails = products.first;
-    final PurchaseParam purchaseParam =
-        PurchaseParam(productDetails: productDetails);
-
-    try {
-      await _iap.buyNonConsumable(purchaseParam: purchaseParam);
-    } catch (e) {
-      Get.snackbar('خطأ', 'فشلت عملية الشراء: $e');
-    }
-  }
-
+  /// 🔄 استعادة المشتريات
   Future<void> restorePurchases() async {
+    isLoading.value = true;
     try {
-      await _iap.restorePurchases();
+      debugPrint('🔄 Restore purchases triggered...');
+      await Future.delayed(const Duration(seconds: 2));
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// 🎯 منح اشتراك لمستخدم (من قبل الأدمن أو بعد الدفع)
+  Future<bool> grantSubscription({
+    required String uid,
+    required String planId,
+    required int durationDays,
+    String source = "admin",
+  }) async {
+    try {
+      final now = DateTime.now();
+      final end = now.add(Duration(days: durationDays));
+
+      // 1. تحديث سجل الاشتراكات التفصيلي
+      await _db.collection(_subCollection).doc(uid).set({
+        'planId': planId,
+        'startDate': now.millisecondsSinceEpoch,
+        'endDate': end.millisecondsSinceEpoch,
+        'status': 'active',
+        'source': source,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      // 2. تحديث بيانات المستخدم الأساسية للوصول السريع
+      await _db.collection(_usersCollection).doc(uid).update({
+        'isPremium': true,
+        'subscription': {
+          'planId': planId,
+          'endDate': end.millisecondsSinceEpoch,
+          'status': 'active',
+        }
+      });
+
+      debugPrint('✅ [Subscription] Granted $planId to $uid for $durationDays days.');
+      return true;
     } catch (e) {
-      Get.snackbar('خطأ', 'فشلت استعادة المشتريات: $e');
+      debugPrint('❌ [Subscription] Error granting subscription: $e');
+      return false;
     }
   }
 
-  Future<void> _onPurchaseUpdates(
-      List<PurchaseDetails> purchaseDetailsList) async {
-    for (var purchaseDetails in purchaseDetailsList) {
-      if (purchaseDetails.status == PurchaseStatus.pending) {
-        // Show pending UI
-      } else {
-        if (purchaseDetails.status == PurchaseStatus.error) {
-          Get.snackbar('خطأ', 'حدث خطأ في الشراء');
-        } else if (purchaseDetails.status == PurchaseStatus.purchased ||
-            purchaseDetails.status == PurchaseStatus.restored) {
-          final bool valid = await _verifyPurchase(purchaseDetails);
-          if (valid) {
-            _deliverProduct(purchaseDetails);
-          } else {
-            _handleInvalidPurchase(purchaseDetails);
-          }
-        }
+  /// 🔁 التحقق من انتهاء صلاحية الاشتراك
+  Future<void> checkAndRefreshSubscription(String uid) async {
+    try {
+      final doc = await _db.collection(_subCollection).doc(uid).get();
+      if (!doc.exists) return;
 
-        if (purchaseDetails.pendingCompletePurchase) {
-          await _iap.completePurchase(purchaseDetails);
-        }
+      final data = doc.data()!;
+      final int endDate = data['endDate'] ?? 0;
+      final String status = data['status'] ?? 'expired';
+
+      if (DateTime.now().millisecondsSinceEpoch > endDate && status == 'active') {
+        // 🚨 انتهى الاشتراك!
+        await _db.collection(_subCollection).doc(uid).update({
+          'status': 'expired',
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        await _db.collection(_usersCollection).doc(uid).update({
+          'isPremium': false,
+          'subscription.status': 'expired',
+        });
+        
+        debugPrint('🚨 [Subscription] User $uid subscription has EXPIRED.');
       }
+    } catch (e) {
+      debugPrint('❌ [Subscription] Error checking expiry: $e');
     }
   }
 
-  Future<bool> _verifyPurchase(PurchaseDetails purchaseDetails) async {
-    // 🛡️ منطق التحقق من المشتريات (Backend Verification)
-    // في بيئة الإنتاج، يجب إرسال purchaseDetails.verificationData إلى سيرفر خاص
-    // ليقوم بالتحقق من صحة الفاتورة مع Google Play / App Store.
+  /// 🛑 إلغاء الاشتراك يدوياً
+  Future<bool> revokeSubscription(String uid) async {
+    try {
+      await _db.collection(_subCollection).doc(uid).update({
+        'status': 'revoked',
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
 
-    if (kDebugMode) {
-      debugPrint("🔍 Verifying Purchase: ${purchaseDetails.productID}");
+      await _db.collection(_usersCollection).doc(uid).update({
+        'isPremium': false,
+        'subscription.status': 'revoked',
+      });
+
+      return true;
+    } catch (e) {
+      debugPrint('❌ [Subscription] Error revoking subscription: $e');
+      return false;
     }
-
-    // محاكاة استجابة السيرفر بنجاح
-    await Future.delayed(const Duration(seconds: 1));
-    return true;
-  }
-
-  void _deliverProduct(PurchaseDetails purchaseDetails) async {
-    // 🔓 تفعيل الميزات والاشتراك
-    Get.snackbar('تم بنجاح', 'تم تفعيل الاشتراك بنجاح! 🎉 استمتع بميزات Pro.');
-    purchases.add(purchaseDetails);
-
-    // 🔄 تحديث حالة المستخدم في Firestore
-    final uid = _auth.firebaseUid;
-    if (uid != null) {
-      await _firestoreUser.updateUserProfile(
-        uid: uid,
-        data: {
-          'isPremium': true,
-          'subscriptionStatus': 'active',
-          'subscriptionExpiry':
-              DateTime.now().add(const Duration(days: 30)).toIso8601String(),
-        },
-      );
-      if (kDebugMode) {
-        debugPrint("✅ User status updated to Premium in Firestore");
-      }
-    }
-  }
-
-  void _handleInvalidPurchase(PurchaseDetails purchaseDetails) {
-    Get.snackbar('خطأ', 'عملية الشراء غير صالحة');
   }
 }

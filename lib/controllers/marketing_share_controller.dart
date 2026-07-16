@@ -83,10 +83,21 @@ class MarketingShareController extends GetxController {
         text: description,
       );
     } catch (e) {
+      String userFriendlyError = "فشل تحميل الصور للمشاركة. يرجى إعادة المحاولة لاحقاً.";
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains("socketexception") || 
+          errStr.contains("connection failed") || 
+          errStr.contains("unreachable") || 
+          errStr.contains("clientexception")) {
+        userFriendlyError = "فشل الاتصال بالشبكة. يرجى التحقق من اتصالك بالإنترنت وإعادة المحاولة.";
+      } else if (errStr.contains("تحميل أي صورة")) {
+        userFriendlyError = "فشل تنزيل صورة المنتج للمشاركة. يرجى التحقق من الرابط وإعادة المحاولة.";
+      }
+      
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("❌ فشل التحضير: $e"),
+            content: Text("❌ $userFriendlyError"),
             backgroundColor: Colors.redAccent,
           ),
         );

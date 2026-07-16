@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 
 enum Intent {
   // Conversational
@@ -147,6 +148,7 @@ enum AgentResultType {
   expertResearch, // 🤖 For deep structured research (Bing Copilot)
   imageGallery, // 🖼️ For high-quality visual inspiration grid
   contentPlan, // 🚀 New: Specialized for marketing/content output
+  videoTask, // 🎬 For tracking ongoing video generation (Kling/Luma)
   error,
 }
 
@@ -240,12 +242,12 @@ class ExpertResearchData {
 
   factory ExpertResearchData.fromJson(Map<String, dynamic> json) =>
       ExpertResearchData(
-        header: json['header'],
-        headerVideo: json['header_video'],
-        textBlocks: json['text_blocks'] ?? [],
-        references: json['references'] ?? [],
-        imagesLink: json['images_link'],
-        videosLink: json['videos_link'],
+        header: json['header']?.toString(),
+        headerVideo: json['header_video'] is Map ? Map<String, dynamic>.from(json['header_video']) : null,
+        textBlocks: json['text_blocks'] is List ? List<dynamic>.from(json['text_blocks']) : [],
+        references: json['references'] is List ? List<dynamic>.from(json['references']) : [],
+        imagesLink: json['images_link']?.toString(),
+        videosLink: json['videos_link']?.toString(),
       );
 }
 
@@ -393,9 +395,9 @@ class SuggestedAction {
 
   factory SuggestedAction.fromJson(Map<String, dynamic> json) =>
       SuggestedAction(
-        label: json['label'] ?? '',
-        toolId: json['toolId'] ?? '',
-        parameters: Map<String, dynamic>.from(json['parameters'] ?? {}),
+        label: json['label']?.toString() ?? '',
+        toolId: (json['tool_id'] ?? json['action'])?.toString() ?? '',
+        parameters: json['parameters'] is Map ? Map<String, dynamic>.from(json['parameters']) : {},
       );
 }
 
@@ -546,23 +548,36 @@ class AgentResult<T> {
     );
 
     dynamic data = json['data'];
-    if (type == AgentResultType.productGallery && data is Map) {
-      data = ProductGalleryData.fromJson(Map<String, dynamic>.from(data));
-    } else if (type == AgentResultType.videoDiscovery && data is Map) {
-      data = VideoDiscoveryData.fromJson(Map<String, dynamic>.from(data));
-    } else if (type == AgentResultType.expertResearch && data is Map) {
-      data = ExpertResearchData.fromJson(Map<String, dynamic>.from(data));
-    } else if (type == AgentResultType.imageGallery && data is Map) {
-      data = ImageGalleryData.fromJson(Map<String, dynamic>.from(data));
-    } else if (type == AgentResultType.contentPlan && data is Map) {
-      data = ContentPlanData.fromJson(Map<String, dynamic>.from(data));
+    try {
+      if (type == AgentResultType.productGallery && data is Map) {
+        data = ProductGalleryData.fromJson(Map<String, dynamic>.from(data));
+      } else if (type == AgentResultType.videoDiscovery && data is Map) {
+        data = VideoDiscoveryData.fromJson(Map<String, dynamic>.from(data));
+      } else if (type == AgentResultType.expertResearch && data is Map) {
+        data = ExpertResearchData.fromJson(Map<String, dynamic>.from(data));
+      } else if (type == AgentResultType.imageGallery && data is Map) {
+        data = ImageGalleryData.fromJson(Map<String, dynamic>.from(data));
+      } else if (type == AgentResultType.contentPlan && data is Map) {
+        data = ContentPlanData.fromJson(Map<String, dynamic>.from(data));
+      }
+    } catch (e) {
+      debugPrint("❌ AgentResult.fromJson Data Mapping Error: $e");
+      // Keep data as is (Map) if mapping fails, or wrap in error
     }
 
     return AgentResult(
       type: type,
       data: data as T,
       actions: (json['actions'] as List?)
-          ?.map((a) => SuggestedAction.fromJson(Map<String, dynamic>.from(a)))
+          ?.map((a) {
+            try {
+              return SuggestedAction.fromJson(Map<String, dynamic>.from(a));
+            } catch (e) {
+              debugPrint("⚠️ SuggestedAction.fromJson Error: $e");
+              return null;
+            }
+          })
+          .whereType<SuggestedAction>()
           .toList(),
       reasoning: json['reasoning'],
       executionTimestamp: json['executionTimestamp'] ?? 0,

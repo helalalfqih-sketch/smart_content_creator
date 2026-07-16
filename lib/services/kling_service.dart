@@ -6,8 +6,6 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../controllers/settings_controller.dart';
-import '../controllers/auth_controller.dart';
-import '../services/managed_ai_service.dart';
 import '../core/models/api_provider.dart';
 import '../core/api/enterprise_api_client.dart';
 import 'ai_provider.dart';
@@ -121,32 +119,33 @@ class KlingService extends GetxService implements AIProvider {
       }
     }
 
-    // 1. Header: Standard JWT Header (often required by strict verifiers)
+    // 1. Header
     final header = {"alg": "HS256", "typ": "JWT"};
 
-    // 2. Payload: issuer (iss) must be the Access Key
+    // 2. Payload
+    // 🚀 [Time Drift Fix]: Some servers reject tokens if iat is slightly in the future
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final payload = {
       "iss": ak,
-      "exp": now + 600, // Standard 10-minute expiry
-      "iat": now,
-      "nbf": now - 5, // Standard 5-second drift margin
+      "exp": now + 3600, // 1 hour expiry
+      "iat": now - 60,   // Set iat to 1 minute ago to handle clock drift
+      "nbf": now - 60,   // Not before 1 minute ago
     };
 
     // Helper for URL-safe base64 without padding
-    String base64UrlSafe(String input) {
-      return base64UrlEncode(utf8.encode(input)).replaceAll('=', '');
+    String base64UrlSafe(Map<String, dynamic> map) {
+      final str = jsonEncode(map);
+      return base64Url.encode(utf8.encode(str)).replaceAll('=', '');
     }
 
-    final headerBase64 = base64UrlSafe(jsonEncode(header));
-    final payloadBase64 = base64UrlSafe(jsonEncode(payload));
+    final headerBase64 = base64UrlSafe(header);
+    final payloadBase64 = base64UrlSafe(payload);
     final dataToSign = "$headerBase64.$payloadBase64";
 
     // 3. Signature: HMAC-SHA256 with Secret Key
     final hmac = Hmac(sha256, utf8.encode(sk));
     final signature = hmac.convert(utf8.encode(dataToSign));
-    final signatureBase64 =
-        base64UrlEncode(signature.bytes).replaceAll('=', '');
+    final signatureBase64 = base64Url.encode(signature.bytes).replaceAll('=', '');
 
     final token = "$dataToSign.$signatureBase64";
 
@@ -161,8 +160,7 @@ class KlingService extends GetxService implements AIProvider {
   }
 
   /// 🔑 الحصول على التوكن النشط (يضمن دائماً إرجاع JWT)
-  Future<String> _getAuthToken(
-      {String? manualKey, bool forceManaged = false}) async {
+  Future<String> _getAuthToken({String? manualKey}) async {
     String ak = "";
     String sk = "";
 
@@ -184,49 +182,8 @@ class KlingService extends GetxService implements AIProvider {
       sk = await _settings.getSecretKey(ProviderType.kling);
     }
 
-    if (ak.isNotEmpty && sk.isNotEmpty && !forceManaged) {
+    if (ak.isNotEmpty && sk.isNotEmpty) {
       if (kDebugMode) debugPrint("🎯 Kling AI: Using Local Credentials");
-    }
-
-    // 3. إذا كان طلبنا إجباري للمدار، أو إذا كان أحد المفاتيح مفقوداً
-    if (forceManaged || ak.isEmpty || sk.isEmpty) {
-      try {
-        final managedAi = Get.find<ManagedAiService>();
-        final auth = Get.find<AuthController>();
-        if (auth.firebaseUid != null) {
-          final mKey = await managedAi.getManagedKey(auth.firebaseUid,
-              provider: ProviderType.kling);
-
-          if (mKey != null && mKey.isNotEmpty) {
-            // تحليل المفتاح المدار
-            if (mKey.contains(':')) {
-              final parts = mKey.split(':');
-              ak = parts[0].trim();
-              sk = parts[1].trim();
-              if (kDebugMode) {
-                debugPrint("🎯 Kling AI: Using Managed AK:SK pair");
-              }
-            } else if (mKey.contains('.') && mKey.split('.').length == 3) {
-              if (kDebugMode) {
-                debugPrint("🎯 Kling AI: Using Managed Pre-generated Token");
-              }
-              return mKey;
-            } else {
-              // إذا كان AK فقط، نعتبره AK للمدار، لكننا نحتاج SK للمدار أيضاً
-              // هذا السيناريو يفترض أن م Key للمدار هو AK:SK دائماً
-              ak = mKey.trim();
-              if (kDebugMode) {
-                debugPrint(
-                    "🎯 Kling AI: Using Managed AK (Local SK fallback?)");
-              }
-            }
-          }
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          debugPrint("⚠️ KlingService: Managed key fetch failed: $e");
-        }
-      }
     }
 
     // 4. إنشاء توكن JWT إذا توفرت المفاتيح
@@ -243,13 +200,13 @@ class KlingService extends GetxService implements AIProvider {
   }
 
   /// 🎬 توليد فيديو من نص أو صورة
-  Future<String> generateVideoFromText(String prompt,
-      {String? imagePath, String? apiKey, bool forceManaged = false}) async {
-    final token =
-        await _getAuthToken(manualKey: apiKey, forceManaged: forceManaged);
+  @override
+  Future<String> generateVideo(String prompt,
+      {String? imagePath, String? apiKey, String model = "kling-v1"}) async {
+    final token = await _getAuthToken(manualKey: apiKey);
     if (token.isEmpty || token.split('.').length != 3) {
       throw Exception(
-          "مفتاح Kling AI غير صالح أو غير موجود. يرجى التأكد من إدخال AK و SK في الإعدادات أو تفعيل الوضع المدار.");
+          "مفتاح Kling AI غير صالح أو غير موجود. يرجى التأكد من إدخال AK و SK في الإعدادات.");
     }
 
     final isImage = imagePath != null;
@@ -257,7 +214,7 @@ class KlingService extends GetxService implements AIProvider {
 
     // 🖼️ معالجة الصورة إذا وجدت (تحويل لمسار Base64)
     String? base64Image;
-    if (imagePath != null) {
+    if (imagePath != null && !imagePath.startsWith('http')) {
       try {
         final file = File(imagePath);
         if (await file.exists()) {
@@ -280,11 +237,16 @@ class KlingService extends GetxService implements AIProvider {
           "Authorization": "Bearer $token",
           "Content-Type": "application/json",
         },
+        sendTimeout: const Duration(seconds: 120),
+        receiveTimeout: const Duration(seconds: 120),
         data: {
           "prompt": prompt,
-          "duration": "5",
+          "duration": "10",
           "model": "kling-v1",
-          if (base64Image != null) "image": base64Image,
+          if (imagePath != null && imagePath.startsWith('http')) 
+            "image_url": imagePath
+          else if (base64Image != null) 
+            "image": base64Image,
         },
       );
 
@@ -297,12 +259,6 @@ class KlingService extends GetxService implements AIProvider {
       }
       throw Exception("فشل غير متوقع");
     } on EnterpriseApiException catch (e) {
-      // التعامل الذكي مع انتهاء الرصيد
-      if (e.type == ApiErrorType.quota && !forceManaged && apiKey == null) {
-        debugPrint("🔄 Kling Quota Full: Switching to Managed Engine...");
-        return await generateVideoFromText(prompt,
-            imagePath: imagePath, apiKey: apiKey, forceManaged: true);
-      }
       throw Exception(e.message);
     } catch (e) {
       if (kDebugMode) print("Kling AI Exception: $e");
@@ -311,9 +267,9 @@ class KlingService extends GetxService implements AIProvider {
   }
 
   /// 📊 التحقق من حالة المهمة بالتنسيق المركزي
-  Future<Map<String, dynamic>> checkTaskStatus(String taskId,
-      {String? apiKey}) async {
-    final token = await _getAuthToken(manualKey: apiKey);
+  @override
+  Future<Map<String, dynamic>> checkTaskStatus(String taskId) async {
+    final token = await _getAuthToken();
     if (token.isEmpty) throw Exception("توكن Kling مفقود");
 
     try {

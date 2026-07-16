@@ -3,9 +3,8 @@ import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../controllers/settings_controller.dart';
-import '../controllers/auth_controller.dart';
-import '../services/managed_ai_service.dart';
 import '../core/models/api_provider.dart';
+import '../services/global_config_service.dart';
 
 /// Unified engine for SerpApi requests to fetch real data from Google, YouTube, Amazon, etc.
 class SerpApiMasterService {
@@ -19,33 +18,26 @@ class SerpApiMasterService {
   String? _apiKey;
 
   Future<void> _ensureApiKey() async {
-    // 💡 Always fetch the latest key from Settings because the user might have updated it.
+    // 1. Check for personal key in Settings
     final settings = Get.find<SettingsController>();
     final settingsKey = settings.getApiKey(ProviderType.serpapi);
     
     if (settingsKey.isNotEmpty) {
       _apiKey = settingsKey;
+      return;
+    }
+
+    // 2. 🌍 Use Admin Key if personal key is missing
+    final globalConfig = Get.find<GlobalConfigService>();
+    final adminKey = await globalConfig.getAdminApiKey('serpapi');
+
+    if (adminKey != null && adminKey.isNotEmpty) {
+      if (kDebugMode) debugPrint('🔑 [SerpApi] Using Admin Fallback Key');
+      _apiKey = adminKey;
     }
 
     if (_apiKey == null || _apiKey!.isEmpty) {
-      // 🧠 Managed AI Fallback
-      try {
-        final auth = Get.find<AuthController>();
-        final uid = auth.firebaseUid;
-        if (uid != null) {
-          final managedAi = Get.find<ManagedAiService>();
-          final mKey = await managedAi.getManagedKey(uid, provider: ProviderType.serpapi);
-          if (mKey != null && mKey.isNotEmpty) {
-            _apiKey = mKey;
-          }
-        }
-      } catch (e) {
-        if (kDebugMode) debugPrint("SerpApi fallback failed: $e");
-      }
-    }
-
-    if (_apiKey == null || _apiKey!.isEmpty) {
-      throw Exception('لم يتم إعداد مفتاح SerpApi. يرجى إضافته في إعدادات التطبيق أو من قاعدة البيانات.');
+      throw Exception('لم يتم إعداد مفتاح SerpApi. يرجى إضافته في إعدادات التطبيق أو التواصل مع الإدارة.');
     }
   }
 
@@ -83,19 +75,6 @@ class SerpApiMasterService {
       if (response.statusCode == 200) {
         return response.data as Map<String, dynamic>;
       } else if (response.statusCode == 401 || response.statusCode == 429) {
-        // 🔄 Smart Fallback for Account Info
-        final uid = Get.find<AuthController>().firebaseUid;
-        if (uid != null) {
-          final mKey = await Get.find<ManagedAiService>().getManagedKey(uid, provider: ProviderType.serpapi);
-          if (mKey != null && mKey.isNotEmpty && mKey != _apiKey) {
-            _apiKey = mKey;
-            final retryUrl = 'https://serpapi.com/account.json?api_key=$mKey';
-            final retryRes = await _dio.get(retryUrl, cancelToken: cancelToken);
-            if (retryRes.statusCode == 200) {
-              return retryRes.data as Map<String, dynamic>;
-            }
-          }
-        }
         final errorData = response.data;
         throw Exception('فشل جلب الحساب (${response.statusCode}): ${errorData['error'] ?? response.data}');
       }
@@ -114,7 +93,8 @@ class SerpApiMasterService {
   }
 
   /// Core fetch method for any SerpApi engine
-  Future<Map<String, dynamic>> fetch(String engine, Map<String, String> parameters, {dio.CancelToken? cancelToken}) async {
+  /// Supports both GET (standard) and POST (for file uploads)
+  Future<Map<String, dynamic>> fetch(String engine, Map<String, dynamic> parameters, {dio.CancelToken? cancelToken}) async {
     if (!await _checkInternetConnection()) {
       throw const SocketException('لا يوجد اتصال بالإنترنت');
     }
@@ -124,50 +104,28 @@ class SerpApiMasterService {
     final queryParams = {
       'engine': engine,
       'api_key': _apiKey!,
-      ...parameters,
     };
 
     try {
-      final response = await _dio.get(_baseUrl, queryParameters: queryParams, cancelToken: cancelToken);
+      dio.Response response;
+      
+      // 🚀 Check if any parameter is a File path or binary data for upload
+      if (parameters.containsKey('file') && parameters['file'] is String && File(parameters['file']).existsSync()) {
+        final filePath = parameters['file'] as String;
+        final formData = dio.FormData.fromMap({
+          ...queryParams,
+          ...parameters,
+          'file': await dio.MultipartFile.fromFile(filePath),
+        });
+
+        response = await _dio.post(_baseUrl, data: formData, cancelToken: cancelToken);
+      } else {
+        // Standard GET request
+        response = await _dio.get(_baseUrl, queryParameters: {...queryParams, ...parameters}, cancelToken: cancelToken);
+      }
 
       if (response.statusCode == 200) {
         return response.data as Map<String, dynamic>;
-      } else if (response.statusCode == 401 || response.statusCode == 429) {
-        // 🔄 Smart Fallback: If 401/Invalid Key or 429/Limit Reached, try to use Managed Key once
-        if (kDebugMode) debugPrint("🔄 SerpApi: ${response.statusCode} Detected. Attempting Managed Fallback...");
-        
-        final uid = Get.find<AuthController>().firebaseUid;
-        if (uid != null) {
-          final mKey = await Get.find<ManagedAiService>().getManagedKey(uid, provider: ProviderType.serpapi);
-          if (mKey != null && mKey.isNotEmpty) {
-             if (mKey == _apiKey) {
-               if (kDebugMode) debugPrint("🔄 SerpApi Fallback: Managed key is identical to the currently used key. No point in retrying.");
-             } else {
-                // Retry with new key
-                final retryParams = {...queryParams, 'api_key': mKey};
-                final retryRes = await _dio.get(_baseUrl, queryParameters: retryParams, cancelToken: cancelToken);
-                if (retryRes.statusCode == 200) {
-                  _apiKey = mKey; // Update to managed key for future usage
-                  if (kDebugMode) debugPrint("✅ SerpApi Fallback SUCCESS with Managed Key.");
-                  return retryRes.data as Map<String, dynamic>;
-                } else {
-                 if (kDebugMode) {
-                   final retryError = retryRes.data;
-                   debugPrint("❌ SerpApi Fallback FAILED with Managed Key (${retryRes.statusCode}): ${retryError['error'] ?? retryRes.data}");
-                 }
-                 // If the fallback also failed with 429, we should report it
-                 if (retryRes.statusCode == 429) {
-                   throw Exception('خطأ من SerpApi (429): المفتاح الاحتياطي للإدارة قد نفد رصيده أيضاً!');
-                 }
-               }
-             }
-          } else {
-             if (kDebugMode) debugPrint("🔄 SerpApi Fallback: No Managed Key available for fallback.");
-          }
-        }
-        
-        final error = response.data;
-        throw Exception('خطأ من SerpApi (${response.statusCode}): ${error['error'] ?? response.data}');
       }
       
       throw Exception('خطأ من SerpApi: استجابة غير متوقعة من السيرفر (${response.statusCode})');

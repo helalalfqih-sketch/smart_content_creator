@@ -8,7 +8,9 @@
     <application
         android:label="صانع المحتوى "
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="true"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -57,6 +59,21 @@
                 <data android:mimeType="video/*" />
                 <data android:mimeType="text/plain" />
             </intent-filter>
+
+            <!-- Android App Links (Auto-Verify) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="smartcontentcreator-d49f2.web.app"
+                    android:pathPrefix="/" />
+                <data
+                    android:scheme="https"
+                    android:host="smartcontentcreator-d49f2.firebaseapp.com"
+                    android:pathPrefix="/" />
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
@@ -70,10 +87,17 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <!-- ✅ HTTP/HTTPS - متصفح الويب -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+
+        <!-- 🎵 TikTok (Global) -->
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="tiktok" />
@@ -82,13 +106,89 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="snssdk1233" />
         </intent>
+
+        <!-- 🎵 Douyin (China TikTok) -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="douyin" />
+        </intent>
         <intent>
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="snssdk1128" />
         </intent>
+
+        <!-- ⚡ Kuaishou -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="kwai" />
+        </intent>
+
+        <!-- 📕 Rednote / XiaoHongShu -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="xhsdiscover" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="xhs" />
+        </intent>
+
+        <!-- 📺 Bilibili -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="bilibili" />
+        </intent>
+
+        <!-- 🛍️ Taobao -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="taobao" />
+        </intent>
+        <!-- Package visibility لـ Taobao (Android 11+) -->
+        <package android:name="com.taobao.taobao" />
+
+        <!-- 🛒 JD.com -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="openapp.jdmobile" />
+        </intent>
+        <package android:name="com.jingdong.app.mall" />
+
+        <!-- 💬 WhatsApp -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="whatsapp" />
+        </intent>
+        <package android:name="com.whatsapp" />
+
+        <!-- 📸 Instagram -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="instagram" />
+        </intent>
+
+        <!-- 🎬 YouTube -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="youtube" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="vnd.youtube" />
+        </intent>
+
+        <!-- 📦 Package visibility للمنصات الصينية الرئيسية -->
+        <package android:name="com.ss.android.ugc.aweme" />       <!-- Douyin -->
+        <package android:name="com.smile.gifmaker" />              <!-- Kuaishou -->
+        <package android:name="com.xingin.xhs" />                  <!-- Rednote -->
+        <package android:name="tv.danmaku.bili" />                 <!-- Bilibili -->
+        <package android:name="com.zhiliaoapp.musically" />        <!-- TikTok -->
+
+        <!-- 🔤 Process Text (Flutter default) -->
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
     </queries>
+
 </manifest>

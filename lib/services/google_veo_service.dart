@@ -57,13 +57,14 @@ class GoogleVeoService extends GetxService implements AIProvider {
   }
 
   /// 🎥 الأساس: توليد الفيديو باستخدام Veo
+  @override
   Future<String> generateVideo(String prompt,
-      {String? imagePath, bool fastMode = true}) async {
-    final apiKey = _apiKey;
-    if (apiKey.isEmpty) throw Exception("مفتاح Google API مطلوب لتشغيل Veo.");
+      {String? imagePath, String? apiKey, String model = "veo-3.1-fast"}) async {
+    final effectiveApiKey = (apiKey != null && apiKey.isNotEmpty) ? apiKey : _apiKey;
+    if (effectiveApiKey.isEmpty) throw Exception("مفتاح Google API مطلوب لتشغيل Veo.");
 
-    final modelName = fastMode ? "veo-3.1-fast" : "veo-3.1";
-    final url = Uri.parse("$_baseUrl/models/$modelName:predict?key=$apiKey");
+    final modelName = model;
+    final url = Uri.parse("$_baseUrl/models/$modelName:predict?key=$effectiveApiKey");
 
     // تحويل الصورة لـ Base64 إذا وجدت (Image-to-Video)
     String? base64Image;
@@ -87,7 +88,7 @@ class GoogleVeoService extends GetxService implements AIProvider {
           "parameters": {
             "sampleCount": 1,
             "aspectRatio": "16:9",
-            "resolution": fastMode ? "720p" : "1080p",
+            "resolution": modelName.contains("fast") ? "720p" : "1080p",
             "fps": 24,
             "durationSeconds": 5
           }
@@ -111,6 +112,11 @@ class GoogleVeoService extends GetxService implements AIProvider {
     } catch (e) {
       throw Exception("فشل الاتصال بـ Google Veo: $e");
     }
+  }
+
+  @override
+  Future<Map<String, dynamic>> checkTaskStatus(String taskId) async {
+    return {"status": "processing", "job_id": taskId};
   }
 
   @override

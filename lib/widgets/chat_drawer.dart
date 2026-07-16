@@ -5,13 +5,12 @@ import 'package:get/get.dart';
 import 'package:share_plus/share_plus.dart';
 import '../controllers/chat_history_controller.dart';
 import '../theme/app_theme.dart';
-import '../screens/creator_profile_screen.dart';
-import '../screens/media_merge_screen.dart';
+import 'permission_controlled_widget.dart';
 
 import '../controllers/auth_controller.dart';
-import '../screens/home_screen.dart';
-import '../widgets/permission_controlled_widget.dart';
 import '../ai/chat_smart_agent.dart';
+
+import 'package:flutter/services.dart';
 
 class ChatDrawer extends StatelessWidget {
   const ChatDrawer({super.key});
@@ -19,13 +18,15 @@ class ChatDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<ChatHistoryController>();
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     // 💎 VIP Glassmorphism Design
     return Drawer(
       backgroundColor: Colors.transparent, // Important for blur
       elevation: 0,
-      width:
-          MediaQuery.of(context).size.width * 0.85, // Slightly wider for luxury
+      width: MediaQuery.of(context).size.width *
+          (isLandscape ? 0.65 : 0.85), // Adaptive width
       child: Stack(
         children: [
           // 1. Blur Background
@@ -34,7 +35,8 @@ class ChatDrawer extends StatelessWidget {
               filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.85), // Deep dark glass
+                  color:
+                      Colors.black.withValues(alpha: 0.85), // Deep dark glass
                   border: Border(
                     right: BorderSide(
                       color: Colors.white.withValues(alpha: 0.1),
@@ -48,106 +50,136 @@ class ChatDrawer extends StatelessWidget {
 
           // 2. Content
           SafeArea(
-            child: Column(
-              children: [
-                _buildVipHeader(),
-                const SizedBox(height: 20),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // 📏 التحقق من المساحة المتاحة (وضع Portrait غالباً ما يوفر مساحة > 600)
+                final hasEnoughSpace = constraints.maxHeight > 600;
 
-                // 🌟 New Chat Action (Prominent)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _buildVipActionButton(
-                    icon: Icons.add_circle_outline_rounded,
-                    label: 'محادثة جديدة',
-                    color: AppTheme.primary,
-                    onTap: () {
-                      if (Get.isRegistered<ChatSmartAgent>()) {
-                        Get.find<ChatSmartAgent>().forceClearHistory();
-                      }
-                      controller.startNewChat();
-                    },
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      Text(
-                        "سجل الإبداع",
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'IBMPlexSansArabic',
-                        ),
+                // 🏗️ الجزء العلوي (Header + Action Button + Title)
+                final topSection = Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildVipHeader(isLandscape),
+                    if (!isLandscape) const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _buildVipActionButton(
+                        icon: Icons.add_circle_outline_rounded,
+                        label: 'محادثة جديدة',
+                        color: AppTheme.primary,
+                        onTap: () {
+                          if (Get.isRegistered<ChatSmartAgent>()) {
+                            Get.find<ChatSmartAgent>().forceClearHistory();
+                          }
+                          controller.startNewChat();
+                        },
                       ),
-                      const Spacer(),
-                      Obx(() => controller.sessions.isNotEmpty
-                          ? IconButton(
-                              onPressed: () => _confirmDeleteAll(controller),
-                              icon: const Icon(Icons.delete_sweep_rounded, size: 18),
-                              color: Colors.redAccent.withValues(alpha: 0.8),
-                              padding: const EdgeInsets.only(left: 8),
-                              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                            )
-                          : const SizedBox.shrink()),
-                      Icon(Icons.history,
-                          size: 16, color: Colors.white.withValues(alpha: 0.5)),
-                    ],
-                  ),
-                ),
+                    ),
+                    SizedBox(height: isLandscape ? 10 : 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          Text(
+                            "سجل الإبداع",
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.7),
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'IBMPlexSansArabic',
+                            ),
+                          ),
+                          const Spacer(),
+                          Obx(() => controller.sessions.isNotEmpty
+                              ? IconButton(
+                                  onPressed: () =>
+                                      _confirmDeleteAll(controller),
+                                  icon: const Icon(Icons.delete_sweep_rounded,
+                                      size: 18),
+                                  color: Colors.redAccent.withValues(alpha: 0.8),
+                                  padding: const EdgeInsets.only(left: 8),
+                                  constraints: const BoxConstraints(
+                                      minWidth: 32, minHeight: 32),
+                                )
+                              : const SizedBox.shrink()),
+                          Icon(Icons.history,
+                              size: 16,
+                              color: Colors.white.withValues(alpha: 0.5)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                );
 
-                const SizedBox(height: 10),
-
-                // 📜 Scrollable History List
-                Expanded(
-                  child: Obx(() {
+                // 📜 دالة بناء القائمة (لتجنب التكرار)
+                Widget buildHistoryList({required bool scrollable}) {
+                  return Obx(() {
                     if (controller.isLoading.value) {
                       return const Center(
-                          child:
-                              CircularProgressIndicator(color: AppTheme.primary));
+                          child: CircularProgressIndicator(
+                              color: AppTheme.primary));
                     }
-
                     if (controller.sessions.isEmpty) {
                       return _buildEmptyState(controller);
                     }
-
+                    final itemCount = controller.sessions.length + (controller.canMigrate.value ? 1 : 0);
+                    
                     return ListView.builder(
+                      shrinkWrap: !scrollable,
+                      physics: scrollable
+                          ? const BouncingScrollPhysics()
+                          : const NeverScrollableScrollPhysics(),
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: controller.sessions.length,
-                      physics: const BouncingScrollPhysics(),
+                      itemCount: itemCount,
                       itemBuilder: (context, index) {
+                        // إذا وصلنا لآخر عنصر وكان هناك حاجة للاستعادة
+                        if (index == controller.sessions.length) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 12, bottom: 20),
+                            child: _buildVipActionButton(
+                              icon: Icons.auto_fix_high_rounded,
+                              label: 'استعادة المحادثات القديمة',
+                              color: Colors.amber,
+                              onTap: () => controller.migrateLegacySessions(),
+                            ),
+                          );
+                        }
+
                         final session = controller.sessions[index];
-                        // 🎭 Staggered Animation Logic
-                        return TweenAnimationBuilder<double>(
-                          tween: Tween(begin: 0, end: 1),
-                          duration: Duration(
-                              milliseconds: 400 +
-                                  (index * 100).clamp(0, 1000)), // Cascade effect
-                          curve: Curves.easeOutQuart,
-                          builder: (context, value, child) {
-                            return Transform.translate(
-                              offset: Offset(0, 50 * (1 - value)), // Slide up
-                              child: Opacity(
-                                opacity: value,
-                                child: child,
-                              ),
-                            );
-                          },
-                          child:
-                              _buildRichHistoryCard(context, controller, session),
-                        );
+                        return _buildRichHistoryCard(context, controller, session);
                       },
                     );
-                  }),
-                ),
+                  });
+                }
 
-                // Footer Actions
-                _buildVipFooter(context),
-              ],
+                // 🚀 الحالة 1: مساحة كافية (Portrait) -> Expanded للأداء العالي
+                if (hasEnoughSpace) {
+                  return Column(
+                    children: [
+                      topSection,
+                      Expanded(child: buildHistoryList(scrollable: true)),
+                      _buildCatalogButton(),
+                      _buildAdminButton(),
+                      // تم نقل الفوتر إلى الملف الشخصي
+                    ],
+                  );
+                }
+
+                // 🚀 الحالة 2: مساحة ضيقة (Landscape) -> الكل قابل للتمرير لتجنب Overflow
+                return SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Column(
+                    children: [
+                      topSection,
+                      buildHistoryList(scrollable: false),
+                      _buildCatalogButton(),
+                      _buildAdminButton(),
+                      // تم نقل الفوتر إلى الملف الشخصي
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         ],
@@ -155,77 +187,89 @@ class ChatDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildVipHeader() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            AppTheme.primary.withValues(alpha: 0.15),
-            Colors.transparent,
-          ],
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppTheme.primary, width: 2),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.primary.withValues(alpha: 0.3),
-                  blurRadius: 15,
-                  spreadRadius: 2,
-                )
+  Widget _buildVipHeader(bool isLandscape) {
+    final auth = Get.find<AuthController>();
+    final user = auth.user;
+    final userName = user?['name'] ?? 'مبدع SMART';
+    final userEmail = auth.userEmail ?? '';
+    final userPhoto = user?['photo_url'] ?? '';
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => Get.toNamed('/creator-profile'),
+        splashColor: AppTheme.primary.withValues(alpha: 0.1),
+        highlightColor: AppTheme.primary.withValues(alpha: 0.05),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(20, isLandscape ? 20 : 60, 20, 20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppTheme.primary.withValues(alpha: 0.15),
+                Colors.transparent,
               ],
             ),
-            child: const CircleAvatar(
-              radius: 24,
-              backgroundColor: Colors.black,
-              backgroundImage: AssetImage('assets/images/logoapp.jpg'),
-            ),
           ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              const Text(
-                'Smart Content',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontFamily: 'IBMPlexSansArabic',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppTheme.primary, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primary.withValues(alpha: 0.3),
+                      blurRadius: 15,
+                      spreadRadius: 2,
+                    )
+                  ],
+                ),
+                child: CircleAvatar(
+                  radius: 24,
+                  backgroundColor: Colors.black,
+                  backgroundImage: userPhoto.isNotEmpty
+                      ? (userPhoto.startsWith('http')
+                          ? NetworkImage(userPhoto)
+                          : FileImage(File(userPhoto)) as ImageProvider)
+                      : const AssetImage('assets/images/styles/logoapp.jpeg'),
                 ),
               ),
-              Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: AppTheme.primary,
-                      shape: BoxShape.circle,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      userName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontFamily: 'IBMPlexSansArabic',
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'Creator Pro',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 12,
-                      fontFamily: 'IBMPlexSansArabic',
+                    const SizedBox(height: 2),
+                    Text(
+                      userEmail,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontSize: 12,
+                        fontFamily: 'IBMPlexSansArabic',
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -283,7 +327,12 @@ class ChatDrawer extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => controller.selectSession(session['id']),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            controller.selectSession(session['id']);
+            // إغلاق القائمة الجانبية فوراً عند الضغط
+            Get.back();
+          },
           borderRadius: BorderRadius.circular(20),
           child: Container(
             decoration: BoxDecoration(
@@ -478,128 +527,6 @@ class ChatDrawer extends StatelessWidget {
     );
   }
 
-  Widget _buildVipFooter(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      color: Colors.black.withValues(alpha: 0.3),
-      child: Column(
-        children: [
-          _buildFooterItem(
-            icon: Icons.dashboard_outlined,
-            text: 'استوديو الإبداع',
-            onTap: () => Get.offAll(() => const HomeScreen()),
-          ),
-          Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              tilePadding: EdgeInsets.zero,
-              leading: Icon(Icons.build_circle_outlined, color: Colors.blueAccent.withValues(alpha: 0.8), size: 20),
-              title: Text(
-                'أدوات  ',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: 'IBMPlexSansArabic',
-                ),
-              ),
-              iconColor: Colors.amberAccent,
-              collapsedIconColor: Colors.white70,
-              childrenPadding: const EdgeInsets.only(right: 16),
-              children: [
-                VisibilityControlled(
-                  controlName: 'settings_screen',
-                  child: _buildFooterItem(
-                    icon: Icons.settings_outlined,
-                    text: 'الإعدادات العامة',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Get.toNamed('/settings');
-                    },
-                  ),
-                ),
-                VisibilityControlled(
-                  controlName: 'api_settings_screen',
-                  child: _buildFooterItem(
-                    icon: Icons.key_outlined,
-                    text: 'إعدادات المفاتيح (API)',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Get.toNamed('/api-settings');
-                    },
-                  ),
-                ),
-                VisibilityControlled(
-                  controlName: 'admin_dashboard_screen',
-                  child: _buildFooterItem(
-                    icon: Icons.admin_panel_settings_outlined,
-                    text: 'لوحة التحكم (Admin)',
-                    color: Colors.amberAccent,
-                    onTap: () {
-                      Navigator.pop(context);
-                      Get.toNamed('/admin');
-                    },
-                  ),
-                ),
-                VisibilityControlled(
-                  controlName: 'creator_profile_screen',
-                  child: _buildFooterItem(
-                    icon: Icons.psychology_outlined,
-                    text: 'ملف المبدع 🧠',
-                    onTap: () {
-                      Navigator.pop(context);
-                      Get.to(() => const CreatorProfileScreen());
-                    },
-                  ),
-                ),
-                _buildFooterItem(
-                  icon: Icons.merge_type_rounded,
-                  text: '🎬 دمج المنتج',
-                  onTap: () {
-                    Navigator.pop(context);
-                    Get.to(() => const MediaMergeScreen());
-                  },
-                ),
-              ],
-            ),
-          ),
-          const Divider(color: Colors.white10),
-          _buildFooterItem(
-            icon: Icons.logout,
-            text: 'تسجيل خروج',
-            color: Colors.redAccent,
-            onTap: () {
-              Navigator.pop(context);
-              _confirmLogout(context);
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFooterItem(
-      {required IconData icon,
-      required String text,
-      required VoidCallback onTap,
-      Color? color}) {
-    return ListTile(
-      dense: true,
-      contentPadding: EdgeInsets.zero,
-      leading: Icon(icon,
-          color: color ?? Colors.white.withValues(alpha: 0.7), size: 20),
-      title: Text(
-        text,
-        style: TextStyle(
-          color: color ?? Colors.white.withValues(alpha: 0.9),
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          fontFamily: 'IBMPlexSansArabic',
-        ),
-      ),
-      onTap: onTap,
-    );
-  }
 
   // Helpers (Keep existing logic but refine visuals if needed)
   void _showRenameDialog(BuildContext context, ChatHistoryController controller,
@@ -619,7 +546,7 @@ class ChatDrawer extends StatelessWidget {
       ),
       textConfirm: "حفظ",
       textCancel: "إلغاء",
-      confirmTextColor: Colors.white,
+      confirmTextColor: const Color.fromARGB(255, 8, 227, 19),
       onConfirm: () {
         if (textCtrl.text.trim().isNotEmpty) {
           controller.renameSession(id, textCtrl.text.trim());
@@ -664,21 +591,6 @@ class ChatDrawer extends StatelessWidget {
         });
   }
 
-  void _confirmLogout(BuildContext context) {
-    Get.defaultDialog(
-        title: "تسجيل الخروج",
-        titleStyle: const TextStyle(
-            fontFamily: 'IBMPlexSansArabic', fontWeight: FontWeight.bold),
-        middleText: "هل أنت متأكد أنك تريد تسجيل الخروج؟",
-        textConfirm: "نعم، خروج",
-        textCancel: "إلغاء",
-        confirmTextColor: Colors.white,
-        buttonColor: Colors.red,
-        onConfirm: () {
-          Get.find<AuthController>().logout();
-          Get.back();
-        });
-  }
 
   String _formatDate(String? iso) {
     if (iso == null) return '';
@@ -697,5 +609,77 @@ class ChatDrawer extends StatelessWidget {
     } catch (e) {
       return '';
     }
+  }
+
+  // 🛍️ زر كتالوج المنتجات لـ Meta
+  Widget _buildCatalogButton() {
+    return PermissionControlledWidget(
+      controlName: 'catalog_screen',
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1877F2).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: const Color(0xFF1877F2).withValues(alpha: 0.3), width: 1),
+        ),
+        child: ListTile(
+          dense: true,
+          leading: const Icon(Icons.shopping_bag_rounded,
+              color: Color(0xFF1877F2), size: 22),
+          title: const Text(
+            'كتالوج Meta',
+            style: TextStyle(
+              color: Color(0xFF1877F2),
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              fontFamily: 'IBMPlexSansArabic',
+            ),
+          ),
+          trailing: const Icon(Icons.arrow_forward_ios_rounded,
+              color: Color(0xFF1877F2), size: 12),
+          onTap: () {
+            Get.back();
+            Get.toNamed('/catalog');
+          },
+        ),
+      ),
+    );
+  }
+
+  // 🛡️ زر لوحة التحكم للمسؤولين فقط
+  Widget _buildAdminButton() {
+    final auth = Get.find<AuthController>();
+    // التحقق من الصلاحية
+    if (auth.user?['role'] != 'admin' && auth.user?['firestore_role'] != 'admin') {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.3), width: 1),
+      ),
+      child: ListTile(
+        dense: true,
+        leading: const Icon(Icons.admin_panel_settings_rounded, color: Colors.amberAccent, size: 22),
+        title: const Text(
+          'لوحة الإدارة',
+          style: TextStyle(
+            color: Colors.amberAccent,
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            fontFamily: 'IBMPlexSansArabic',
+          ),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.amberAccent, size: 12),
+        onTap: () {
+          Get.back(); // إغلاق الدرج
+          Get.toNamed('/admin');
+        },
+      ),
+    );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:get/get.dart';
 
 // NOTE: google_sign_in is commented out because it causes compilation errors on Windows
@@ -11,14 +12,23 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService extends GetxService {
   FirebaseAuth get _auth => FirebaseAuth.instance;
+  FirebaseFunctions get _functions => FirebaseFunctions.instance;
+
+  // 🌐 Web Client ID من google-services.json (type=3)
+  static const _webClientId =
+      '947880578188-hnd32gc8c9f3n6u22nl95bsumjq1em7e.apps.googleusercontent.com';
 
   // Enable Google Sign-In with minimal scopes for initial login
-  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email']);
+  late final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email'],
+    clientId: kIsWeb ? _webClientId : null,
+  );
 
   // 🔑 Gemini-Specific Sign-In Instance (Magic UX)
   // We keep this separate to avoid polluting the main login scopes
-  final GoogleSignIn _geminiSignIn = GoogleSignIn(
+  late final GoogleSignIn _geminiSignIn = GoogleSignIn(
     scopes: ['https://www.googleapis.com/auth/generative-language'],
+    clientId: kIsWeb ? _webClientId : null,
   );
 
   // 🛡️ Concurrency Guard (Lock) for silent sign-in
@@ -128,18 +138,40 @@ class AuthService extends GetxService {
   /// Send OTP (Email Link)
   Future<void> sendOtp(String email) async {
     try {
-      await _auth.sendSignInLinkToEmail(
-        email: email,
-        actionCodeSettings: ActionCodeSettings(
-          url:
-              'https://smartcontentcreator.page.link/login', // يجب تحديث هذا الرابط في Firebase Console
-          handleCodeInApp: true,
-          iOSBundleId: 'com.smartcc.ai',
-          androidPackageName: 'com.smartcc.ai',
-          androidInstallApp: true,
-          androidMinimumVersion: '12',
-        ),
-      );
+      try {
+        await _auth.sendSignInLinkToEmail(
+          email: email,
+          actionCodeSettings: ActionCodeSettings(
+            url:
+                'https://smartcontentcreator.page.link/login', // يجب تحديث هذا الرابط في Firebase Console
+            handleCodeInApp: true,
+            iOSBundleId: 'com.smartcc.ai',
+            androidPackageName: 'com.example.smart_content_creator',
+            androidInstallApp: true,
+            androidMinimumVersion: '12',
+          ),
+        );
+      } on FirebaseAuthException catch (e) {
+        final msg = (e.message ?? '').toLowerCase();
+        if (msg.contains('authorized domains') ||
+            msg.contains('allowlisted') ||
+            msg.contains('not allowlisted') ||
+            msg.contains('not authorized')) {
+          await _auth.sendSignInLinkToEmail(
+            email: email,
+            actionCodeSettings: ActionCodeSettings(
+              url: 'https://smartcontentcreator-d49f2.firebaseapp.com',
+              handleCodeInApp: false,
+              iOSBundleId: 'com.smartcc.ai',
+              androidPackageName: 'com.example.smart_content_creator',
+              androidInstallApp: true,
+              androidMinimumVersion: '12',
+            ),
+          );
+        } else {
+          rethrow;
+        }
+      }
     } catch (e) {
       if (kDebugMode) debugPrint("Send OTP Error (User Anonymized)");
       rethrow;
@@ -149,7 +181,29 @@ class AuthService extends GetxService {
   /// Send Password Reset Email
   Future<void> sendPasswordResetEmail(String email) async {
     try {
-      await _auth.sendPasswordResetEmail(email: email);
+      try {
+        await _auth.sendPasswordResetEmail(
+          email: email,
+          actionCodeSettings: ActionCodeSettings(
+            url: 'https://smartcontentcreator.page.link/reset',
+            handleCodeInApp: true,
+            iOSBundleId: 'com.smartcc.ai',
+            androidPackageName: 'com.example.smart_content_creator',
+            androidInstallApp: true,
+            androidMinimumVersion: '12',
+          ),
+        );
+      } on FirebaseAuthException catch (e) {
+        final msg = (e.message ?? '').toLowerCase();
+        if (msg.contains('authorized domains') ||
+            msg.contains('allowlisted') ||
+            msg.contains('not allowlisted') ||
+            msg.contains('not authorized')) {
+          await _auth.sendPasswordResetEmail(email: email);
+        } else {
+          rethrow;
+        }
+      }
     } catch (e) {
       if (kDebugMode) debugPrint("Send Password Reset Error (User Anonymized)");
       rethrow;
@@ -176,6 +230,77 @@ class AuthService extends GetxService {
       await _auth.confirmPasswordReset(code: oobCode, newPassword: newPassword);
     } catch (e) {
       if (kDebugMode) debugPrint("Confirm Password Reset Error: $e");
+      rethrow;
+    }
+  }
+
+  /// 🔐 طلب رابط إعادة تعيين كلمة المرور (مع إمكانية العودة للتطبيق)
+  Future<void> requestPasswordResetOtp(String email) async {
+    try {
+      // إعدادات العودة للتطبيق بعد تغيير كلمة المرور (Deep Linking)
+      final actionCodeSettings = ActionCodeSettings(
+        url: 'https://smartcontentcreator-d49f2.web.app/login',
+        handleCodeInApp: true,
+        androidPackageName: 'com.example.smart_content_creator',
+        androidInstallApp: true,
+        androidMinimumVersion: '24',
+      );
+
+      await _auth.sendPasswordResetEmail(
+        email: email,
+        actionCodeSettings: actionCodeSettings,
+      );
+      debugPrint("✅ تم إرسال رابط إعادة تعيين كلمة المرور مع إعدادات العودة");
+    } catch (e) {
+      debugPrint("❌ فشل إرسال بريد إعادة التعيين: $e");
+      rethrow;
+    }
+  }
+
+  /// 🔐 تأكيد الرمز وتعيين كلمة مرور جديدة عبر Cloud Function (Admin SDK)
+  Future<void> confirmPasswordResetWithOtp({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    try {
+      final callable = _functions.httpsCallable('confirmPasswordResetWithOtp');
+      await callable.call(<String, dynamic>{
+        'email': email,
+        'otp': otp,
+        'newPassword': newPassword,
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('confirmPasswordResetWithOtp error: $e');
+      rethrow;
+    }
+  }
+
+  /// 🔐 طلب رمز تحقق (6 أرقام) لتفعيل الحساب الجديد
+  Future<void> requestRegistrationOtp(String email) async {
+    try {
+      final callable = _functions.httpsCallable('requestRegistrationOtp');
+      await callable.call(<String, dynamic>{'email': email});
+    } catch (e) {
+      if (kDebugMode) debugPrint('requestRegistrationOtp error: $e');
+      // If the function doesn't exist yet, we fall back to standard verification or just log it
+      rethrow;
+    }
+  }
+
+  /// 🔐 تأكيد رمز تفعيل الحساب
+  Future<void> confirmRegistrationOtp({
+    required String email,
+    required String otp,
+  }) async {
+    try {
+      final callable = _functions.httpsCallable('confirmRegistrationOtp');
+      await callable.call(<String, dynamic>{
+        'email': email,
+        'otp': otp,
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('confirmRegistrationOtp error: $e');
       rethrow;
     }
   }

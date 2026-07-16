@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../core/strings/app_strings.dart';
+
 class VipNavItem {
   final IconData icon;
   final String label;
@@ -26,9 +28,9 @@ class NavigationController extends GetxController {
 
   // 📋 العناصر الافتراضية
   final List<VipNavItem> _defaultItems = [
-    VipNavItem(icon: Icons.auto_awesome_rounded, label: "الذكاء", index: 0),
-    VipNavItem(icon: Icons.account_circle_rounded, label: "حسابي", index: 1),
-    VipNavItem(icon: Icons.settings_rounded, label: "الإعدادات", index: 2),
+    VipNavItem(icon: Icons.auto_awesome_rounded, label: AppStrings.navHome, index: 0),
+    VipNavItem(icon: Icons.account_circle_rounded, label: AppStrings.navProfile, index: 1),
+    VipNavItem(icon: Icons.settings_rounded, label: AppStrings.navSettings, index: 2),
   ];
 
   // 📋 القائمة الحالية المعروضة

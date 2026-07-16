@@ -6,6 +6,9 @@ import 'snackbar_utils.dart';
 class ErrorHandler {
   // 🔹 تسجيل الخطأ للمطور فقط (دون إزعاج المستخدم)
   static void logError(String source, dynamic error, [StackTrace? stackTrace]) {
+    debugPrint('❌ Error in $source: $error');
+    if (stackTrace != null) debugPrint('Stacktrace: $stackTrace');
+    
     developer.log(
       '❌ Error in $source: $error',
       name: 'ErrorHandler',

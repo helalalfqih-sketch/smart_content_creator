@@ -1,18 +1,59 @@
 {
-    "firestore": {
-        "rules": "firestore.rules",
-        "indexes": "firestore.indexes.json"
-    },
-    "hosting": {
-        "site": "smartcontentcreator-d49f2",
-        "public": "web_landing",
-        "ignore": [
-            "firebase.json",
-            "**/.*",
-            "**/node_modules/**"
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "site": "smartcontentcreator-d49f2",
+    "public": "web_landing",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "**/Stote/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/app/**",
+        "function": "server"
+      },
+      {
+        "source": "/api/**",
+        "function": "server"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/app/**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
         ]
+      }
+    ]
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "functions": [
+    {
+      "codebase": "default",
+      "source": "functions",
+      "runtime": "nodejs22"
     },
-    "storage": {
-        "rules": "storage.rules"
+    {
+      "source": "backend",
+      "codebase": "functions",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
     }
+  ]
 }

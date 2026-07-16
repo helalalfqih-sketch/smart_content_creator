@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
@@ -10,10 +11,11 @@ import 'groq_service.dart';
 import 'deepseek_service.dart';
 import 'anthropic_service.dart';
 import 'kling_service.dart';
-import 'managed_ai_service.dart';
+import 'higgsfield_service.dart';
 import 'azure_openai_service.dart';
 import 'ai/google_ai_mode_service.dart';
-import '../controllers/auth_controller.dart';
+import 'back4app_gateway_service.dart';
+import 'vertex_ai_service.dart';
 
 abstract class AIProvider {
   Future<AiResult> generateText(String prompt,
@@ -46,6 +48,18 @@ abstract class AIProvider {
   /// 🧠 Generate Embeddings for Vector Search
   Future<List<double>> generateEmbeddings(String text,
       {required String apiKey, dio.CancelToken? cancelToken});
+
+  /// 🎬 Video Generation Support (Optional)
+  Future<String> generateVideo(String prompt,
+      {String? imagePath, String? apiKey, String model = "evo-1"}) {
+    throw UnimplementedError("Video generation not supported by this provider");
+  }
+
+  /// 📊 Check Video Task Status (Optional)
+  Future<Map<String, dynamic>> checkTaskStatus(String taskId) {
+    throw UnimplementedError(
+        "Task status check not supported by this provider");
+  }
 }
 
 class AIProviderFactory {
@@ -68,9 +82,10 @@ class AIProviderFactory {
   static final Map<ProviderType, DateTime> _providerBlackouts = {};
 
   static const _priorityOrder = [
-    ProviderType.gemini,      // 🤖 Gemini First
-    ProviderType.openrouter,  // 🌐 OpenRouter Second
-    ProviderType.github,      // 🛡️ GitHub Third
+    ProviderType.github, // 🛡️ GitHub First for Chat/Text
+    ProviderType.gemini, // 🤖 Gemini Second
+    ProviderType.vertexAi, // ☁️ Vertex AI Third
+    ProviderType.openrouter, // 🌐 OpenRouter Fourth
     ProviderType.serpapi,
     ProviderType.groq,
     ProviderType.openai,
@@ -91,7 +106,10 @@ class AIProviderFactory {
 
   /// 🛡️ حظر المزود مؤقتاً (مثلاً لمدة 5 دقائق)
   static void _triggerBlackout(ProviderType type) {
-    if (kDebugMode) debugPrint("🚨 [Circuit Breaker]: Blacklisting $type for 5 minutes due to 503/Critical failure.");
+    if (kDebugMode) {
+      debugPrint(
+          "🚨 [Circuit Breaker]: Blacklisting $type for 5 minutes due to 503/Critical failure.");
+    }
     _providerBlackouts[type] = DateTime.now().add(const Duration(minutes: 5));
   }
 
@@ -123,72 +141,41 @@ class AIProviderFactory {
         return _github;
       case ProviderType.openrouter:
         return _openrouter;
+      case ProviderType.higgsfield:
+        return Get.find<HiggsfieldService>();
+      case ProviderType.vertexAi:
+        return Get.find<VertexAiService>();
+      case ProviderType.telegram:
+        throw Exception(
+            'Telegram is for publishing only, not for AI generation');
     }
   }
 
   static Future<(AIProvider, String, ProviderType)> getSmartProvider(
       {bool isVideo = false}) async {
     final settingsController = Get.find<SettingsController>();
-    final authController = Get.find<AuthController>();
-    final managedAi = Get.find<ManagedAiService>();
-    final uid = authController.firebaseUid;
-
-    // 🛑 AI Kill Switch (Personal & Managed)
-    if (uid != null) {
-      if (await managedAi.isUserBlocked(uid)) {
-         throw Exception("❌ تواصل مع الإدارة: تم تعطيل وصولك لخدمات الذكاء الاصطناعي.");
-      }
-    }
-
     // 1. Check if the active provider for this CATEGORY has a custom key
     final activeProvider = isVideo
         ? settingsController.getActiveVideoProvider()
         : settingsController.getActiveProvider();
 
     final activeKey = settingsController.getApiKey(activeProvider);
-    final isActiveConnected =
-        settingsController.getConnectionStatus(activeProvider);
+
+    String effectiveKey = activeKey;
 
     bool supportsTask =
         isVideo ? activeProvider.isVideoCapable : activeProvider.isTextCapable;
 
-    if (activeKey.isNotEmpty && isActiveConnected && supportsTask) {
+    // 🚀 [KEY FIX]: Try using the key if it exists, even if connection status is pending
+    if (effectiveKey.isNotEmpty && supportsTask) {
       if (kDebugMode) {
         debugPrint(
-            '✅ AIProviderFactory: Using User Custom Key ($activeProvider) for ${isVideo ? "Video" : "Text"}.');
+            '✅ AIProviderFactory: Using User Key ($activeProvider) for ${isVideo ? "Video" : "Text"}.');
       }
-      return (getServiceByType(activeProvider), activeKey, activeProvider);
+      return (getServiceByType(activeProvider), effectiveKey, activeProvider);
     }
 
-    // 2. Fallback to Managed Key for the Active Provider of this CATEGORY
-    if (kDebugMode) {
-      debugPrint(
-          '🔍 AIProviderFactory: Checking Managed Fallback for $activeProvider (${isVideo ? "Video" : "Text"})...');
-    }
-
-    try {
-      final authController = Get.find<AuthController>();
-      final managedAi = Get.find<ManagedAiService>();
-      final firebaseUid = authController.firebaseUid;
-
-      if (firebaseUid != null && supportsTask) {
-        final managedKey = await managedAi.getManagedKey(firebaseUid,
-            provider: activeProvider);
-        if (managedKey != null && managedKey.isNotEmpty) {
-          if (kDebugMode) {
-            debugPrint(
-                '✅ AIProviderFactory: Using Managed Key for $activeProvider.');
-          }
-          return (getServiceByType(activeProvider), managedKey, activeProvider);
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ AIProviderFactory: Managed fallback failed: $e');
-      }
-    }
-
-    // 3. Fallback to any other connected user provider that SUPPORTS the task
+    // 3. Fallback to any other key that SUPPORTS the task
     for (final providerType in _priorityOrder) {
       if (providerType == activeProvider) continue;
 
@@ -197,9 +184,12 @@ class AIProviderFactory {
       if (!innerSupports) continue;
 
       final key = settingsController.getApiKey(providerType);
-      final isConnected = settingsController.getConnectionStatus(providerType);
 
-      if (key.isNotEmpty && isConnected) {
+      if (key.isNotEmpty) {
+        if (kDebugMode) {
+          debugPrint(
+              '📡 AIProviderFactory: Falling back to available key: $providerType');
+        }
         return (getServiceByType(providerType), key, providerType);
       }
     }
@@ -255,7 +245,10 @@ class AIProviderFactory {
           } catch (e) {
             final errorStr = e.toString();
             if (errorStr.contains('429') && i < keys.length - 1) {
-              if (kDebugMode) debugPrint("🔄 Rate Limit! Waiting 2s before GitHub Hexa-Key #${i + 2}...");
+              if (kDebugMode) {
+                debugPrint(
+                    "🔄 Rate Limit! Waiting 2s before GitHub Hexa-Key #${i + 2}...");
+              }
               await Future.delayed(const Duration(seconds: 2));
               continue;
             }
@@ -267,7 +260,10 @@ class AIProviderFactory {
 
     // 🛡️ فحص قاطع الدائرة الاستباقي
     if (_isBlackedOut(primaryType)) {
-      if (kDebugMode) debugPrint("🛡️ [Circuit Breaker]: Skipping $primaryType due to active blackout. Falling back immediately...");
+      if (kDebugMode) {
+        debugPrint(
+            "🛡️ [Circuit Breaker]: Skipping $primaryType due to active blackout. Falling back immediately...");
+      }
       throw Exception("503 (Circuit Breaker Active)");
     }
 
@@ -280,33 +276,42 @@ class AIProviderFactory {
           cancelToken: cancelToken);
     } catch (e) {
       final errorStr = e.toString();
-      if (kDebugMode) debugPrint("⚠️ Primary Provider ($primaryType) failed: $e");
+      if (kDebugMode) {
+        debugPrint("⚠️ Primary Provider ($primaryType) failed: $e");
+      }
 
-      bool isCriticalFailure = errorStr.contains('503') || errorStr.contains('Service Unavailable');
-      
+      bool isCriticalFailure =
+          errorStr.contains('503') || errorStr.contains('Service Unavailable');
+
       if (isCriticalFailure) {
         _triggerBlackout(primaryType);
       }
 
       bool shouldRetryFallback = isCriticalFailure ||
-                                 errorStr.contains('429') || 
-                                 errorStr.contains('401') || 
-                                 errorStr.contains('403') || 
-                                 errorStr.contains('Invalid API Key') || 
-                                 errorStr.contains('API key');
+          errorStr.contains('429') ||
+          errorStr.contains('401') ||
+          errorStr.contains('403') ||
+          errorStr.contains('Invalid API Key') ||
+          errorStr.contains('API key');
 
-
-      if (shouldRetryFallback && fallbackProviders != null && fallbackProviders.isNotEmpty) {
+      if (shouldRetryFallback &&
+          fallbackProviders != null &&
+          fallbackProviders.isNotEmpty) {
         if (errorStr.contains('429')) {
-          if (kDebugMode) debugPrint("⏳ [Retry Protection]: Waiting 2s before trying fallback...");
+          if (kDebugMode) {
+            debugPrint(
+                "⏳ [Retry Protection]: Waiting 2s before trying fallback...");
+          }
           await Future.delayed(const Duration(seconds: 2));
         }
 
         for (final (type, key) in fallbackProviders) {
           try {
             if (_isBlackedOut(type)) continue;
-            
-            if (kDebugMode) debugPrint("📡 [Resilient Fallback]: Trying $type...");
+
+            if (kDebugMode) {
+              debugPrint("📡 [Resilient Fallback]: Trying $type...");
+            }
             final service = getServiceByType(type);
             return await service.generateText(prompt,
                 apiKey: key,
@@ -314,14 +319,34 @@ class AIProviderFactory {
                 systemPersona: effectivePersona,
                 cancelToken: cancelToken);
           } catch (err) {
-            if (err.toString().contains('503')) _triggerBlackout(type);
-            if (kDebugMode) debugPrint("❌ Fallback to $type failed: $err");
+            if (err.toString().contains('503')) {
+              _triggerBlackout(type);
+            }
+            if (kDebugMode) {
+              debugPrint("❌ Fallback to $type failed: $err");
+            }
             continue;
           }
         }
       }
       rethrow;
     }
+  }
+
+  static void _updateLastTextProvider(String provider) {
+    try {
+      if (Get.isRegistered<SettingsController>()) {
+        Get.find<SettingsController>().updateLastTextProvider(provider);
+      }
+    } catch (_) {}
+  }
+
+  static void _updateLastImageProvider(String provider) {
+    try {
+      if (Get.isRegistered<SettingsController>()) {
+        Get.find<SettingsController>().updateLastImageProvider(provider);
+      }
+    } catch (_) {}
   }
 
   static Future<AiResult> generateWithSmartFallback(
@@ -333,27 +358,81 @@ class AIProviderFactory {
     String safePrompt = prompt;
     const int maxPayloadLimit = 10000;
     if (safePrompt.length > maxPayloadLimit) {
-      if (kDebugMode) debugPrint("✂️ AIProviderFactory: Truncating large prompt from ${safePrompt.length} to $maxPayloadLimit...");
-      safePrompt = "${safePrompt.substring(0, maxPayloadLimit)}\n\n...[Truncated for safety]...";
+      if (kDebugMode) {
+        debugPrint(
+            "✂️ AIProviderFactory: Truncating large prompt from ${safePrompt.length} to $maxPayloadLimit...");
+      }
+      safePrompt =
+          "${safePrompt.substring(0, maxPayloadLimit)}\n\n...[Truncated for safety]...";
     }
 
+    // ☁️ [BACK4APP PRIMARY]: Try Back4App Gateway FIRST (18 keys with rotation)
+    // هذا يضمن الحصول على سرعة Vertex AI وعدم تشتيت المستخدم بتأخير دوران المفاتيح المحلية
+    try {
+      final gateway = Get.find<Back4AppGatewayService>();
+      if (kDebugMode) {
+        debugPrint('☁️ [Back4App-Primary]: Trying Back4App Gateway first...');
+      }
+      final res = await gateway.generateTextWithVertex(
+        safePrompt,
+        history: history,
+        maxTokens: 2048,
+        temperature: 0.7,
+      );
+      _updateLastTextProvider(res.provider);
+      return res;
+    } catch (b4aError) {
+      if (kDebugMode) {
+        debugPrint('');
+        debugPrint('🔴🔴🔴 [Back4App-Primary]: FAILED! Error: $b4aError');
+        debugPrint('🔴🔴🔴 Falling back to local keys...');
+        debugPrint('');
+      }
+    }
+
+    // 🔑 [LOCAL FIRST]: If Back4App fails, try local active provider with a configured API key next
     final settingsController = Get.find<SettingsController>();
     final activeProvider = settingsController.getActiveProvider();
     final activeKey = settingsController.getApiKey(activeProvider);
+    if (activeKey.isNotEmpty) {
+      try {
+        final res = await generateWithFallback(
+          activeProvider,
+          activeKey,
+          safePrompt,
+          null, // Fallback list is processed below if local fails completely
+          history: history,
+          systemPersona: systemPersona,
+          cancelToken: cancelToken,
+        );
+        _updateLastTextProvider(res.provider);
+        return res;
+      } catch (localError) {
+        if (kDebugMode) {
+          debugPrint("⚠️ Local provider failed: $localError. Falling back to local rotation...");
+        }
+      }
+    }
 
+    // 🔑 [LOCAL FALLBACK]: Back4App failed → try local API keys
     final bool isPrimaryBlackedOut = _isBlackedOut(activeProvider);
 
     final fallbackList = _priorityOrder
         .where((p) => p != activeProvider && !_isBlackedOut(p))
-        .map((type) => (type, settingsController.getApiKey(type)))
+        .map((type) {
+          String key = settingsController.getApiKey(type);
+          return (type, key);
+        })
         .where((pair) =>
-            pair.$2.isNotEmpty &&
-            settingsController.getConnectionStatus(pair.$1))
+            pair.$2.isNotEmpty)
         .toList();
 
     if (isPrimaryBlackedOut && fallbackList.isNotEmpty) {
-      if (kDebugMode) debugPrint("🛡️ [Smart Fallback]: Primary $activeProvider is blacked out. Auto-switching to ${fallbackList.first.$1}");
-      return await generateWithFallback(
+      if (kDebugMode) {
+        debugPrint(
+            "🛡️ [Smart Fallback]: Primary $activeProvider is blacked out. Auto-switching to ${fallbackList.first.$1}");
+      }
+      final res = await generateWithFallback(
         fallbackList.first.$1,
         fallbackList.first.$2,
         safePrompt,
@@ -362,50 +441,32 @@ class AIProviderFactory {
         systemPersona: systemPersona,
         cancelToken: cancelToken,
       );
+      _updateLastTextProvider(res.provider);
+      return res;
     }
 
     if (activeKey.isEmpty && fallbackList.isEmpty) {
-      try {
-        final authController = Get.find<AuthController>();
-        final managedAi = Get.find<ManagedAiService>();
-        if (authController.firebaseUid != null) {
-          final mKey = await managedAi.getManagedKey(authController.firebaseUid,
-              provider: activeProvider);
-          if (mKey != null) {
-            final service = getServiceByType(activeProvider);
-            if (activeProvider == ProviderType.azure &&
-                service is AzureOpenAIService) {
-              final endpoint =
-                  settingsController.getCustomEndpoint(ProviderType.azure);
-              return await service.generateText(safePrompt,
-                  apiKey: mKey,
-                  customEndpoint: endpoint,
-                  systemPersona: systemPersona,
-                  cancelToken: cancelToken);
-            }
-            return await service.generateText(safePrompt,
-                apiKey: mKey,
-                systemPersona: systemPersona,
-                cancelToken: cancelToken);
-          }
-        }
-      } catch (_) {}
-
       throw Exception(
-        '❌ لم يتم تكوين مفاتيح API لأي مزود. الرجاء إضافة مفاتيح في الإعدادات',
+        '❌ فشل الاتصال بسيرفر Back4App ولا توجد مفاتيح محلية بديلة.',
       );
     }
 
     if (activeKey.isEmpty) {
-      return generateWithFallback(fallbackList[0].$1, fallbackList[0].$2,
+      final res = await generateWithFallback(fallbackList[0].$1, fallbackList[0].$2,
           safePrompt, fallbackList.skip(1).toList(),
           history: history, cancelToken: cancelToken);
+      _updateLastTextProvider(res.provider);
+      return res;
     }
 
     try {
-      return await generateWithFallback(
+      final res = await generateWithFallback(
           activeProvider, activeKey, safePrompt, fallbackList,
-          history: history, systemPersona: systemPersona, cancelToken: cancelToken);
+          history: history,
+          systemPersona: systemPersona,
+          cancelToken: cancelToken);
+      _updateLastTextProvider(res.provider);
+      return res;
     } catch (e) {
       if (e is SmartUserException) rethrow;
       throw SmartUserException('❌ حدث خطأ غير متوقع: $e');
@@ -419,91 +480,131 @@ class AIProviderFactory {
     int? maxTokens,
     dio.CancelToken? cancelToken,
   }) async {
+    // ☁️ [BACK4APP VISION PRIMARY]: Try Back4App Gateway FIRST for image analysis
+    try {
+      final gateway = Get.find<Back4AppGatewayService>();
+      if (kDebugMode) {
+        debugPrint('☁️ [Back4App-Vision-Primary]: Trying Back4App Gateway for image analysis...');
+      }
+      final base64Image = base64Encode(bytes);
+      final res = await gateway.generateTextWithVertex(
+        prompt,
+        history: history,
+        image: base64Image,
+        mimeType: 'image/jpeg',
+        maxTokens: maxTokens ?? 4096,
+      );
+      _updateLastImageProvider(res.provider);
+      return res;
+    } catch (b4aError) {
+      if (kDebugMode) {
+        debugPrint('');
+        debugPrint('🔴🔴🔴 [Back4App-Vision-Primary]: FAILED! Error: $b4aError');
+        debugPrint('🔴🔴🔴 Falling back to local vision providers...');
+        debugPrint('');
+      }
+    }
+
+    // 🔑 [LOCAL VISION FALLBACK]: Back4App failed → try local vision providers
     final settingsController = Get.find<SettingsController>();
-    final authController = Get.find<AuthController>();
-    final managedAi = Get.find<ManagedAiService>();
-    final uid = authController.firebaseUid;
 
-    if (uid != null) {
-      if (await managedAi.isUserBlocked(uid)) {
-         throw Exception("❌ تواصل مع الإدارة: تم تعطيل وصولك لخدمات الذكاء الاصطناعي.");
-      }
-    }
-    final activeProvider = settingsController.getActiveProvider();
-    
-    final visionPriority = _priorityOrder.where((p) => p.isVisionCapable).toList();
-    if (activeProvider.isVisionCapable) {
-      visionPriority.remove(activeProvider);
-      if (activeProvider != ProviderType.gemini && _priorityOrder.first == ProviderType.gemini) {
-        visionPriority.insert(1, activeProvider);
-      } else {
-        visionPriority.insert(0, activeProvider);
-      }
-    }
-
+    final visionPriority = [
+      ProviderType.gemini,
+      ..._priorityOrder.where((p) => p != ProviderType.gemini && p.isVisionCapable)
+    ];
     Object? lastError;
     bool had402 = false;
 
     for (final providerType in visionPriority) {
       try {
+        // 🛡️ فحص الحظر المؤقت
+        if (_isBlackedOut(providerType)) continue;
+
         if (providerType == ProviderType.github) {
           final keys = settingsController.githubKeys;
           if (keys.isNotEmpty) {
             for (int i = 0; i < keys.length; i++) {
-                try {
-                  final service = getServiceByType(ProviderType.github);
-                  return await service.analyzeImage(bytes, prompt,
-                      apiKey: keys[i],
-                      history: history,
-                      maxTokens: maxTokens,
-                      cancelToken: cancelToken);
-                } catch (e) {
-                  Object? activeError = e;
-                  final errorMsg = e.toString();
-                  if (errorMsg.contains('402') && history != null && history.isNotEmpty) {
-                    try {
-                      final service = getServiceByType(ProviderType.github);
-                      return await service.analyzeImage(bytes, prompt,
-                          apiKey: keys[i],
-                          history: null,
-                          maxTokens: maxTokens,
-                          cancelToken: cancelToken);
-                    } catch (retryErr) {
-                      activeError = retryErr;
-                    }
-                  }
-
-                  if (activeError.toString().contains('429') && i < keys.length - 1) continue;
-                  lastError = activeError;
-                  throw activeError;
+              try {
+                final service = getServiceByType(ProviderType.github);
+                final res = await service.analyzeImage(bytes, prompt,
+                    apiKey: keys[i],
+                    history: history,
+                    maxTokens: maxTokens,
+                    cancelToken: cancelToken);
+                _updateLastImageProvider(res.provider);
+                return res;
+              } catch (e) {
+                Object? activeError = e;
+                final errorMsg = e.toString();
+                
+                // تفعيل الحظر في حال تعطل السيرفر
+                if (errorMsg.contains('503') || errorMsg.contains('500')) {
+                   _triggerBlackout(ProviderType.github);
                 }
+
+                if (errorMsg.contains('402') &&
+                    history != null &&
+                    history.isNotEmpty) {
+                  try {
+                    final service = getServiceByType(ProviderType.github);
+                    final res = await service.analyzeImage(bytes, prompt,
+                        apiKey: keys[i],
+                        history: null,
+                        maxTokens: maxTokens,
+                        cancelToken: cancelToken);
+                    _updateLastImageProvider(res.provider);
+                    return res;
+                  } catch (retryErr) {
+                    activeError = retryErr;
+                  }
+                }
+
+                if (activeError.toString().contains('429') &&
+                    i < keys.length - 1) {
+                  continue;
+                }
+                lastError = activeError;
+                throw activeError;
+              }
             }
           }
         }
 
         final key = settingsController.getApiKey(providerType);
-        final isConnected = settingsController.getConnectionStatus(providerType);
-        
-        if (key.isEmpty || !isConnected) continue;
+        if (key.isEmpty) continue;
 
         final service = getServiceByType(providerType);
         try {
-          return await service.analyzeImage(bytes, prompt,
+          final res = await service.analyzeImage(bytes, prompt,
               apiKey: key,
               history: history,
               maxTokens: maxTokens,
               cancelToken: cancelToken);
+          _updateLastImageProvider(res.provider);
+          return res;
         } catch (e) {
           final errorMsg = e.toString();
-          if (errorMsg.contains('402') && history != null && history.isNotEmpty) {
-            return await service.analyzeImage(bytes, prompt,
+          
+          // تفعيل الحظر في حال تعطل السيرفر
+          if (errorMsg.contains('503') || errorMsg.contains('500')) {
+             _triggerBlackout(providerType);
+          }
+
+          if (errorMsg.contains('402') &&
+              history != null &&
+              history.isNotEmpty) {
+            final res = await service.analyzeImage(bytes, prompt,
                 apiKey: key, history: null, cancelToken: cancelToken);
+            _updateLastImageProvider(res.provider);
+            return res;
           }
           rethrow;
         }
       } catch (e) {
         lastError = e;
-        if (e.toString().contains('402')) had402 = true;
+        if (e.toString().contains('402')) {
+          had402 = true;
+        }
         continue;
       }
     }
@@ -515,7 +616,25 @@ class AIProviderFactory {
       );
     }
 
-    throw lastError ?? Exception("❌ لم ينجح أي مزود في تحليل الصورة.");
+    // ☁️ [BACK4APP VISION RESCUE]: All vision providers failed → try Back4App for text-only analysis
+    if (lastError != null) {
+      if (kDebugMode) {
+        debugPrint('☁️ [Back4App-Vision-Rescue]: All vision providers failed. Trying Back4App text analysis...');
+      }
+      try {
+        final gateway = Get.find<Back4AppGatewayService>();
+        final res = await gateway.generateTextWithVertex(
+          'لم أتمكن من رؤية الصورة مباشرة، لكن بناءً على الطلب التالي، أجب بأفضل شكل ممكن:\n\n$prompt',
+          maxTokens: 4096,
+        );
+        _updateLastImageProvider(res.provider);
+        return res;
+      } catch (_) {
+        // Fall through to original error
+      }
+    }
+
+    throw lastError ?? Exception('❌ لم ينجح أي مزود في تحليل الصورة.');
   }
 
   static Future<AiResult> analyzeBatchWithSmartFallback(
@@ -526,27 +645,11 @@ class AIProviderFactory {
     dio.CancelToken? cancelToken,
   }) async {
     final settingsController = Get.find<SettingsController>();
-    final authController = Get.find<AuthController>();
-    final managedAi = Get.find<ManagedAiService>();
-    final uid = authController.firebaseUid;
 
-    if (uid != null) {
-      if (await managedAi.isUserBlocked(uid)) {
-         throw Exception("❌ تواصل مع الإدارة: تم تعطيل وصولك لخدمات الذكاء الاصطناعي.");
-      }
-    }
-
-    final activeProvider = settingsController.getActiveProvider();
-
-    final visionPriority = _priorityOrder.where((p) => p.isVisionCapable).toList();
-    if (activeProvider.isVisionCapable) {
-      visionPriority.remove(activeProvider);
-      if (activeProvider != ProviderType.gemini && _priorityOrder.first == ProviderType.gemini) {
-        visionPriority.insert(1, activeProvider);
-      } else {
-        visionPriority.insert(0, activeProvider);
-      }
-    }
+    final visionPriority = [
+      ProviderType.gemini,
+      ..._priorityOrder.where((p) => p != ProviderType.gemini && p.isVisionCapable)
+    ];
 
     Object? lastError;
     for (final providerType in visionPriority) {
@@ -564,7 +667,9 @@ class AIProviderFactory {
                     cancelToken: cancelToken);
               } catch (e) {
                 Object? activeError = e;
-                if (e.toString().contains('402') && history != null && history.isNotEmpty) {
+                if (e.toString().contains('402') &&
+                    history != null &&
+                    history.isNotEmpty) {
                   try {
                     return await getServiceByType(ProviderType.github)
                         .analyzeBatchImages(images, prompt,
@@ -572,19 +677,25 @@ class AIProviderFactory {
                             history: null,
                             maxTokens: maxTokens ?? 1200,
                             cancelToken: cancelToken);
-                  } catch (retryErr) { activeError = retryErr; }
+                  } catch (retryErr) {
+                    activeError = retryErr;
+                  }
                 }
 
-                if (activeError.toString().contains('429') && i < keys.length - 1) continue;
+                if (activeError.toString().contains('429') &&
+                    i < keys.length - 1) {
+                  continue;
+                }
                 lastError = activeError;
-                throw activeError; 
+                throw activeError;
               }
             }
           }
         }
 
         final key = settingsController.getApiKey(providerType);
-        final isConnected = settingsController.getConnectionStatus(providerType);
+        final isConnected =
+            settingsController.getConnectionStatus(providerType);
         if (key.isEmpty || !isConnected) continue;
 
         try {
@@ -595,7 +706,9 @@ class AIProviderFactory {
               maxTokens: maxTokens ?? 1200,
               cancelToken: cancelToken);
         } catch (e) {
-          if (e.toString().contains('402') && history != null && history.isNotEmpty) {
+          if (e.toString().contains('402') &&
+              history != null &&
+              history.isNotEmpty) {
             final service = getServiceByType(providerType);
             return await service.analyzeBatchImages(images, prompt,
                 apiKey: key,

@@ -8,6 +8,7 @@ import '../unified_ai_service.dart';
 import '../product_memory_service.dart';
 import '../firestore_user_service.dart';
 import '../../models/brand_identity_model.dart';
+import '../../controllers/settings_controller.dart';
 
 class VisionProductService extends GetxService {
   UnifiedAIService get _unifiedService => Get.find<UnifiedAIService>();
@@ -72,6 +73,12 @@ class VisionProductService extends GetxService {
         isProduct = true;
         productName = n;
         data = info;
+        if (info.containsKey('provider') && info['provider'] != null) {
+          final prov = info['provider'].toString();
+          if (Get.isRegistered<SettingsController>()) {
+            Get.find<SettingsController>().updateLastImageProvider(prov);
+          }
+        }
         
         if (kDebugMode) {
           debugPrint('🔍 VisionProductService: Extracted Product: $productName');

@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/db_service.dart';
-import 'auth_controller.dart';
+import 'package:smart_content_creator/controllers/auth_controller.dart';
+import 'package:smart_content_creator/controllers/settings_controller.dart';
 
 /// Controller that manages reactive permissions for the current logged-in user.
 class PermissionsController extends GetxController {
@@ -15,8 +16,9 @@ class PermissionsController extends GetxController {
       <String, Map<String, bool>>{}.obs;
   final RxBool isLoading = false.obs;
 
-  // 🔥 Firestore real-time subscription
   StreamSubscription<QuerySnapshot>? _permissionsSubscription;
+  bool _isProcessing = false;
+  String? _lastDataHash;
 
   // List of control names that are allowed by default for all users
   static const List<String> _alwaysAllowed = [
@@ -24,6 +26,7 @@ class PermissionsController extends GetxController {
     'chat_image_attach',
     'chat_camera_attach',
     'chat_file_attach',
+    'chat_audio_enhance',
     'use_managed_keys', // 🛡️ السماح باستخدام مفاتيح الأدمن افتراضياً
     'managed_key_gemini',
     'managed_key_serpapi',
@@ -59,34 +62,60 @@ class PermissionsController extends GetxController {
         .collection('user_permissions')
         .where('user_id', isEqualTo: firebaseUid)
         .snapshots()
-        .listen((snapshot) {
-      final Map<String, Map<String, bool>> newPerms = {};
+        .listen((snapshot) async {
+      if (_isProcessing) return;
+      
+      // 🧩 (1) Data Hash Guard: Deduplicate redundant events
+      final payload = snapshot.docs.map((d) => d.data()).toString();
+      final currentHash = payload.hashCode.toString();
+      if (currentHash == _lastDataHash) return;
+      _lastDataHash = currentHash;
 
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final controlName = data['control_name']?.toString() ?? 'unknown';
-        newPerms[controlName] = {
-          'visible': data['visible'] == true,
-          'enabled': data['enabled'] == true,
-        };
+      _isProcessing = true;
+      try {
+        final Map<String, Map<String, bool>> newPerms = {};
 
-        // 💾 Update local DB in background to stay synced
-        // Resolving control_id from name for data integrity
-        _db.getRecord('ui_controls', where: 'control_name = ?', whereArgs: [controlName]).then((control) {
-          if (control != null) {
-            _db.insertRecord('user_permissions', {
-              'user_id': firebaseUid.hashCode, // Simplified local mapping
-              'control_id': control['id'],
-              'visible': data['visible'] == true ? 1 : 0,
-              'enabled': data['enabled'] == true ? 1 : 0,
-            });
+        for (var doc in snapshot.docs) {
+          final data = doc.data();
+          final controlName = data['control_name']?.toString() ?? 'unknown';
+          newPerms[controlName] = {
+            'visible': data['visible'] == true,
+            'enabled': data['enabled'] == true,
+          };
+
+          // 💾 Update local DB only if needed (simplified for speed)
+          _db.getRecord('ui_controls', where: 'control_name = ?', whereArgs: [controlName]).then((control) {
+            if (control != null) {
+              _db.insertRecord('user_permissions', {
+                'user_id': firebaseUid.hashCode,
+                'control_id': control['id'],
+                'visible': data['visible'] == true ? 1 : 0,
+                'enabled': data['enabled'] == true ? 1 : 0,
+              });
+            }
+          });
+        }
+
+        _permissions.assignAll(newPerms);
+        debugPrint("🔔 PermissionsController: ${newPerms.length} perms synced (Hash: $currentHash)");
+
+        // 🚀 Protected Trigger: Only sync managed keys if specifically changed
+        if (newPerms.containsKey('use_managed_keys') && newPerms['use_managed_keys']?['visible'] == true) {
+          if (Get.isRegistered<SettingsController>()) {
+            final settings = Get.find<SettingsController>();
+            if (!settings.isManagedActive.value) {
+              settings.isManagedActive.value = true;
+              settings.syncManagedKeysToLocal();
+            }
           }
-        });
+        } else {
+          if (Get.isRegistered<SettingsController>()) {
+            Get.find<SettingsController>().isManagedActive.value = false;
+          }
+        }
+      } finally {
+        _isProcessing = false;
       }
-
-      _permissions.assignAll(newPerms);
-      debugPrint(
-          "🔔 PermissionsController: ${newPerms.length} permissions synced from Cloud");
     }, onError: (e) {
       debugPrint("❌ PermissionsController Cloud Error: $e");
     });
@@ -155,8 +184,9 @@ class PermissionsController extends GetxController {
     } catch (_) {}
 
     // Check if explicitly set in local permissions first
-    if (_permissions.containsKey(controlName)) {
-      return _permissions[controlName]!['visible']!;
+    final controlPerms = _permissions[controlName];
+    if (controlPerms != null) {
+      return controlPerms['visible'] ?? _alwaysAllowed.contains(controlName);
     }
 
     // If not set, check if it's in the always allowed list
@@ -174,8 +204,9 @@ class PermissionsController extends GetxController {
     } catch (_) {}
 
     // Check if explicitly set in local permissions first
-    if (_permissions.containsKey(controlName)) {
-      return _permissions[controlName]!['enabled']!;
+    final controlPerms = _permissions[controlName];
+    if (controlPerms != null) {
+      return controlPerms['enabled'] ?? _alwaysAllowed.contains(controlName);
     }
 
     // If not set, check if it's in the always allowed list

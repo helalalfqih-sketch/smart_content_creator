@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="tiktok-developers-site-verification" content="8EIh0gTFBJvtQX1l3pDMLW2v9QZ4cEfJ">
+    <meta name="tiktok-developers-site-verification" content="dKN2PnIaTP3N0tUYZLP5v52z1631giK7">
     <title>Smart Content Creator AI | صانع المحتوى الذكي</title>
     <!-- Google Fonts: Cairo & Oswald -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700;900&family=Oswald:wght@400;700&display=swap" rel="stylesheet">
@@ -231,6 +232,149 @@
             color: var(--text-dim);
         }
 
+        /* 🚀 Smart Launch Button */
+        .smart-launch-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-top: 25px;
+            margin-bottom: 40px;
+            width: 100%;
+        }
+
+        .btn-smart-launch {
+            background: linear-gradient(135deg, #00FF88 0%, #0088FF 100%);
+            color: #0b0b0f;
+            border: none;
+            padding: 16px 36px;
+            font-size: 1.2rem;
+            font-weight: 900;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.4);
+            transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+            font-family: 'Cairo', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-smart-launch:hover {
+            transform: translateY(-3px) scale(1.03);
+            box-shadow: 0 0 35px rgba(0, 255, 136, 0.7);
+            color: #ffffff;
+        }
+
+        .btn-smart-launch:active {
+            transform: translateY(1px);
+        }
+
+        .btn-smart-action {
+            margin-top: 15px;
+            width: 100%;
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 0.95rem;
+            font-weight: bold;
+            background: rgba(0, 255, 136, 0.08);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            color: #00FF88;
+            cursor: pointer;
+            font-family: 'Cairo', sans-serif;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-smart-action:hover {
+            background: #00FF88;
+            color: #0b0b0f;
+            border-color: #00FF88;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+            transform: scale(1.01);
+        }
+
+        .btn-smart-action:active {
+            transform: scale(0.99);
+        }
+
+        /* ❓ FAQ Section */
+        .faq-section {
+            padding: 60px 20px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .faq-title {
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 40px;
+            color: var(--text-main);
+        }
+
+        .faq-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .faq-item {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .faq-item.active {
+            border-color: var(--primary-color);
+        }
+
+        .faq-question {
+            width: 100%;
+            background: none;
+            border: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            font-family: 'Cairo', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            cursor: pointer;
+            text-align: right;
+        }
+
+        .faq-icon {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            transition: transform 0.3s ease;
+        }
+
+        .faq-item.active .faq-icon {
+            transform: rotate(45deg);
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), padding 0.4s ease;
+        }
+
+        .faq-item.active .faq-answer {
+            max-height: 300px; /* Adjust as needed */
+        }
+
+        .faq-answer p {
+            padding: 0 20px 20px;
+            color: var(--text-dim);
+        }
+
         /* 📄 Footer */
         footer {
             margin-top: auto;
@@ -297,7 +441,7 @@
     </section>
 
     <section class="download-section">
-        <h2 class="download-title">تنزيل التطبيق لجهازك</h2>
+        <h2 class="download-title">تنزيل التطبيق لجهازك (الإصدار 2.0.0)</h2>
         
         <div class="download-grid">
             <!-- ARM 64 -->
@@ -307,8 +451,11 @@
                 <p style="margin-bottom: 25px; font-size: 0.9rem; color: var(--text-dim);">
                     تعمل على جميع هواتف أندرويد الحديثة (S20+, Pixel 5+, etc.)
                 </p>
-                <a href="https://www.mediafire.com/file/erl25nent8bfsxl/app-arm64-v8a-release.apk/file" class="btn-download" download>تنزيل APK</a>
-                <div class="file-size">الحجم: 99 ميجابايت</div>
+                <a href="app-arm64-v8a-v2.0.0-release.apk" class="btn-download" download>تنزيل APK</a>
+                <button class="btn-smart-action" onclick="launchOrDownload('app-arm64-v8a-v2.0.0-release.apk')">
+                    <span>فتح أو تحديث التطبيق ⚡</span>
+                </button>
+                <div class="file-size">الحجم: 105 ميجابايت</div>
             </div>
 
             <!-- ARM v7 -->
@@ -318,7 +465,10 @@
                 <p style="margin-bottom: 25px; font-size: 0.9rem; color: var(--text-dim);">
                     للإصدارات الأقدم من الهواتف التي لا تدعم 64-bit.
                 </p>
-                <a href="https://www.mediafire.com/file/fb9gnlqhc8ahrdq/app-armeabi-v7a-release.apk/file" class="btn-download" download>تنزيل APK</a>
+                <a href="app-armeabi-v7a-v2.0.0-release.apk" class="btn-download" download>تنزيل APK</a>
+                <button class="btn-smart-action" onclick="launchOrDownload('app-armeabi-v7a-v2.0.0-release.apk')">
+                    <span>فتح أو تحديث التطبيق ⚡</span>
+                </button>
                 <div class="file-size">الحجم: 129 ميجابايت</div>
             </div>
 
@@ -329,8 +479,53 @@
                 <p style="margin-bottom: 25px; font-size: 0.9rem; color: var(--text-dim);">
                     مخصصة لأجهزة الكمبيوتر والمحاكيات (BlueStacks, Windows).
                 </p>
-                <a href="https://www.mediafire.com/file/77r97jmdaeh0v2f/app-x86_64-release.apk/file" class="btn-download" download>تنزيل APK</a>
+                <a href="app-x86_64-v2.0.0-release.apk" class="btn-download" download>تنزيل APK</a>
+                <button class="btn-smart-action" onclick="launchOrDownload('app-x86_64-v2.0.0-release.apk')">
+                    <span>فتح أو تحديث التطبيق ⚡</span>
+                </button>
                 <div class="file-size">الحجم: 110 ميجابايت</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="faq-section">
+        <h2 class="faq-title">الأسئلة الشائعة</h2>
+        <div class="faq-container">
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>ما هو تطبيق صانع المحتوى الذكي؟</span>
+                    <span class="faq-icon">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>هو تطبيق متقدم يستخدم الذكاء الاصطناعي (مثل Google Gemini) لمساعدة منشئي المحتوى على إنتاج فيديوهات وتصاميم إعلانية احترافية، وتحليل المنتجات، وكتابة نصوص تسويقية جذابة بسرعة وسهولة.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>هل التطبيق مجاني؟</span>
+                    <span class="faq-icon">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>نعم، التطبيق مجاني للتحميل والاستخدام. بعض الميزات المتقدمة التي تعتمد على واجهات برمجية (APIs) خارجية قد تتطلب منك استخدام مفتاح API الخاص بك.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>هل بياناتي آمنة؟</span>
+                    <span class="faq-icon">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>نعم، خصوصيتك هي أولويتنا. تتم معظم عمليات معالجة الفيديو والصور محلياً على جهازك لضمان أقصى درجات الأمان والسرعة. لا يتم رفع ملفاتك إلى خوادمنا.</p>
+                </div>
+            </div>
+            <div class="faq-item">
+                <button class="faq-question">
+                    <span>ما هي الأجهزة التي يدعمها التطبيق؟</span>
+                    <span class="faq-icon">+</span>
+                </button>
+                <div class="faq-answer">
+                    <p>يدعم التطبيق حالياً أجهزة أندرويد. نوفر إصدارات مختلفة (64-bit للأجهزة الحديثة، 32-bit للأجهزة القديمة، ونسخة للمحاكيات على الكمبيوتر) لضمان التوافق مع أكبر عدد ممكن من الأجهزة.</p>
+                </div>
             </div>
         </div>
     </section>
@@ -339,11 +534,57 @@
         <div class="footer-links">
             <a href="privacy.html">سياسة الخصوصية</a>
             <a href="terms.html">شروط الخدمة</a>
-            <a href="https://github.com/yourusername/reponame">كود المصدر (GitHub)</a>
+            <a href="https://github.com/Yemeni-Open-Source/smart_content_creator_showcase" target="_blank" rel="noopener noreferrer">كود المصدر (GitHub)</a>
         </div>
         <div class="copyright">
             © 2026 Smart Content Creator AI. جميع الحقوق محفوظة.
         </div>
     </footer>
+
+    <script>
+        const faqItems = document.querySelectorAll('.faq-item');
+
+        faqItems.forEach(item => {
+            const questionButton = item.querySelector('.faq-question');
+            questionButton.addEventListener('click', () => {
+                // Close other open items
+                faqItems.forEach(otherItem => {
+                    if (otherItem !== item) otherItem.classList.remove('active');
+                });
+                // Toggle the clicked item
+                item.classList.toggle('active');
+            });
+        });
+
+        // 🚀 Smart Launch & Deep Link Fallback
+        function launchOrDownload(apkUrl) {
+            const packageName = "com.example.smart_content_creator";
+            // Get full URL for fallback
+            const absoluteApkUrl = window.location.origin + "/" + apkUrl;
+            
+            // Android Intent URL: attempts to open package, redirects to S.browser_fallback_url if not installed
+            const intentUrl = `intent://open#Intent;scheme=https;package=${packageName};S.browser_fallback_url=${encodeURIComponent(absoluteApkUrl)};end`;
+            
+            // Redirect browser to Intent
+            window.location.href = intentUrl;
+        }
+
+        // 🧠 In-App Browser Auto-Detection
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const isFromApp = urlParams.get('app') === 'true' || urlParams.get('installed') === 'true';
+            
+            if (isFromApp) {
+                // If visited from the app itself (e.g. settings screen update check)
+                // We show visual indication that the app is installed and running
+                const smartButtons = document.querySelectorAll('.btn-smart-action');
+                smartButtons.forEach(btn => {
+                    btn.innerHTML = '<span>✅ مثبت بالفعل (افتح التطبيق)</span>';
+                    btn.style.background = 'rgba(0, 255, 136, 0.15)';
+                    btn.style.color = '#00FF88';
+                });
+            }
+        });
+    </script>
 </body>
 </html>

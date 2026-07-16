@@ -14,7 +14,10 @@ class GeminiDirectorService {
 
   String get _apiKey {
     final settings = Get.find<SettingsController>();
-    return settings.getApiKey(ProviderType.gemini);
+    final manualKey = settings.getApiKey(ProviderType.gemini);
+    if (manualKey.isNotEmpty) return manualKey;
+
+    return "";
   }
 
   Future<Map<String, dynamic>> createScriptFromDescription(String description) async {

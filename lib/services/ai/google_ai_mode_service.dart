@@ -139,4 +139,15 @@ class GoogleAiModeService implements AIProvider {
     return analyzeImage(images.first, prompt,
         apiKey: apiKey, history: history, systemPersona: systemPersona);
   }
+
+  @override
+  Future<String> generateVideo(String prompt,
+      {String? imagePath, String? apiKey, String model = "evo-1"}) {
+    throw UnimplementedError("Video generation not supported by Google AI Mode");
+  }
+
+  @override
+  Future<Map<String, dynamic>> checkTaskStatus(String taskId) {
+    throw UnimplementedError("Task status check not supported by Google AI Mode");
+  }
 }

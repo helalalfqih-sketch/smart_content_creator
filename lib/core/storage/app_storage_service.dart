@@ -6,11 +6,12 @@ import '../../services/secure_storage_service.dart';
 import 'storage_keys.dart';
 
 class AppStorageService extends GetxService {
+  late SecureStorageService _secureStorage;
   late GetStorage _storage;
-  final SecureStorageService _secureStorage = Get.find<SecureStorageService>();
 
   /// ⚡ Initialize and perform migration
   Future<AppStorageService> init() async {
+    _secureStorage = Get.find<SecureStorageService>();
     await GetStorage.init();
     _storage = GetStorage();
     

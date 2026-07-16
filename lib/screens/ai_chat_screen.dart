@@ -1,27 +1,18 @@
 import 'dart:io';
 import 'dart:ui'; // 🎨 للتأثيرات البصرية المتقدمة (Blur)
-import 'dart:async'; // 🕒 للمؤقت
 import 'package:flutter/material.dart' hide Intent;
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
-import '../core/models/tiktok_video.dart'; // 📱 TikTok Model
 
 // ... (existing imports)
 
-import '../core/utils/snackbar_utils.dart';
 import '../ai/chat_smart_agent.dart';
-import '../services/video_pipeline_service.dart';
-import '../services/ai/gemini_vision_service.dart';
-import '../services/ffmpeg_service.dart';
 
 import '../widgets/chat_drawer.dart';
 import '../widgets/chat_bubble.dart';
 import '../theme/app_theme.dart';
 import '../widgets/permission_controlled_widget.dart';
 import '../widgets/api_key_status_indicator.dart'; // 🔄 تمت إضافة مؤشر حالة مفتاح API
-import '../widgets/tiktok_video_grid.dart'; // 🎞️ جديد: دعم شبكة فيديوهات تيك توك
 import 'product_photography_screen.dart'; // 🎨 Product Photography Studio
 import '../ai/core/agent_models.dart'; // 🔄 تمت الإضافة للمدخلات المعالجة
 // 🎯 نمط النتيجة لمعالجة الأخطاء
@@ -31,7 +22,6 @@ import '../core/theme/animations/galactic_background_unified.dart'; // 🌌 ال
 
 import '../widgets/chat/swipe_to_reply.dart';
 import '../widgets/animations/vip_message_entry.dart';
-import '../widgets/chat_loading_shimmer.dart';
 import '../core/services/log_service.dart';
 import 'ai_chat/mixins/chat_media_mixin.dart';
 import 'ai_chat/mixins/chat_action_mixin.dart';
@@ -49,8 +39,6 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
   final TextEditingController _controller = TextEditingController();
   final ChatSmartAgent _agent = Get.find<ChatSmartAgent>();
   final ScrollController _scrollController = ScrollController();
-  final VideoPipelineService _videoPipeline = Get.find<VideoPipelineService>();
-  final GeminiVisionService _geminiVisionService = Get.find<GeminiVisionService>();
 
   // Overriding getters for mixins
   @override
@@ -127,12 +115,15 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
   bool _isUserScrolling = false;
 
   void _scrollListener() {
-    if (_scrollController.hasClients) {
-      final show = _scrollController.offset > 400;
-      if (show != _showScrollToBottom) {
-        setState(() => _showScrollToBottom = show);
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (!mounted) return; // 🛡️ حماية من الـ defunct element
+      if (_scrollController.hasClients) {
+        final show = _scrollController.offset > 400;
+        if (show != _showScrollToBottom) {
+          setState(() => _showScrollToBottom = show);
+        }
       }
-    }
+    });
   }
 
   void _handleInitialMode() {
@@ -160,8 +151,10 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
   }
 
   /// 📜 دالة للتمرير التلقائي لأسفل المحادثة بنعومة
-  void _scrollToBottom({bool force = false}) {
+  void _scrollToBottom({bool force = false}) async {
     if (force) _isUserScrolling = false;
+    await Future.delayed(const Duration(milliseconds: 30));
+    if (!mounted) return; // 🛡️ حماية إضافية بعد التأخير
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_isUserScrolling && !force) return;
       if (_scrollController.hasClients) {
@@ -175,15 +168,16 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
   }
 
   void _showAttachmentMenu() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         margin: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF0F1117).withValues(alpha: 0.95),
+          color: isDark ? const Color(0xFF0F1117).withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
         ),
         padding: const EdgeInsets.symmetric(vertical: 20),
         child: Column(
@@ -197,7 +191,7 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
                 VisibilityControlled(
                   controlName: 'chat_file_attach',
                   child: _buildAttachmentItem(
-                      Icons.attach_file, 'تحميل ملف', Colors.indigo, () async {
+                      Icons.attach_file, 'إرفاق ملف', AppTheme.accent, () async {
                     Navigator.pop(context);
                     pickAnyMediaFile();
                   }),
@@ -205,7 +199,7 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
                 VisibilityControlled(
                   controlName: 'chat_image_attach',
                   child: _buildAttachmentItem(
-                      Icons.image, 'صورة', Colors.purple, () {
+                      Icons.image, 'صورة', AppTheme.primary, () {
                     Navigator.pop(context);
                     pickImage(ImageSource.gallery);
                   }),
@@ -213,7 +207,7 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
                 VisibilityControlled(
                   controlName: 'chat_product_photography',
                   child: _buildAttachmentItem(
-                      Icons.auto_awesome, 'استوديو الصور AI', Colors.deepPurple,
+                      Icons.auto_awesome, 'استوديو المنتجات الذكي', AppTheme.accent,
                       () async {
                     Navigator.pop(context);
                     final XFile? image =
@@ -225,132 +219,13 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
                   }),
                 ),
                 VisibilityControlled(
-                  controlName: 'chat_ai_image_gen',
-                  child: _buildAttachmentItem(
-                      Icons.palette_rounded, 'توليد صورة AI', Colors.pinkAccent,
-                      () async {
-                    Navigator.pop(context);
-                    final TextEditingController promptController =
-                        TextEditingController();
-                    Get.defaultDialog(
-                      title: 'توليد صورة بالذكاء الاصطناعي',
-                      content: Column(
-                        children: [
-                          const Text(
-                              'صف الصورة التي تريد توليدها بدقة لإخراج أفضل النتائج:'),
-                          const SizedBox(height: 12),
-                          TextField(
-                            controller: promptController,
-                            maxLines: 3,
-                            decoration: const InputDecoration(
-                              hintText: 'مثال: سيارة رياضية تجري في دبي...',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ],
-                      ),
-                      textConfirm: 'توليد',
-                      textCancel: 'إلغاء',
-                      confirmTextColor: Colors.white,
-                      onConfirm: () {
-                        if (promptController.text.isNotEmpty) {
-                          Get.back();
-                          _agent.generateCreatorImage(promptController.text);
-                        }
-                      },
-                    );
-                  }),
-                ),
-                VisibilityControlled(
                   controlName: 'chat_camera_attach',
                   child: _buildAttachmentItem(
-                      Icons.camera_alt, 'كاميرا', Colors.blue, () {
+                      Icons.camera_alt, 'كاميرا', AppTheme.accent, () {
                     Navigator.pop(context);
                     pickImage(ImageSource.camera);
                   }),
                 ),
-                VisibilityControlled(
-                  controlName: 'chat_audio_enhance',
-                  child: _buildAttachmentItem(
-                      Icons.music_note_rounded, 'تحسين الصوت', Colors.indigoAccent, () {
-                    Navigator.pop(context);
-                    pickVideoForAudioEnhance();
-                  }),
-                ),
-                VisibilityControlled(
-                  controlName: 'chat_fetch_trends',
-                  child: _buildAttachmentItem(
-                      Icons.trending_up, 'جلب ترند', Colors.orange, () async {
-                    Navigator.pop(context);
-                    if (selectedImages.isEmpty) {
-                      SnackBarUtils.showSmartSnackBar(title: 'تنبيه', message: 'اختر صورة المنتج أولاً!', isError: true);
-                      pickImage(ImageSource.gallery);
-                      return;
-                    }
-                    final result = await _agent.extractProductName(selectedImages.first);
-                    final productName = result.valueOrNull;
-                    if (productName == null || productName.isEmpty) return;
-                    _agent.searchTrendsForProduct(productName);
-                    if (!context.mounted) return;
-                    showModalBottomSheet(
-                      context: context,
-                      isScrollControlled: true,
-                      backgroundColor: Colors.transparent,
-                      builder: (context) => Container(
-                        height: MediaQuery.of(context).size.height * 0.7,
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).scaffoldBackgroundColor,
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                        ),
-                        child: Column(
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.tiktok, size: 20),
-                                  const SizedBox(width: 8),
-                                  Expanded(child: Text('فيديوهات لـ: $productName', style: const TextStyle(fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-                                  IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-                                ],
-                              ),
-                            ),
-                            if (mounted)
-                              Expanded(
-                                child: Obx(() => TikTokVideoGrid(videos: _agent.currentTrendVideos.cast<TikTokVideo>(), isScrollable: true)),
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-                VisibilityControlled(
-                  controlName: 'chat_smart_video',
-                  child: _buildAttachmentItem(Icons.movie_creation_outlined, 'فيديو ذكي', Colors.purpleAccent, () {
-                    Navigator.pop(context);
-                    if (selectedImages.isEmpty) {
-                      SnackBarUtils.showSmartSnackBar(title: 'تنبيه', message: 'الرجاء اختيار صورة منتج أولاً!', isError: true);
-                    } else {
-                      _handleSmartVideoGeneration();
-                    }
-                  }),
-                ),
-                VisibilityControlled(
-                  controlName: 'chat_auto_director',
-                  child: _buildAttachmentItem(Icons.auto_awesome, 'توليد تلقائي 🎬', Colors.deepPurple, () {
-                    Navigator.pop(context);
-                    _agent.autoDirectorMode();
-                  }),
-                ),
-                VisibilityControlled(
-                  controlName: 'chat_video_enhancer',
-                  child: _buildAttachmentItem(Icons.auto_fix_high, 'محسن الفيديو', Colors.deepPurple, () async {
-                    Navigator.pop(context);
-                    final XFile? videoFile = await picker.pickVideo(source: ImageSource.gallery);
-                    if (videoFile != null) _showAspectRatioDialog(File(videoFile.path));
-                  }),
-                ),
               ],
             ),
           ],
@@ -359,116 +234,9 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
     );
   }
 
-  void _showAspectRatioDialog(File video) {
-    Get.defaultDialog(
-      title: "إطار الفيديو 🎞️",
-      content: const Text("اختر المنصة المستهدفة لتنسيق الفيديو تلقائياً:"),
-      backgroundColor: AppTheme.surfaceColor,
-      titleStyle: const TextStyle(fontWeight: FontWeight.bold),
-      actions: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _ratioDialogItem(video, "Original", Icons.aspect_ratio),
-            _ratioDialogItem(video, "9:16", Icons.smartphone),
-            _ratioDialogItem(video, "16:9", Icons.tv),
-            _ratioDialogItem(video, "1:1", Icons.crop_square),
-          ],
-        )
-      ],
-    );
-  }
 
-  Widget _ratioDialogItem(File video, String ratio, IconData icon) {
-    return ListTile(
-      leading: Icon(icon, color: const Color.fromARGB(255, 206, 109, 150)),
-      title: Text(ratio == "Original" ? "الأصلي (كما هو)" : ratio),
-      onTap: () {
-        Get.back();
-        _enhanceVideoWithAI(video, ratio: ratio);
-      },
-    );
-  }
 
-  Future<void> _enhanceVideoWithAI(File video, {String ratio = "Original"}) async {
-    _agent.isLoading.value = true;
-    try {
-      final analysis = await _geminiVisionService.analyzeVideoQuality(video);
-      final filters = await _geminiVisionService.buildEnhancementFilters(analysis);
-      final tempDir = await getTemporaryDirectory();
-      final outputPath = p.join(tempDir.path, 'ai_enhanced_${DateTime.now().millisecondsSinceEpoch}.mp4');
-      final result = await FfmpegService.enhanceVideo(inputPath: video.path, outputPath: outputPath, filterChain: filters, targetRatio: ratio);
-      if (result != null) {
-        _agent.history.add(ChatMessage.assistant(content: "✨ تم تحسين الفيديو بنجاح بمعايير Cinema 4K!").copyWith(state: MessageState.completed, videoUrl: result.path));
-      }
-    } catch (e) {
-      SnackBarUtils.showSmartSnackBar(title: "❌ فشل التحسين", message: e.toString(), isError: true);
-    } finally {
-      _agent.isLoading.value = false;
-    }
-  }
 
-  void _showQuickToolsMenu() {
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.fromLTRB(10, 10, 20, 20),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0F1117).withValues(alpha: 0.98),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(width: 20, height: 4, margin: const EdgeInsets.only(bottom: 20), decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-            const Text("الأدوات السريعة ⚡", style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 20),
-            GridView.count(
-              shrinkWrap: true,
-              crossAxisCount: 3,
-              mainAxisSpacing: 20,
-              crossAxisSpacing: 15,
-              children: [
-                _buildQuickToolItem(icon: Icons.shopping_cart_rounded, label: "تسوق 🛒", color: Colors.greenAccent, onTap: () => _triggerQuickTool("shopping")),
-                _buildQuickToolItem(icon: Icons.trending_up_rounded, label: "تريندات 📈", color: Colors.pinkAccent, onTap: () => _triggerQuickTool("google_short_videos")),
-                _buildQuickToolItem(icon: Icons.play_circle_fill_rounded, label: "فيديوهات 🎬", color: Colors.redAccent, onTap: () => _triggerQuickTool("videos")),
-                _buildQuickToolItem(icon: Icons.newspaper_rounded, label: "أخبار 📰", color: Colors.lightBlueAccent, onTap: () => _triggerQuickTool("news")),
-                _buildQuickToolItem(icon: Icons.auto_fix_high_rounded, label: "توليد صور 🎨", color: Colors.purpleAccent, onTap: () => _triggerQuickTool("image_gen")),
-                _buildQuickToolItem(icon: Icons.camera_alt_rounded, label: "فحص صورة 🔍", color: Colors.indigoAccent, onTap: () => _triggerQuickTool("lens")),
-              ],
-            ),
-          ],
-        ),
-      ),
-      isScrollControlled: true,
-    );
-  }
-
-  void _triggerQuickTool(String id) {
-    Get.back();
-    final query = _agent.lastAnalyzedProduct.value ?? _controller.text;
-    _agent.handleSuggestedAction(SuggestedAction(label: id, toolId: id, parameters: {"query": query, "product": query}), selectedImages.isNotEmpty ? selectedImages.first : null);
-  }
-
-  Future<void> _handleSmartVideoGeneration() async {
-    if (selectedImages.isEmpty) return;
-    final imageToUse = selectedImages.first;
-    _agent.isLoading.value = true;
-    await _agent.sendUserMessage("قم بإنشاء فيديو تسويقي لهذا المنتج (Pipeline) 🎬", image: imageToUse, analyzeImage: false);
-    try {
-      final videoUrl = await _videoPipeline.generateVideo(image: imageToUse, onStatusUpdate: (status) {
-        _agent.pipelineMessage.value = status.message;
-        _agent.pipelineProgress.value = status.progress;
-      });
-      _agent.history.add(ChatMessage.assistant(content: "🚀 تم إنشاء الفيديو بنجاح!\n[VIDEO:$videoUrl]").copyWith(state: MessageState.completed, image: imageToUse));
-    } catch (e) {
-      _agent.history.add(ChatMessage.assistant(content: "❌ فشل الإنشاء: $e").copyWith(state: MessageState.completed));
-    } finally {
-      _agent.isLoading.value = false;
-      setState(() => selectedImages = []);
-      _scrollToBottom();
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -476,7 +244,7 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
       textDirection: TextDirection.rtl,
       child: Scaffold(
         resizeToAvoidBottomInset: true,
-        backgroundColor: Colors.black,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         drawer: const ChatDrawer(),
         extendBodyBehindAppBar: true,
         appBar: _buildVipAppBar(context),
@@ -494,92 +262,110 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
                 behavior: HitTestBehavior.translucent,
                 child: Column(
                   children: [
-                    // 📜 منطقة الرسائل
                     Expanded(
-                      child: Obx(() {
-                        final msgs = _agent.history;
-                        final isLoading = _agent.isLoading.value;
+                      child: Stack(
+                        children: [
+                          // 📜 القائمة الأساسية: تراقب فقط طول السجل
+                           Obx(() {
+                              final msgs = _agent.history;
+                              if (msgs.isEmpty) return _buildEmptyState();
 
-                        if (msgs.isEmpty && isLoading) {
-                          return const Center(child: CircularProgressIndicator());
-                        }
-                        if (msgs.isEmpty) return _buildEmptyState();
-
-                        return RefreshIndicator(
-                          onRefresh: () async {
-                            await Future.delayed(const Duration(milliseconds: 800));
-                            setState(() {});
-                          },
-                          child: Stack(
-                            children: [
-                              ListView.builder(
+                              return ListView.builder(
                                 controller: _scrollController,
                                 physics: const BouncingScrollPhysics(),
-                                padding: EdgeInsets.only(
-                                  left: 16,
-                                  right: 16,
-                                  top: 15, // تقليل البادينج العلوي بعد إضافة SafeArea
-                                  bottom: 20,
-                                ),
-                                itemCount: msgs.length + (isLoading ? 1 : 0),
+                                padding: const EdgeInsets.only(left: 16, right: 16, top: 15, bottom: 80),
+                                itemCount: msgs.length,
                                 itemBuilder: (context, index) {
-                                  if (index == msgs.length) {
-                                    return Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 20),
-                                      child: Column(
-                                        children: [
-                                          const ChatLoadingShimmer(),
-                                          if (_agent.pipelineMessage.value.isNotEmpty)
-                                            Text(
-                                              _agent.pipelineMessage.value,
-                                              style: const TextStyle(
-                                                  fontSize: 10, color: Colors.white54),
-                                            )
-                                        ],
-                                      ),
-                                    );
-                                  }
-                                  final msg = msgs[index];
-                                  return VipMessageEntry(
-                                    index: index,
-                                    child: Align(
-                                      alignment: msg.role == 'user'
-                                          ? Alignment.centerRight
-                                          : Alignment.centerLeft,
-                                      child: SwipeToReply(
+                                final msg = msgs[index];
+                                return VipMessageEntry(
+                                  index: index,
+                                  child: Align(
+                                    alignment: msg.role == 'user' ? Alignment.centerRight : Alignment.centerLeft,
+                                    child: SwipeToReply(
+                                      isUser: msg.role == 'user',
+                                      enabled: canReplyTo(msg),
+                                      onSwipe: () => setState(() => _replyingToMessage = msg),
+                                      child: ChatBubble(
+                                        id: msg.id,
+                                        text: msg.content,
                                         isUser: msg.role == 'user',
-                                        enabled: canReplyTo(msg),
-                                        onSwipe: () =>
-                                            setState(() => _replyingToMessage = msg),
-                                        child: ChatBubble(
-                                          id: msg.id,
-                                          text: msg.content,
-                                          isUser: msg.role == 'user',
-                                          image: msg.image,
-                                          state: msg.state,
-                                          isError: msg.isError,
-                                          agentResult: msg.agentResult,
-                                        ),
+                                        type: msg.type,
+                                        image: msg.image,
+                                        videoUrl: msg.videoUrl,
+                                        videoThumbnail: msg.videoThumbnail,
+                                        videoAuthor: msg.videoAuthor,
+                                        mediaPath: msg.mediaPath,
+                                        state: msg.state,
+                                        isError: msg.isError,
+                                        agentResult: msg.agentResult,
+                                        productContext: msg.productContext,
+                                        provider: msg.provider,
                                       ),
                                     ),
-                                  );
-                                },
-                              ),
-                              if (_showScrollToBottom)
-                                Positioned(
-                                  bottom: 20,
-                                  left: 20,
-                                  child: FloatingActionButton.small(
-                                    onPressed: () => _scrollToBottom(force: true),
-                                    backgroundColor: Colors.black54,
-                                    child: const Icon(Icons.arrow_downward,
-                                        color: Colors.white),
+                                  ),
+                                );
+                              },
+                            );
+                          }),
+
+                          // ⚙️ منطقة حالة المعالجة (منفصلة تماماً لعدم كسر الفيديوهات)
+                          Positioned(
+                            bottom: 10,
+                            left: 0,
+                            right: 0,
+                            child: Obx(() {
+                              if (!_agent.isLoading.value) return const SizedBox.shrink();
+                              return Center(
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    maxWidth: MediaQuery.of(context).size.width * 0.85,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black54,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: const Color(0xFF00FF88).withValues(alpha: 0.2)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const SizedBox(
+                                        width: 12,
+                                        height: 12,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF00FF88)),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Flexible(
+                                        child: Text(
+                                          _agent.pipelineMessage.value.isEmpty ? "جاري المعالجة..." : _agent.pipelineMessage.value,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(fontSize: 11, color: Colors.white70),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                            ],
+                              );
+                            }),
                           ),
-                        );
-                      }),
+                          if (_showScrollToBottom)
+                            Positioned(
+                              bottom: 20,
+                              left: 20,
+                              child: FloatingActionButton.small(
+                                onPressed: () => _scrollToBottom(force: true),
+                                backgroundColor: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.black54
+                                    : Colors.white.withValues(alpha: 0.8),
+                                child: Icon(Icons.arrow_downward,
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? Colors.white
+                                        : Colors.black87),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
 
                     // 💬 منطقة الإدخال
@@ -593,9 +379,13 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
                           replyingToMessage: _replyingToMessage,
                           onClearReply: () =>
                               setState(() => _replyingToMessage = null),
-                          productContext: _agent.lastAnalyzedProduct.value,
-                          onClearContext: () =>
-                              _agent.lastAnalyzedProduct.value = null,
+                          productContext: (_agent.lastSearchQuery.value.isNotEmpty)
+                              ? _agent.lastSearchQuery.value
+                              : _agent.lastAnalyzedProduct.value,
+                          onClearContext: () {
+                            _agent.lastAnalyzedProduct.value = null;
+                            _agent.lastSearchQuery.value = ""; // 🔥 مسح الاستعلام التفصيلي أيضاً
+                          },
                           smartActions: _agent.availableSmartActions,
                           onActionTap: (action) => _agent.handleSuggestedAction(
                               action,
@@ -603,7 +393,6 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
                               images: selectedImages),
                           onSend: sendMessage,
                           onCancel: _agent.cancelCurrentOperation,
-                          onShowQuickTools: _showQuickToolsMenu,
                           onShowAttachmentMenu: _showAttachmentMenu,
                           onAudioEnhance: handleAudioEnhancement,
                           onRemoveImage: (index) {
@@ -625,6 +414,7 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
   }
 
   PreferredSizeWidget _buildVipAppBar(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return PreferredSize(
       preferredSize: const Size.fromHeight(70),
       child: ClipRRect(
@@ -632,15 +422,15 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
           filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
           child: AppBar(
             automaticallyImplyLeading: false,
-            title: const Text('المحتوى الذكي VIP', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+            title: Text('صانع المحتوى  ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
             centerTitle: true,
             elevation: 0,
-            backgroundColor: Colors.black.withValues(alpha: 0.2),
-            leading: Builder(builder: (context) => IconButton(icon: const Icon(Icons.menu), onPressed: () => Scaffold.of(context).openDrawer())),
+            backgroundColor: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.2),
+            leading: Builder(builder: (context) => IconButton(icon: Icon(Icons.menu, color: isDark ? Colors.white : Colors.black87), onPressed: () => Scaffold.of(context).openDrawer())),
             actions: [
               const ApiKeyStatusIndicator(),
-              _buildAppBarAction(icon: Icons.add, color: Colors.greenAccent, onTap: () => _agent.forceClearHistory()),
-              _buildAppBarAction(icon: Icons.settings, onTap: () => Get.toNamed('/settings')),
+              _buildAppBarAction(context: context, icon: Icons.add, color: AppTheme.primary, onTap: () => _agent.forceClearHistory()),
+              _buildAppBarAction(context: context, icon: Icons.settings, onTap: () => Get.toNamed('/settings')),
             ],
           ),
         ),
@@ -648,19 +438,19 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
     );
   }
 
-  Widget _buildAppBarAction({required IconData icon, Color? color, required VoidCallback onTap}) {
-    return IconButton(icon: Icon(icon, color: color ?? Colors.white70), onPressed: onTap);
+  Widget _buildAppBarAction({required BuildContext context, required IconData icon, Color? color, required VoidCallback onTap}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return IconButton(icon: Icon(icon, color: color ?? (isDark ? Colors.white70 : Colors.black54)), onPressed: onTap);
   }
 
-  Widget _buildQuickToolItem({required IconData icon, required String label, required Color color, required VoidCallback onTap}) {
-    return Column(children: [IconButton(icon: Icon(icon, color: color), onPressed: onTap), Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10))]);
-  }
 
   Widget _buildAttachmentItem(IconData icon, String label, Color color, VoidCallback onTap) {
-    return Column(children: [IconButton(icon: Icon(icon, color: color), onPressed: onTap), Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10))]);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Column(children: [IconButton(icon: Icon(icon, color: color), onPressed: onTap), Text(label, style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 10))]);
   }
 
   Widget _buildEmptyState() {
-    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.auto_awesome, size: 64, color: Colors.white.withValues(alpha: 0.2)), const Text("مرحباً! أنا جاهز لمساعدتك", style: TextStyle(color: Colors.white70, fontSize: 18))]));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.auto_awesome, size: 64, color: isDark ? Colors.white.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.1)), Text("مرحباً! أنا جاهز لمساعدتك", style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 18))]));
   }
 }

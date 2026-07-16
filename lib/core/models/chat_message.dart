@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:smart_content_creator/widgets/media_action_bar.dart';
 import 'package:smart_content_creator/ai/core/agent_models.dart';
 
@@ -59,6 +58,7 @@ class ChatMessage {
   final AgentResult? agentResult; // 🤖 Typed AI Agent results
   final Map<String, dynamic>? errorDetails; // 🔴 UI payload for glassmorphic error cards
   final String? productContext; // 🧠 The product name/brand this message refers to
+  final String? provider; // 🤖 اسم محرك الذكاء الاصطناعي المستخدم
 
   ChatMessage({
     required this.id,
@@ -91,6 +91,7 @@ class ChatMessage {
     this.agentResult,
     this.errorDetails,
     this.productContext,
+    this.provider,
   });
 
   /// 🛠️ منشئ مخصص لرسائل المستخدم (Named Constructor)
@@ -108,6 +109,7 @@ class ChatMessage {
     ReplyMode replyMode = ReplyMode.discussion,
     String? styleSummary,
     String? productContext,
+    String? provider,
   }) {
     String finalType = type;
     File? firstImage = image;
@@ -126,10 +128,17 @@ class ChatMessage {
       finalMediaPaths ??= images.map((f) => f.path).toList();
     }
 
+    String finalContent = content;
+    if (finalContent.trim().isEmpty) {
+      finalContent = firstImage != null
+          ? 'صورة'
+          : (mediaPath != null ? 'ملف' : 'نص');
+    }
+
     return ChatMessage(
       id: "user_${DateTime.now().microsecondsSinceEpoch}",
       role: 'user',
-      content: content,
+      content: finalContent,
       image: firstImage,
       images: images,
       type: finalType,
@@ -143,11 +152,13 @@ class ChatMessage {
       replyMode: replyMode,
       styleSummary: styleSummary,
       productContext: productContext,
+      provider: provider,
     );
   }
 
   /// 🛠️ منشئ مخصص لرسائل المساعد (Assistant)
   factory ChatMessage.assistant({
+    String? id,
     String content = "",
     String type = 'text',
     MessageState state = MessageState.pending,
@@ -160,9 +171,10 @@ class ChatMessage {
     Map<String, dynamic>? errorDetails,
     bool isError = false,
     String? productContext,
+    String? provider,
   }) {
     return ChatMessage(
-      id: "asst_${DateTime.now().microsecondsSinceEpoch}_${UniqueKey().toString()}",
+      id: id ?? "asst_${DateTime.now().microsecondsSinceEpoch}",
       role: 'assistant',
       content: content,
       type: type,
@@ -176,6 +188,7 @@ class ChatMessage {
       isError: state == MessageState.error || (errorDetails != null),
       errorDetails: errorDetails,
       productContext: productContext,
+      provider: provider,
     );
   }
 
@@ -200,7 +213,7 @@ class ChatMessage {
     bool? isGenerating,
     MessageState? state,
     List<String>? words,
-    bool? isNew, // 🆕 Support updating isNew flag
+    bool? isNew,
     String? replyToId,
     String? replyToContent,
     String? replyToRole,
@@ -208,9 +221,12 @@ class ChatMessage {
     AgentResult? agentResult,
     Map<String, dynamic>? errorDetails,
     String? productContext,
+    String? provider,
+    bool clearAgentResult = false, // 🆕 Flag to explicitly clear agent result
+    bool clearVideoUrl = false,    // 🆕 Flag to explicitly clear video url
   }) {
     return ChatMessage(
-      id: id ?? this.id, // Support updating ID if needed (e.g. for history)
+      id: id ?? this.id,
       role: role ?? this.role,
       content: content ?? this.content,
       isError: isError ?? this.isError,
@@ -219,7 +235,7 @@ class ChatMessage {
       type: type ?? this.type,
       mediaPath: mediaPath ?? this.mediaPath,
       mediaPaths: mediaPaths ?? this.mediaPaths,
-      videoUrl: videoUrl ?? this.videoUrl,
+      videoUrl: clearVideoUrl ? null : (videoUrl ?? this.videoUrl),
       videoThumbnail: videoThumbnail ?? this.videoThumbnail,
       videoAuthor: videoAuthor ?? this.videoAuthor,
       responseImageUrl: responseImageUrl ?? this.responseImageUrl,
@@ -229,14 +245,15 @@ class ChatMessage {
       isGenerating: isGenerating ?? this.isGenerating,
       state: state ?? this.state,
       words: words ?? this.words,
-      isNew: isNew ?? this.isNew, // 🆕 Preserve isNew flag
+      isNew: isNew ?? this.isNew,
       replyToId: replyToId ?? this.replyToId,
       replyToContent: replyToContent ?? this.replyToContent,
       replyToRole: replyToRole ?? this.replyToRole,
       recommendations: recommendations ?? this.recommendations,
-      agentResult: agentResult ?? this.agentResult,
+      agentResult: clearAgentResult ? null : (agentResult ?? this.agentResult),
       errorDetails: errorDetails ?? this.errorDetails,
       productContext: productContext ?? this.productContext,
+      provider: provider ?? this.provider,
     );
   }
 
@@ -262,6 +279,7 @@ class ChatMessage {
         orElse: () => MessageState.completed,
       ),
       productContext: map['product_context'],
+      provider: map['provider']?.toString(),
     );
   }
 
@@ -281,6 +299,7 @@ class ChatMessage {
       'is_error': isError ? 1 : 0,
       'state': state.name,
       'product_context': productContext,
+      'provider': provider,
       'created_at': DateTime.now().toIso8601String(),
     };
   }

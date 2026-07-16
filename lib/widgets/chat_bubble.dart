@@ -4,6 +4,8 @@ import 'package:flutter/material.dart' hide Intent;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'video_full_screen_viewer.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -23,6 +25,7 @@ import '../core/models/chat_message.dart';
 import '../core/models/tiktok_video.dart';
 import '../ai/core/agent_models.dart';
 import '../ai/ui/agent_result_renderer.dart';
+import '../controllers/auth_controller.dart';
 
 class ChatBubble extends StatefulWidget {
   final String id;
@@ -49,12 +52,15 @@ class ChatBubble extends StatefulWidget {
   final String? productContext; // 🧠 Active product context
   final AgentResult? agentResult; // 🤖 Added AgentResult Support
   final Map<String, dynamic>? errorDetails; // 🔴 For glassmorphic error cards
+  final String type; // 🧬 Message type (text, generated_video, etc.)
+  final String? provider; // 🤖 اسم محرك الذكاء الاصطناعي المستخدم
 
   const ChatBubble({
     super.key,
     required this.id,
     required this.text,
     required this.isUser,
+    this.type = 'text',
     this.image,
     this.videoUrl,
     this.videoThumbnail,
@@ -76,6 +82,7 @@ class ChatBubble extends StatefulWidget {
     this.productContext,
     this.agentResult,
     this.errorDetails,
+    this.provider,
   });
 
   @override
@@ -94,55 +101,117 @@ class _ChatBubbleState extends State<ChatBubble> {
     _initializeContent();
   }
 
+  String? _lastProcessedSource;
+
   void _initializeContent() {
     if (widget.text.contains('[SMART_AD:')) _parseSmartAd();
 
-    // استخراج الفيديو من النص أو الـ property
+    // 🎥 استخراج الفيديو من كافة المصادر الممكنة
+    String? newSource;
+
     if (widget.text.contains('[VIDEO:')) {
       final regex = RegExp(r'\[VIDEO:([^\]]+)\]');
       final match = regex.firstMatch(widget.text);
-      if (match != null) _currentVideoSource = match.group(1);
-    } else {
-      _currentVideoSource = widget.videoUrl;
+      if (match != null) newSource = match.group(1);
     }
 
-    // منطق الـ Streaming (الكتابة الحية)
+    if (widget.videoUrl != null && widget.videoUrl!.isNotEmpty) {
+      newSource = widget.videoUrl;
+    }
+
+    if (newSource == null) {
+      if (widget.mediaPath != null && _isPathVideo(widget.mediaPath!)) {
+        newSource = widget.mediaPath;
+      } else if (widget.image != null && _isPathVideo(widget.image!.path)) {
+        newSource = widget.image!.path;
+      }
+    }
+
+    if (newSource == null || newSource.isEmpty) {
+      final urlRegex = RegExp(r'https?://[^\s]+\.(mp4|mov|avi|mkv)[^\s]*');
+      final match = urlRegex.firstMatch(widget.text);
+      if (match != null) {
+        newSource = match.group(0);
+      }
+    }
+
+    // 🛡️ حماية: لا تقم بتحديث الـ State أو طباعة سجلات مكررة إذا لم يتغير الرابط
+    if (newSource == _lastProcessedSource && _currentVideoSource != null) {
+      return;
+    }
+
+    _currentVideoSource = newSource;
+    _lastProcessedSource = newSource;
+
+    if (_currentVideoSource == null) {
+      debugPrint("⚠️ [ChatBubble] ${widget.id}: No video source found.");
+    } else {
+      debugPrint(
+          "✅ [ChatBubble] ${widget.id}: Video source FOUND: $_currentVideoSource");
+    }
+
     if (!widget.isUser && widget.text.isNotEmpty) {
       if (widget.state == MessageState.streaming) {
         _displayText = _cleanText();
       } else if (widget.isNew) {
-        _startFakeStreaming(_cleanText());
+        _displayStreamedText();
       } else {
         _displayText = _cleanText();
       }
     }
+
+    if (mounted) setState(() {});
   }
 
   @override
   void didUpdateWidget(covariant ChatBubble oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.text != widget.text ||
-        oldWidget.state != widget.state ||
+
+    // 🛡️ حماية: لا تعيد التهيئة إلا إذا تغيرت خصائص الفيديو أو المحتوى الأساسي فعلياً
+    bool videoChanged = oldWidget.videoUrl != widget.videoUrl ||
+        oldWidget.mediaPath != widget.mediaPath ||
+        oldWidget.videoThumbnail != widget.videoThumbnail;
+
+    bool contentChanged = oldWidget.text != widget.text ||
         oldWidget.id != widget.id ||
-        oldWidget.agentResult != widget.agentResult) {
+        oldWidget.state != widget.state;
+
+    if (videoChanged) {
+      debugPrint(
+          "🎬 [ChatBubble] Video properties changed, re-initializing content for ${widget.id}");
       _initializeContent();
+      if (mounted) setState(() {});
+    } else if (contentChanged) {
+      // للتغييرات النصية أو الحالة، نحدث الواجهة فقط دون إعادة تهيئة الفيديو
+      if (widget.state == MessageState.streaming) {
+        _displayText = _cleanText();
+      } else if (widget.isNew && oldWidget.isNew != widget.isNew) {
+        _displayStreamedText();
+      } else {
+        _displayText = _cleanText();
+      }
+      if (mounted) setState(() {});
     }
   }
 
-  void _startFakeStreaming(String fullText) async {
+  Future<void> _displayStreamedText() async {
+    _displayText = "";
+    final fullText = _cleanText();
     if (fullText.isEmpty) return;
-    _displayText = '';
-    final runes = fullText.runes.toList();
-    for (int i = 0; i < runes.length; i++) {
-      await Future.delayed(const Duration(milliseconds: 6));
+
+    // 🕒 تحسين: تجميع التحديثات لتقليل الـ Rebuild Storm
+    int step = (fullText.length > 500) ? 5 : 2;
+
+    for (int i = 0; i < fullText.length; i += step) {
       if (!mounted) return;
-      if (widget.state == MessageState.streaming) {
-        setState(() => _displayText = _cleanText());
-        return;
-      }
+
+      int end = (i + step < fullText.length) ? i + step : fullText.length;
       setState(() {
-        _displayText = String.fromCharCodes(runes.getRange(0, i + 1));
+        _displayText = fullText.substring(0, end);
       });
+
+      await Future.delayed(const Duration(milliseconds: 30));
+      if (!mounted) return;
     }
   }
 
@@ -272,9 +341,23 @@ class _ChatBubbleState extends State<ChatBubble> {
                   if (hasImage && _smartAdData == null) _buildImageDisplay(),
                   if (widget.videoUrl != null && widget.videoThumbnail != null)
                     _buildTikTokVideoWidget(cleanText),
-                  if (_currentVideoSource != null &&
+                  if ((_currentVideoSource != null ||
+                          widget.type == 'generated_video') &&
                       widget.videoThumbnail == null)
-                    _buildModernVideoPlayer(),
+                    _currentVideoSource != null ||
+                            widget.state == MessageState.pending
+                        ? RepaintBoundary(
+                            child: ModernVideoBubble(
+                              id: widget.id,
+                              key: ValueKey(
+                                  'video_${widget.id}'), // 🛡️ مفتاح ثابت لمنع إعادة البناء أثناء الـ Streaming
+                              videoPath: _currentVideoSource,
+                              isLocal: _isLocalSource(_currentVideoSource),
+                              isPending: widget.state == MessageState.pending,
+                              thumbnailUrl: widget.videoThumbnail,
+                            ),
+                          )
+                        : _buildVideoErrorDisplay("🎬 الفيديو غير متاح حالياً"),
 
                   // 🔴 Glassmorphic Error Card for AI Errors
                   if (widget.errorDetails != null)
@@ -284,11 +367,18 @@ class _ChatBubbleState extends State<ChatBubble> {
                         widget.errorDetails!['isApiKeyError'] == true,
                         isDark),
 
-                  if (cleanText.isNotEmpty && widget.errorDetails == null)
+                  // 📝 Render text only if it's NOT a redundant video-pending message
+                  if (cleanText.isNotEmpty &&
+                      widget.errorDetails == null &&
+                      !(widget.type == 'generated_video' &&
+                          widget.state == MessageState.pending))
                     _buildTextWithExpand(cleanText, isDark, isError),
 
                   // 🤖 AI Agent Result Rendering (Decoupled)
-                  if (widget.agentResult != null) ...[
+                  // 🛡️ Hide redundant blue status box if we already have a ModernVideoBubble (type: generated_video)
+                  if (widget.agentResult != null &&
+                      widget.videoUrl == null &&
+                      widget.type != 'generated_video') ...[
                     Container(
                       margin: const EdgeInsets.symmetric(vertical: 8),
                       padding: const EdgeInsets.all(8),
@@ -305,7 +395,20 @@ class _ChatBubbleState extends State<ChatBubble> {
                           const SizedBox(width: 4),
                           Flexible(
                             child: Text(
-                              "SMART_DATA: ${widget.agentResult!.type.toString().split('.').last.toUpperCase()}",
+                              () {
+                                String type = widget.agentResult!.type
+                                    .toString()
+                                    .split('.')
+                                    .last
+                                    .toUpperCase();
+                                if (type == 'TEXT' &&
+                                    widget.agentResult!.data
+                                        .toString()
+                                        .contains('task_id')) {
+                                  return "SMART_DATA: VIDEO_TASK";
+                                }
+                                return "SMART_DATA: $type";
+                              }(),
                               style: const TextStyle(
                                   color: Colors.purple,
                                   fontSize: 9, // 📏 Smaller for safety
@@ -318,6 +421,7 @@ class _ChatBubbleState extends State<ChatBubble> {
                     ),
                     AgentResultRenderer.render(widget.agentResult!),
                   ],
+                  if (!widget.isUser) _buildProviderBadge(isDark),
                 ],
               ),
             ),
@@ -505,17 +609,48 @@ class _ChatBubbleState extends State<ChatBubble> {
     );
   }
 
+  bool _isLocalSource(String? path) {
+    if (path == null) return false;
+    return !path.startsWith('http');
+  }
+
+  bool _isPathVideo(String path) {
+    final lower = path.toLowerCase();
+    return lower.endsWith('.mp4') ||
+        lower.endsWith('.mov') ||
+        lower.endsWith('.avi') ||
+        lower.endsWith('.mkv');
+  }
+
   Widget _buildImageDisplay() {
+    // 🛡️ إذا كان الملف فيديو، لا نعرضه هنا (سيتم عرضه بواسطة _buildModernVideoPlayer)
+    final String? path = widget.mediaPath ?? widget.image?.path;
+    if (path != null && _isPathVideo(path)) {
+      return const SizedBox.shrink();
+    }
+
     final heroTag = "img_${widget.id}";
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: GestureDetector(
         onTap: () {
+          final String? path = widget.mediaPath ?? widget.image?.path;
+          if (path != null && _isPathVideo(path)) {
+            Get.to(
+              () => VideoFullScreenViewer(
+                videoUrl: path,
+                isLocal: true,
+              ),
+              transition: Transition.zoom,
+            );
+            return;
+          }
+
           Get.to(
             () => FullScreenImageViewer(
               imageFile: widget.image,
               imageUrl: widget.responseImageUrl,
-              mediaPath: widget.mediaPath, // 📸 Pass local path
+              mediaPath: widget.mediaPath,
               tag: heroTag,
             ),
             transition: Transition.fadeIn,
@@ -556,11 +691,29 @@ class _ChatBubbleState extends State<ChatBubble> {
                             File(widget.mediaPath!),
                             width: 280,
                             fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const SizedBox(
+                              width: 280,
+                              height: 200,
+                              child: Center(
+                                child: Icon(Icons.broken_image,
+                                    size: 40, color: Colors.grey),
+                              ),
+                            ),
                           )
                         : Image.file(
                             widget.image!,
                             width: 280,
                             fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const SizedBox(
+                              width: 280,
+                              height: 200,
+                              child: Center(
+                                child: Icon(Icons.broken_image,
+                                    size: 40, color: Colors.grey),
+                              ),
+                            ),
                           ))),
           ),
         ),
@@ -585,100 +738,158 @@ class _ChatBubbleState extends State<ChatBubble> {
     );
   }
 
-  Widget _buildModernVideoPlayer() {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: ModernVideoBubble(
-        videoPath: _currentVideoSource,
-        thumbnailUrl: widget.videoThumbnail,
-        isLocal: widget.image != null ||
-            (_currentVideoSource != null &&
-                !_currentVideoSource!.startsWith('http')),
+  Widget _buildVideoErrorDisplay(String message) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline_rounded,
+                  color: Colors.redAccent, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                message,
+                style: GoogleFonts.ibmPlexSansArabic(
+                  color: Colors.redAccent,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: _initializeContent,
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: const Text("تحديث الرابط", style: TextStyle(fontSize: 11)),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.white70,
+              backgroundColor: Colors.white10,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildBottomActions() {
+    // final String cleanText = widget.isUser ? widget.text : _displayText;
     // 🧠 Dynamic Action Compilation
     List<dynamic> effectiveActions = [];
+
+    // Resolve the specific product context for this bubble only (no global fallback)
+    final String? resolvedProductContext =
+        widget.productContext?.isNotEmpty == true
+            ? widget.productContext
+            : null;
+
     if (widget.actions != null && widget.actions!.isNotEmpty) {
-      effectiveActions = List<dynamic>.from(widget.actions!);
+      // If actions were passed dynamically, update their payloads to carry resolvedProductContext if they are empty
+      effectiveActions = widget.actions!.map((a) {
+        if (a is Map<String, dynamic>) {
+          final map = Map<String, dynamic>.from(a);
+          if (map['payload'] == null || map['payload'].toString().isEmpty) {
+            map['payload'] = resolvedProductContext;
+          }
+          return map;
+        }
+        return a;
+      }).toList();
     } else {
       effectiveActions = [
         {
-          "label": "📊 تريندات جوجل",
-          "action": "trend_search",
-          "payload": widget.productContext
-        },
-        {
           "label": "🔎 بحث تيك توك",
           "action": "tiktok_link",
-          "payload": widget.productContext
+          "payload": resolvedProductContext
         },
         {
-          "label": "📸 بحث انستقرام",
+          "label": "🔖بحث هاشتاق تيك توك",
+          "action": "tiktok_hashtag",
+          "payload": resolvedProductContext
+        },
+        {
+          "label": "🎵 بحث Douyin",
+          "action": "douyin_link",
+          "payload": resolvedProductContext
+        },
+        {
+          "label": "📕 بحث Rednote",
+          "action": "rednote_link",
+          "payload": resolvedProductContext
+        },
+        {
+          "label": "🐦 بحث تويتر",
+          "action": "twitter_link",
+          "payload": resolvedProductContext
+        },
+        {
+          "label": "⚡ بحث Kuaishou",
+          "action": "kuaishou_link",
+          "payload": resolvedProductContext
+        },
+        {
+          "label": "📋 وصف متكامل لكل المنصات",
+          "action": "full_platform_description",
+          "payload": resolvedProductContext
+        },
+        {
+          "label": "🔧 بحث JD.com",
+          "action": "jd_link",
+          "payload": resolvedProductContext
+        },
+        {
+          "label": "📸 بحث إنستقرام",
           "action": "instagram_link",
-          "payload": widget.productContext
+          "payload": resolvedProductContext
         },
         {
-          "label": "🔍 بحث بصري (Lens)",
-          "action": "visual_search",
-          "payload": widget.productContext
-        },
-        {
-          "label": "🛍️ بحث امازون",
-          "action": "amazon_search",
-          "payload": widget.productContext
-        },
-        {
-          "label": "📦 استيراد علي بابا",
-          "action": "alibaba_sourcing",
-          "payload": widget.productContext
+          "label": "🎬 شورت يوتيوب",
+          "action": "youtube_shorts_link",
+          "payload": resolvedProductContext
         },
         {
           "label": "✍️ وصف تسويقي ✨",
           "action": "generate_ad",
-          "payload": widget.productContext
-        },
-        {
-          "label": "✂️ إزالة الخلفية",
-          "action": "remove_background",
-          "payload": widget.productContext
+          "payload": resolvedProductContext
         },
         {
           "label": "🎬 فيديو Kling AI 🚀",
           "action": "generate_kling_video",
-          "payload": widget.productContext
+          "payload": resolvedProductContext
         },
         {
-          "label": "🎨 استوديو الصور 🖼️",
-          "action": "generate_creative_image",
-          "payload": widget.productContext
+          "label": "🎨 تصميم إعلان احترافي",
+          "action":
+              "generate_branded_ad", // ✨ Use the new, more powerful action
+          "payload":
+              resolvedProductContext // Payload might not be needed if it uses the last image
         },
         {
-          "label": "🖼️ صور المنتج",
+          "label": "🖼️ عدسة google",
           "action": "google_images",
-          "payload": widget.productContext
+          "payload": resolvedProductContext
         },
         {
-          "label": "📰 أخبار جوجل",
-          "action": "google_news",
-          "payload": widget.productContext
-        },
-        {
-          "label": "🧠 فحص ذكي",
-          "action": "bing_copilot",
-          "payload": widget.productContext
-        },
-        {
-          "label": "🎬 فيديوهات مشابهة",
+          "label": "🔍 فيديوهات بالصورة",
           "action": "similar_videos",
-          "payload": widget.productContext
+          "payload": resolvedProductContext
         },
       ];
     }
 
-    // ✂️ Inject Background Removal for any assistant message that has a direct image attached (like generated ones)
+    // ✂️ Inject Background Removal for images
     final bool hasImage = widget.image != null ||
         widget.responseImageUrl != null ||
         widget.mediaPath != null;
@@ -688,6 +899,18 @@ class _ChatBubbleState extends State<ChatBubble> {
         "label": "✂️ إزالة الخلفية",
         "action": "remove_background",
         "payload": widget.productContext
+      });
+    }
+
+    // 🎞️ Inject Save to Gallery for videos
+    final bool hasVideo = widget.videoUrl != null ||
+        (_currentVideoSource != null && widget.videoThumbnail == null);
+    if (hasVideo &&
+        !effectiveActions.any((a) => a['action'] == 'save_video_to_gallery')) {
+      effectiveActions.add({
+        "label": "💾 حفظ في الاستوديو",
+        "action": "save_video_to_gallery",
+        "payload": widget.videoUrl ?? _currentVideoSource
       });
     }
 
@@ -730,6 +953,17 @@ class _ChatBubbleState extends State<ChatBubble> {
                     onTap: () => setState(
                         () => _isActionsExpanded = !_isActionsExpanded),
                   ),
+
+                /* 
+                // ✈️ Telegram Publish Button (Hidden for future development)
+                if (!widget.isUser && (cleanText.isNotEmpty || hasImage))
+                  _buildGlassActionButton(
+                    label: "نشر تيليجرام",
+                    icon: Icons.send_rounded,
+                    color: const Color(0xFF0088CC), // Telegram Blue
+                    onTap: () => _handleAction('telegram_publish', widget.id),
+                  ),
+                */
               ],
             ),
           ),
@@ -784,6 +1018,9 @@ class _ChatBubbleState extends State<ChatBubble> {
   }
 
   Widget _buildActionChips(List<dynamic> actions) {
+    final agent =
+        Get.isRegistered<ChatSmartAgent>() ? Get.find<ChatSmartAgent>() : null;
+
     return Padding(
       padding: const EdgeInsets.only(top: 2, left: 16, right: 2),
       child: Column(
@@ -802,87 +1039,116 @@ class _ChatBubbleState extends State<ChatBubble> {
               ),
             ),
           ),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final int crossAxisCount = FluidGridHelper.calculateColumns(
-                constraints,
-                150.0, // Targeted width for action buttons
-                min: 2,
-                max: 4,
-              );
+          Obx(() {
+            final isLoading = agent?.isLoading.value ?? false;
+            final activeActionId = agent?.activeActionId.value ?? "";
 
-              return GridView.builder(
-                shrinkWrap: true,
-                padding: EdgeInsets
-                    .zero, // 🚀 Eliminate default GridView top padding
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: actions.length,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  crossAxisSpacing: 5,
-                  mainAxisSpacing: 8,
-                  mainAxisExtent: 28, // Height of each button
-                ),
-                itemBuilder: (context, index) {
-                  final action = actions[index];
-                  final label = action['label'] ?? 'Action';
-                  final id = action['action'] ?? action['id'];
-                  final color = _getActionColor(id);
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final int crossAxisCount = FluidGridHelper.calculateColumns(
+                  constraints,
+                  150.0, // Targeted width for action buttons
+                  min: 2,
+                  max: 4,
+                );
 
-                  return Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => _handleAction(id, action['payload']),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              color.withValues(alpha: 0.15),
-                              color.withValues(alpha: 0.05),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: color.withValues(alpha: 0.2),
-                            width: 1,
-                          ),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 5),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              _getIconForAction(id),
-                              size: 16,
-                              color: color,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                label,
-                                style: TextStyle(
-                                  color: color.withValues(alpha: 0.9),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'IBMPlexSansArabic',
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.center,
+                return GridView.builder(
+                  shrinkWrap: true,
+                  padding: EdgeInsets
+                      .zero, // 🚀 Eliminate default GridView top padding
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: actions.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    crossAxisSpacing: 5,
+                    mainAxisSpacing: 8,
+                    mainAxisExtent: 28, // Height of each button
+                  ),
+                  itemBuilder: (context, index) {
+                    final action = actions[index];
+                    final label = action['label'] ?? 'Action';
+                    final id = action['action'] ?? action['id'];
+                    final color = _getActionColor(id);
+
+                    final isThisActionRunning =
+                        isLoading && activeActionId == id;
+                    final isInteractionDisabled = isLoading;
+
+                    return Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: isInteractionDisabled
+                            ? null
+                            : () => _handleAction(id, action['payload']),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Opacity(
+                          opacity: isInteractionDisabled && !isThisActionRunning
+                              ? 0.4
+                              : 1.0,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  color.withValues(alpha: 0.15),
+                                  color.withValues(alpha: 0.05),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: color.withValues(
+                                    alpha: isThisActionRunning ? 0.5 : 0.2),
+                                width: 1,
                               ),
                             ),
-                          ],
+                            padding: const EdgeInsets.symmetric(horizontal: 5),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (isThisActionRunning)
+                                  SizedBox(
+                                    width: 12,
+                                    height: 12,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: color,
+                                    ),
+                                  )
+                                else
+                                  Icon(
+                                    _getIconForAction(id),
+                                    size: 16,
+                                    color: color,
+                                  ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    isThisActionRunning
+                                        ? "جاري التحميل..."
+                                        : label,
+                                    style: TextStyle(
+                                      color: color.withValues(alpha: 0.9),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: 'IBMPlexSansArabic',
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
+                    );
+                  },
+                );
+              },
+            );
+          }),
         ],
       ),
     );
@@ -893,6 +1159,24 @@ class _ChatBubbleState extends State<ChatBubble> {
       case 'open_tiktok_search':
       case 'tiktok_link':
         return Colors.pinkAccent;
+      case 'tiktok_hashtag':
+        return Colors.pink;
+      case 'douyin_link':
+        return Colors.tealAccent;
+      case 'rednote_link':
+        return Colors.redAccent;
+      case 'bilibili_link':
+        return const Color(0xFF00A1D6); // Bilibili Blue
+      case 'twitter_link':
+        return const Color(0xFF1DA1F2); // Twitter Blue
+      case 'kuaishou_link':
+        return const Color(0xFFFF6B35); // Kuaishou Orange
+      case 'taobao_live_link':
+        return const Color(0xFFFF4400); // Taobao Red
+      case 'full_platform_description':
+        return const Color(0xFFB388FF); // Purple
+      case 'jd_link':
+        return const Color(0xFFE02424); // JD Red
       case 'open_instagram_search':
       case 'instagram_link':
         return Colors.purpleAccent;
@@ -914,6 +1198,8 @@ class _ChatBubbleState extends State<ChatBubble> {
         return Colors.yellowAccent;
       case 'amazon_search':
         return Colors.orange;
+      case 'generate_ad_image':
+        return const Color(0xFFFF6B9D); // Vivid Pink
       case 'google_images':
         return Colors.lightBlueAccent;
       case 'google_news':
@@ -939,6 +1225,24 @@ class _ChatBubbleState extends State<ChatBubble> {
       case 'open_tiktok_search':
       case 'tiktok_link':
         return Icons.video_collection_rounded;
+      case 'tiktok_hashtag':
+        return Icons.tag_rounded;
+      case 'douyin_link':
+        return Icons.music_note_rounded;
+      case 'rednote_link':
+        return Icons.book_rounded;
+      case 'bilibili_link':
+        return Icons.smart_display_rounded;
+      case 'twitter_link':
+        return Icons.tag_rounded;
+      case 'kuaishou_link':
+        return Icons.flash_on_rounded;
+      case 'taobao_live_link':
+        return Icons.live_tv_rounded;
+      case 'full_platform_description':
+        return Icons.dashboard_customize_rounded;
+      case 'jd_link':
+        return Icons.precision_manufacturing_rounded;
       case 'open_instagram_search':
       case 'instagram_link':
         return Icons.camera_alt_rounded;
@@ -953,6 +1257,8 @@ class _ChatBubbleState extends State<ChatBubble> {
       case 'open_alibaba_search':
       case 'alibaba_sourcing':
         return Icons.inventory_2_rounded;
+      case 'generate_ad_image':
+        return Icons.auto_fix_high_rounded;
       case 'similar_videos':
         return Icons.play_circle_fill_rounded;
       case 'trend_search':
@@ -1010,6 +1316,53 @@ class _ChatBubbleState extends State<ChatBubble> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildProviderBadge(bool isDark) {
+    if (widget.isUser || widget.provider == null || widget.provider!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final isUserAdmin = Get.isRegistered<AuthController>() &&
+        Get.find<AuthController>().isAdmin;
+
+    if (!isUserAdmin) {
+      return const SizedBox.shrink();
+    }
+
+    final String displayName = widget.provider!;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.05),
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.memory_rounded,
+            size: 12,
+            color: Color(0xFF2DD486),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            "النموذج: $displayName",
+            style: GoogleFonts.ibmPlexSansArabic(
+              color: Colors.white60,
+              fontSize: 10,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

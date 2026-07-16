@@ -1,33 +1,113 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
-import '../services/db_service.dart';
-import '../services/permissions_sync_service.dart';
-import '../services/firestore_user_service.dart';
-import '../services/secure_storage_service.dart';
-import '../core/models/api_provider.dart';
-import 'api_controller.dart';
+import 'package:smart_content_creator/services/db_service.dart';
+import 'package:smart_content_creator/services/permissions_sync_service.dart';
+import 'package:smart_content_creator/services/firestore_user_service.dart';
+import 'package:smart_content_creator/services/subscription_service.dart';
+import 'package:smart_content_creator/services/activity_tracking_service.dart';
 import 'auth_controller.dart';
 
 class AdminController extends GetxController {
   final DBService _db = Get.find<DBService>();
+  static const List<String> _managedAdminKeyControls = [
+    'use_managed_keys',
+    'managed_key_gemini',
+    'managed_key_serpapi',
+    'managed_key_stability',
+    'managed_key_kling',
+    'managed_key_github',
+  ];
 
   // Observable lists
   final RxBool isLoading = false.obs;
-  final RxBool hasNewUsers =
-      false.obs; // 🟢 هل يوجد مستخدمون جدد يحتاجون مراجعة؟
+  final RxBool hasNewUsers = false.obs;
   final RxList<Map<String, dynamic>> users = <Map<String, dynamic>>[].obs;
   final RxList<Map<String, dynamic>> uiControls = <Map<String, dynamic>>[].obs;
-  
-  // 🛰️ Global AI Config Editing
-  final RxMap<String, String> managedKeysEditing = <String, String>{}.obs;
-  final RxInt freeDailyLimitEditing = 50.obs;
-  final RxBool isManagedActiveEditing = true.obs;
+
+  // 🔍 Search & Filter State
+  final RxString searchQuery = ''.obs;
+  final RxString filterRole = 'all'.obs; // all / admin / creator / user / premium / blocked / new
+  final RxString filterSort = 'newest'.obs; // newest / most_active / name_az
+
+  /// 🔍 القائمة المفلترة - تُحسب تلقائياً من users + فلاتر البحث
+  List<Map<String, dynamic>> get filteredUsers {
+    var result = users.toList();
+
+    // فلتر النص
+    final q = searchQuery.value.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      result = result.where((u) {
+        final name = (u['username'] ?? '').toString().toLowerCase();
+        final email = (u['email'] ?? '').toString().toLowerCase();
+        return name.contains(q) || email.contains(q);
+      }).toList();
+    }
+
+    // فلتر الدور/الحالة
+    switch (filterRole.value) {
+      case 'admin':
+        result = result.where((u) => u['role'] == 'admin').toList();
+        break;
+      case 'creator':
+        result = result.where((u) => u['role'] == 'creator').toList();
+        break;
+      case 'user':
+        result = result.where((u) => u['role'] == 'user').toList();
+        break;
+      case 'premium':
+        result = result.where((u) => u['isPremium'] == true).toList();
+        break;
+      case 'blocked':
+        result = result.where((u) => u['is_ai_blocked'] == true).toList();
+        break;
+      case 'new':
+        result = result.where((u) => u['newUserNotification'] == true).toList();
+        break;
+    }
+
+    // الترتيب
+    switch (filterSort.value) {
+      case 'most_active':
+        result.sort((a, b) =>
+            ((b['ai_total_credits'] as int?) ?? 0)
+                .compareTo((a['ai_total_credits'] as int?) ?? 0));
+        break;
+      case 'name_az':
+        result.sort((a, b) =>
+            (a['username'] ?? '').toString()
+                .compareTo((b['username'] ?? '').toString()));
+        break;
+      case 'newest':
+      default:
+        // already sorted by in-memory sort from Firestore
+        break;
+    }
+
+    return result;
+  }
+
+  /// 📊 إحصاءات النظام الشاملة - محسوبة من users في الذاكرة
+  Map<String, int> get systemStats {
+    int premium = 0, blocked = 0, newUsers = 0, totalCredits = 0;
+    for (final u in users) {
+      if (u['isPremium'] == true) premium++;
+      if (u['is_ai_blocked'] == true) blocked++;
+      if (u['newUserNotification'] == true) newUsers++;
+      totalCredits += (u['ai_total_credits'] as int?) ?? 0;
+    }
+    return {
+      'total': users.length,
+      'premium': premium,
+      'blocked': blocked,
+      'new': newUsers,
+      'totalCredits': totalCredits,
+    };
+  }
 
   // 🎧 Audio Feedback
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -38,17 +118,131 @@ class AdminController extends GetxController {
   final Rxn<Map<String, dynamic>> selectedUser = Rxn<Map<String, dynamic>>();
   final RxList<Map<String, dynamic>> selectedUserPermissions =
       <Map<String, dynamic>>[].obs;
+  final RxString permissionScopeFilter = 'all'.obs;
 
   // ✅ تتبع المستخدمين الذين تم تعديل صلاحياتهم يدوياً
   final RxSet<String> _modifiedUserIds = <String>{}.obs;
   int get modifiedCount => _modifiedUserIds.length;
 
+  // 🌍 Global SaaS & AI Settings
+  final RxMap<String, dynamic> globalSettings = <String, dynamic>{}.obs;
+  final RxInt freeDailyLimitEditing = 50.obs;
+  final RxMap<String, String> managedKeysEditing = <String, String>{}.obs;
+
+  // 📊 User Activity Tracking
+  final RxList<Map<String, dynamic>> selectedUserActivityLogs = <Map<String, dynamic>>[].obs;
+  final RxList<Map<String, dynamic>> allRecentActivityLogs = <Map<String, dynamic>>[].obs;
+  final RxBool isLoadingActivity = false.obs;
+
+  /// 🔥 SaaS: منح اشتراك لمستخدم
+  Future<void> grantUserSubscription({
+    required String userId,
+    required String planId,
+    required int durationDays,
+  }) async {
+    final user = users.firstWhereOrNull((u) => u['id'] == userId);
+    if (user != null && (user['email'] ?? '').toString().toLowerCase().trim() == 'helalalfqih@gmail.com') {
+      _safeSnackbar('حماية النظام 🛡️', 'لا يمكن تعديل اشتراك المدير الأصلي للنظام.', backgroundColor: const Color(0xFF3A1A1A), colorText: Colors.white);
+      return;
+    }
+    isLoading.value = true;
+    try {
+      final subscriptionService = Get.find<SubscriptionService>();
+      await subscriptionService.grantSubscription(
+        uid: userId,
+        planId: planId,
+        durationDays: durationDays,
+      );
+      _safeSnackbar('نجح', 'تم منح الاشتراك للمستخدم بنجاح 💎');
+    } catch (e) {
+      _safeSnackbar('خطأ', 'فشل منح الاشتراك: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// 🔥 SaaS: سحب الاشتراك
+  Future<void> revokeUserSubscription(String userId) async {
+    final user = users.firstWhereOrNull((u) => u['id'] == userId);
+    if (user != null && (user['email'] ?? '').toString().toLowerCase().trim() == 'helalalfqih@gmail.com') {
+      _safeSnackbar('حماية النظام 🛡️', 'لا يمكن تعديل اشتراك المدير الأصلي للنظام.', backgroundColor: const Color(0xFF3A1A1A), colorText: Colors.white);
+      return;
+    }
+    isLoading.value = true;
+    try {
+      final subscriptionService = Get.find<SubscriptionService>();
+      await subscriptionService.revokeSubscription(userId);
+      _safeSnackbar('تم', 'تم سحب الاشتراك من المستخدم');
+    } catch (e) {
+      _safeSnackbar('خطأ', 'فشل سحب الاشتراك: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// 🔥 AI Config: تحديث الإعدادات العالمية
+  Future<void> updateGlobalAiSettings([Map<String, dynamic>? settings]) async {
+    isLoading.value = true;
+    try {
+      final finalSettings = settings ?? {
+        'free_daily_limit': freeDailyLimitEditing.value,
+        'managed_keys': managedKeysEditing,
+      };
+
+      await FirebaseFirestore.instance
+          .collection('app_settings')
+          .doc('ai_config')
+          .set(finalSettings, SetOptions(merge: true));
+      
+      globalSettings.addAll(finalSettings);
+      _safeSnackbar('نجح', 'تم تحديث الإعدادات العالمية ✅');
+    } catch (e) {
+      _safeSnackbar('خطأ', 'فشل تحديث الإعدادات: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /// 🔍 التحقق من حالة الإعدادات
+  Future<void> checkConfigStatus() async {
+    // يمكن إضافة منطق للتحقق من صحة المفاتيح هنا
+    debugPrint('🔍 Checking global config status...');
+  }
+
+  /// 🔑 استيراد المفاتيح الشخصية للمسؤول كمفاتيح عالمية
+  Future<void> importPersonalKeys() async {
+    _safeSnackbar('قريباً', 'سيتم تفعيل استيراد المفاتيح الشخصية في التحديث القادم');
+  }
+
+  // ✅ AI Config Status
+  bool get isConfigValid => globalSettings.isNotEmpty;
+
+  /// 🔥 تهيئة الإعدادات العالمية من السحابة
+  Future<void> initializeGlobalConfig() async {
+    isLoading.value = true;
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('app_settings')
+          .doc('ai_config')
+          .get();
+      if (snapshot.exists) {
+        globalSettings.addAll(snapshot.data()!);
+        freeDailyLimitEditing.value = globalSettings['free_daily_limit'] ?? 50;
+        managedKeysEditing.assignAll(Map<String, String>.from(globalSettings['managed_keys'] ?? {}));
+      }
+    } catch (e) {
+      debugPrint('⚠️ Failed to initialize AI config: $e');
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   @override
   void onInit() {
     super.onInit();
-    _subscribeToUsers(); // 🔥 Real-time Firestore sync
+    subscribeToUsers(force: false); // 🔥 Real-time Firestore sync
     loadUIControls();
-    checkConfigStatus();
+    initializeGlobalConfig(); // 🧠 Load AI and limit settings
     _setupNotificationListener();
   }
 
@@ -56,7 +250,10 @@ class AdminController extends GetxController {
     ever(hasNewUsers, (bool hasNew) {
       if (hasNew && !_isFirstLoad) {
         _playNotificationSound();
-        _showNewUserNotification();
+        // Prevent GetBuilder rebuild during an active build frame.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showNewUserNotification();
+        });
       }
       _isFirstLoad = false;
     });
@@ -94,17 +291,56 @@ class AdminController extends GetxController {
     );
   }
 
+  void _safeSnackbar(
+    String title,
+    String message, {
+    SnackPosition snackPosition = SnackPosition.BOTTOM,
+    Color? backgroundColor,
+    Color? colorText,
+  }) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.snackbar(
+        title,
+        message,
+        snackPosition: snackPosition,
+        backgroundColor: backgroundColor,
+        colorText: colorText,
+      );
+    });
+  }
+
   /// 🔥 Subscribe to Firestore users collection for real-time updates
-  void _subscribeToUsers() {
+  void subscribeToUsers({bool force = false}) {
+    if (_usersSubscription != null && !force) {
+      if (kDebugMode) {
+        debugPrint('ℹ️ AdminController: Already subscribed to users, skipping.');
+      }
+      return;
+    }
+
+    final authController = Get.find<AuthController>();
+    if (!authController.isAdmin) {
+      if (kDebugMode) {
+        debugPrint('⚠️ AdminController: User is not admin. Skipping Firestore users subscription.');
+      }
+      _loadUsersFromLocalDB();
+      return;
+    }
+
+    if (force && _usersSubscription != null) {
+      _usersSubscription!.cancel();
+      _usersSubscription = null;
+    }
+
     try {
       _usersSubscription = FirebaseFirestore.instance
           .collection('users')
-          .orderBy('createdAt', descending: true)
           .snapshots()
           .listen(
         (snapshot) {
           users.value = snapshot.docs.map((doc) {
             final data = doc.data();
+            final aiUsage = data['ai_usage'] as Map? ?? {};
             return {
               'id': doc.id, // Firestore UID
               'username': data['name']?.toString() ?? '',
@@ -116,11 +352,34 @@ class AdminController extends GetxController {
               'newUserNotification': data['newUserNotification'] ?? false,
               'permissions_count': (data['permissions'] is Map) ? (data['permissions'] as Map).length : 0,
               'permissions': data['permissions'] ?? {},
-              'createdAt': data['createdAt'],
-              'lastLogin': data['lastLogin'],
-              'creator_stats': data['creator_stats'] ?? {},
-            };
-          }).toList();
+               'is_ai_blocked': data['is_ai_blocked'] == true,
+               'isPremium': data['isPremium'] == true,
+               'subscription': data['subscription'] ?? {},
+               'createdAt': data['createdAt'],
+               'lastLogin': data['lastLogin'],
+               'lastSeen': data['lastSeen'],
+               'creator_stats': data['creator_stats'] ?? {},
+               // 📊 بيانات استهلاك رصيد AI
+               'ai_total_credits': (aiUsage['total_credits'] as num?)?.toInt() ?? 0,
+               'ai_last_action': aiUsage['last_action']?.toString() ?? '',
+               'ai_last_action_at': aiUsage['last_action_at'],
+             };
+          }).toList()
+            // ✅ ترتيب يدوي في الذاكرة: الأحدث أولاً
+            // المستخدمون بدون createdAt (قدامى) يظهرون في النهاية
+            ..sort((a, b) {
+              final aTs = a['createdAt'];
+              final bTs = b['createdAt'];
+              if (aTs == null && bTs == null) return 0;
+              if (aTs == null) return 1;  // a goes to end
+              if (bTs == null) return -1; // b goes to end
+              // Firestore Timestamp comparison
+              final aMillis = (aTs is DateTime) ? aTs.millisecondsSinceEpoch
+                  : (aTs?.millisecondsSinceEpoch ?? 0);
+              final bMillis = (bTs is DateTime) ? bTs.millisecondsSinceEpoch
+                  : (bTs?.millisecondsSinceEpoch ?? 0);
+              return bMillis.compareTo(aMillis); // descending
+            });
 
           // 🔔 تحديث حالة الإشعارات العامة
           hasNewUsers.value =
@@ -161,6 +420,7 @@ class AdminController extends GetxController {
     isLoading.value = true;
     try {
       await loadUIControls();
+      subscribeToUsers(force: true); // Force re-subscribe
     } finally {
       isLoading.value = false;
     }
@@ -179,16 +439,52 @@ class AdminController extends GetxController {
       uiControls.assignAll(result);
     } catch (e) {
       debugPrint('Error loading UI controls: $e');
-      Get.snackbar('خطأ', 'فشل تحميل عناصر الواجهة');
+      _safeSnackbar('خطأ', 'فشل تحميل عناصر الواجهة');
     }
   }
 
   /// Select user for editing permissions
   Future<void> selectUser(Map<String, dynamic> user) async {
     selectedUser.value = user;
+    permissionScopeFilter.value = 'all';
     if (user['id'] != null) {
       await loadUserPermissions(user['id'].toString());
+      loadUserActivity(user['id'].toString()); // 📊 تحميل سجل النشاط
     }
+  }
+
+  /// 📊 تحميل سجل نشاط مستخدم معين من Firestore
+  Future<void> loadUserActivity(String userId) async {
+    isLoadingActivity.value = true;
+    try {
+      if (Get.isRegistered<ActivityTrackingService>()) {
+        final logs = await Get.find<ActivityTrackingService>().getUserActivityLogs(userId);
+        selectedUserActivityLogs.assignAll(logs);
+      }
+    } catch (e) {
+      debugPrint('⚠️ loadUserActivity error: $e');
+    } finally {
+      isLoadingActivity.value = false;
+    }
+  }
+
+  /// 📊 تحميل آخر النشاطات لجميع المستخدمين (للأدمن)
+  Future<void> loadAllRecentActivity() async {
+    isLoadingActivity.value = true;
+    try {
+      if (Get.isRegistered<ActivityTrackingService>()) {
+        final logs = await Get.find<ActivityTrackingService>().getAllRecentLogs(limit: 100);
+        allRecentActivityLogs.assignAll(logs);
+      }
+    } catch (e) {
+      debugPrint('⚠️ loadAllRecentActivity error: $e');
+    } finally {
+      isLoadingActivity.value = false;
+    }
+  }
+
+  void setPermissionScopeFilter(String scope) {
+    permissionScopeFilter.value = scope;
   }
 
   /// Load permissions for selected user from Firestore
@@ -228,7 +524,7 @@ class AdminController extends GetxController {
       selectedUserPermissions.assignAll(perms);
     } catch (e) {
       debugPrint('Error loading user permissions from Cloud: $e');
-      Get.snackbar('خطأ', 'فشل تحميل صلاحيات المستخدم من السحابة');
+      _safeSnackbar('خطأ', 'فشل تحميل صلاحيات المستخدم من السحابة');
     }
   }
 
@@ -239,8 +535,17 @@ class AdminController extends GetxController {
       'chat_image_attach',
       'chat_camera_attach',
       'chat_file_attach',
+      'chat_audio_enhance',
+      'video_gen',
+      'audio_enhance',
     ];
     return alwaysAllowed.contains(controlName);
+  }
+
+  bool _isScreenControl(Map<String, dynamic> control) {
+    final category = (control['category'] ?? '').toString().toLowerCase();
+    final controlName = (control['control_name'] ?? '').toString().toLowerCase();
+    return category == 'screen' || controlName.endsWith('_screen');
   }
 
   // Permissions Sync Service getter or find
@@ -257,7 +562,30 @@ class AdminController extends GetxController {
     required String controlName,
     required bool visible,
   }) async {
+    final user = users.firstWhereOrNull((u) => u['id'] == userId);
+    if (user != null && (user['email'] ?? '').toString().toLowerCase().trim() == 'helalalfqih@gmail.com') {
+      _safeSnackbar('حماية النظام 🛡️', 'لا يمكن تعديل صلاحيات المدير الأصلي للنظام.', backgroundColor: const Color(0xFF3A1A1A), colorText: Colors.white);
+      return;
+    }
     try {
+      // Optimistic update so UI colors/switches change immediately.
+      final idx = selectedUserPermissions.indexWhere(
+        (p) => p['control_name'] == controlName,
+      );
+      if (idx >= 0) {
+        final updated = Map<String, dynamic>.from(selectedUserPermissions[idx]);
+        updated['visible'] = visible ? 1 : 0;
+        selectedUserPermissions[idx] = updated;
+      } else {
+        selectedUserPermissions.add({
+          'control_name': controlName,
+          'visible': visible ? 1 : 0,
+          'enabled': _isAlwaysAllowed(controlName) ? 1 : 0,
+          'description': controlName,
+          'category': 'button',
+        });
+      }
+
       // ☁️ Sync directly to Cloud (Source of Truth)
       if (_syncService != null) {
         // First get current enabled state
@@ -278,13 +606,12 @@ class AdminController extends GetxController {
         _modifiedUserIds.add(userId);
       }
 
-      Get.snackbar(
+      _safeSnackbar(
         'نجح',
         visible ? 'تم إظهار العنصر للمستخدم' : 'تم إخفاء العنصر عن المستخدم',
-        snackPosition: SnackPosition.BOTTOM,
       );
 
-      // Refresh permissions
+      // Refresh from source of truth.
       await loadUserPermissions(userId);
 
       // No need to update local DB permissions count manually as we're not using it for the list anymore?
@@ -292,7 +619,7 @@ class AdminController extends GetxController {
       // But that's acceptable for now.
     } catch (e) {
       debugPrint('Error toggling visibility: $e');
-      Get.snackbar('خطأ', 'فشل تحديث الصلاحية');
+      _safeSnackbar('خطأ', 'فشل تحديث الصلاحية');
     }
   }
 
@@ -302,7 +629,30 @@ class AdminController extends GetxController {
     required String controlName,
     required bool enabled,
   }) async {
+    final user = users.firstWhereOrNull((u) => u['id'] == userId);
+    if (user != null && (user['email'] ?? '').toString().toLowerCase().trim() == 'helalalfqih@gmail.com') {
+      _safeSnackbar('حماية النظام 🛡️', 'لا يمكن تعديل صلاحيات المدير الأصلي للنظام.', backgroundColor: const Color(0xFF3A1A1A), colorText: Colors.white);
+      return;
+    }
     try {
+      // Optimistic update so UI colors/switches change immediately.
+      final idx = selectedUserPermissions.indexWhere(
+        (p) => p['control_name'] == controlName,
+      );
+      if (idx >= 0) {
+        final updated = Map<String, dynamic>.from(selectedUserPermissions[idx]);
+        updated['enabled'] = enabled ? 1 : 0;
+        selectedUserPermissions[idx] = updated;
+      } else {
+        selectedUserPermissions.add({
+          'control_name': controlName,
+          'visible': _isAlwaysAllowed(controlName) ? 1 : 0,
+          'enabled': enabled ? 1 : 0,
+          'description': controlName,
+          'category': 'button',
+        });
+      }
+
       // ☁️ Sync directly to Cloud
       if (_syncService != null) {
         // First get current visible state
@@ -323,33 +673,40 @@ class AdminController extends GetxController {
         _modifiedUserIds.add(userId);
       }
 
-      Get.snackbar(
+      _safeSnackbar(
         'نجح',
         enabled ? 'تم تفعيل العنصر للمستخدم' : 'تم تعطيل العنصر للمستخدم',
-        snackPosition: SnackPosition.BOTTOM,
       );
 
       // Refresh permissions
       await loadUserPermissions(userId);
     } catch (e) {
       debugPrint('Error toggling enabled state: $e');
-      Get.snackbar('خطأ', 'فشل تحديث الصلاحية');
+      _safeSnackbar('خطأ', 'فشل تحديث الصلاحية');
     }
   }
 
   /// Toggle AI access for a user - 🛑 Kill Switch
   Future<void> toggleUserAiBlock(String userId, bool isBlocked) async {
+    final user = users.firstWhereOrNull((u) => u['id'] == userId);
+    if (user != null && (user['email'] ?? '').toString().toLowerCase().trim() == 'helalalfqih@gmail.com') {
+      _safeSnackbar('حماية النظام 🛡️', 'لا يمكن قطع اتصال الخدمة عن المدير الأصلي للنظام.', backgroundColor: const Color(0xFF3A1A1A), colorText: Colors.white);
+      return;
+    }
     try {
       await FirebaseFirestore.instance
           .collection('users')
           .doc(userId)
           .update({'is_ai_blocked': isBlocked});
 
-      Get.snackbar(
+      _safeSnackbar(
         isBlocked ? 'تم قطع الاتصال 🛑' : 'تم إعادة الاتصال ✅',
-        isBlocked ? 'تم تعطيل كافة خدمات AI لهذا المستخدم' : 'تم تفعيل خدمات AI للمستخدم بنجاح',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: isBlocked ? Colors.redAccent.withValues(alpha: 0.8) : Colors.greenAccent.withValues(alpha: 0.8),
+        isBlocked
+            ? 'تم تعطيل كافة خدمات AI لهذا المستخدم'
+            : 'تم تفعيل خدمات AI للمستخدم بنجاح',
+        backgroundColor: isBlocked
+            ? Colors.redAccent.withValues(alpha: 0.8)
+            : Colors.greenAccent.withValues(alpha: 0.8),
         colorText: Colors.white,
       );
       
@@ -361,12 +718,185 @@ class AdminController extends GetxController {
       }
     } catch (e) {
       debugPrint('Error toggling AI block: $e');
-      Get.snackbar('خطأ', 'فشل تغيير حالة الاتصال');
+      _safeSnackbar('خطأ', 'فشل تغيير حالة الاتصال');
+    }
+  }
+
+  /// Bulk apply permissions by scope (screens/buttons/all).
+  Future<void> applyBulkPermissionByScope({
+    required String userId,
+    required String scope,
+    required bool visible,
+    required bool enabled,
+  }) async {
+    final user = users.firstWhereOrNull((u) => u['id'] == userId);
+    if (user != null && (user['email'] ?? '').toString().toLowerCase().trim() == 'helalalfqih@gmail.com') {
+      Get.snackbar('حماية النظام 🛡️', 'لا يمكن تعديل صلاحيات المدير الأصلي للنظام.', backgroundColor: const Color(0xFF3A1A1A), colorText: Colors.white);
+      return;
+    }
+    try {
+      final normalizedScope = scope.toLowerCase();
+      final targetControls = uiControls.where((control) {
+        if (normalizedScope == 'all') return true;
+        final isScreen = _isScreenControl(control);
+        if (normalizedScope == 'screens') return isScreen;
+        if (normalizedScope == 'buttons') return !isScreen;
+        return false;
+      }).toList();
+
+      if (targetControls.isEmpty) {
+        Get.snackbar('تنبيه', 'لا توجد عناصر متاحة ضمن هذا النطاق');
+        return;
+      }
+
+      for (final control in targetControls) {
+        final controlName = (control['control_name'] ?? '').toString();
+        if (controlName.isEmpty) continue;
+
+        // Optimistic UI update for immediate feedback.
+        final idx = selectedUserPermissions.indexWhere(
+          (p) => p['control_name'] == controlName,
+        );
+        if (idx >= 0) {
+          final updated = Map<String, dynamic>.from(selectedUserPermissions[idx]);
+          updated['visible'] = visible ? 1 : 0;
+          updated['enabled'] = enabled ? 1 : 0;
+          selectedUserPermissions[idx] = updated;
+        } else {
+          selectedUserPermissions.add({
+            'control_name': controlName,
+            'visible': visible ? 1 : 0,
+            'enabled': enabled ? 1 : 0,
+            'description': control['description'] ?? controlName,
+            'category': control['category'] ?? 'button',
+          });
+        }
+
+        if (_syncService != null) {
+          await _syncService!.syncPermissionToCloud(
+            userId: userId,
+            controlName: controlName,
+            visible: visible,
+            enabled: enabled,
+          );
+        }
+      }
+
+      _modifiedUserIds.add(userId);
+      await loadUserPermissions(userId);
+
+      final actionLabel = visible ? 'منح' : 'إخفاء';
+      final scopeLabel = normalizedScope == 'screens'
+          ? 'الشاشات'
+          : normalizedScope == 'buttons'
+              ? 'الأزرار'
+              : 'العناصر';
+      Get.snackbar('نجح', 'تم $actionLabel جميع $scopeLabel');
+    } catch (e) {
+      debugPrint('Error applying bulk permissions: $e');
+      Get.snackbar('خطأ', 'فشل تطبيق الصلاحيات الجماعية');
+    }
+  }
+
+  /// Link user account to admin-managed API keys permissions.
+  Future<void> linkUserToAdminManagedKeys(String userId) async {
+    final user = users.firstWhereOrNull((u) => u['id'] == userId);
+    if (user != null && (user['email'] ?? '').toString().toLowerCase().trim() == 'helalalfqih@gmail.com') {
+      Get.snackbar('حماية النظام 🛡️', 'لا يمكن تعديل صلاحيات المدير الأصلي للنظام.', backgroundColor: const Color(0xFF3A1A1A), colorText: Colors.white);
+      return;
+    }
+    try {
+      for (final controlName in _managedAdminKeyControls) {
+        final idx = selectedUserPermissions.indexWhere(
+          (p) => p['control_name'] == controlName,
+        );
+        if (idx >= 0) {
+          final updated = Map<String, dynamic>.from(selectedUserPermissions[idx]);
+          updated['visible'] = 1;
+          updated['enabled'] = 1;
+          selectedUserPermissions[idx] = updated;
+        } else {
+          selectedUserPermissions.add({
+            'control_name': controlName,
+            'visible': 1,
+            'enabled': 1,
+            'description': 'Admin Managed Key Access',
+            'category': 'System',
+          });
+        }
+
+        if (_syncService != null) {
+          await _syncService!.syncPermissionToCloud(
+            userId: userId,
+            controlName: controlName,
+            visible: true,
+            enabled: true,
+          );
+        }
+      }
+
+      _modifiedUserIds.add(userId);
+      await loadUserPermissions(userId);
+      Get.snackbar('نجح', 'تم ربط المستخدم بمفاتيح الأدمن المُدارة');
+    } catch (e) {
+      debugPrint('Error linking user to managed admin keys: $e');
+      Get.snackbar('خطأ', 'فشل ربط المستخدم بمفاتيح الأدمن');
+    }
+  }
+
+  /// Unlink user account from admin-managed API keys permissions.
+  Future<void> unlinkUserFromAdminManagedKeys(String userId) async {
+    final user = users.firstWhereOrNull((u) => u['id'] == userId);
+    if (user != null && (user['email'] ?? '').toString().toLowerCase().trim() == 'helalalfqih@gmail.com') {
+      Get.snackbar('حماية النظام 🛡️', 'لا يمكن تعديل صلاحيات المدير الأصلي للنظام.', backgroundColor: const Color(0xFF3A1A1A), colorText: Colors.white);
+      return;
+    }
+    try {
+      for (final controlName in _managedAdminKeyControls) {
+        final idx = selectedUserPermissions.indexWhere(
+          (p) => p['control_name'] == controlName,
+        );
+        if (idx >= 0) {
+          final updated = Map<String, dynamic>.from(selectedUserPermissions[idx]);
+          updated['visible'] = 0;
+          updated['enabled'] = 0;
+          selectedUserPermissions[idx] = updated;
+        } else {
+          selectedUserPermissions.add({
+            'control_name': controlName,
+            'visible': 0,
+            'enabled': 0,
+            'description': 'Admin Managed Key Access',
+            'category': 'System',
+          });
+        }
+
+        if (_syncService != null) {
+          await _syncService!.syncPermissionToCloud(
+            userId: userId,
+            controlName: controlName,
+            visible: false,
+            enabled: false,
+          );
+        }
+      }
+
+      _modifiedUserIds.add(userId);
+      await loadUserPermissions(userId);
+      Get.snackbar('نجح', 'تم فصل المستخدم عن مفاتيح الأدمن المُدارة');
+    } catch (e) {
+      debugPrint('Error unlinking user from managed admin keys: $e');
+      Get.snackbar('خطأ', 'فشل فصل المستخدم عن مفاتيح الأدمن');
     }
   }
 
   /// Change user role - 🔥 Syncs to Firestore
   Future<void> changeUserRole(String userId, String newRole) async {
+    final user = users.firstWhereOrNull((u) => u['id'] == userId);
+    if (user != null && (user['email'] ?? '').toString().toLowerCase().trim() == 'helalalfqih@gmail.com') {
+      Get.snackbar('حماية النظام 🛡️', 'لا يمكن تعديل دور المدير الأصلي للنظام.', backgroundColor: const Color(0xFF3A1A1A), colorText: Colors.white);
+      return;
+    }
     try {
       // Update Firestore (source of truth)
       await FirebaseFirestore.instance
@@ -387,8 +917,15 @@ class AdminController extends GetxController {
     }
   }
 
+
+
   /// Delete user - 🔥 Syncs to Firestore
   Future<void> deleteUser(String userId) async {
+    final user = users.firstWhereOrNull((u) => u['id'] == userId);
+    if (user != null && (user['email'] ?? '').toString().toLowerCase().trim() == 'helalalfqih@gmail.com') {
+      Get.snackbar('حماية النظام 🛡️', 'لا يمكن حذف المدير الأصلي للنظام.', backgroundColor: const Color(0xFF3A1A1A), colorText: Colors.white);
+      return;
+    }
     try {
       // Delete from Firestore
       await FirebaseFirestore.instance.collection('users').doc(userId).delete();
@@ -410,6 +947,50 @@ class AdminController extends GetxController {
     } catch (e) {
       debugPrint('Error deleting user: $e');
       Get.snackbar('خطأ', 'فشل حذف المستخدم');
+    }
+  }
+
+  /// 🔥 تنظيف المستخدمين الوهميين (الذين ليس لديهم إيميل أو إيميلهم غير صالح أو بدون اسم)
+  Future<void> cleanFakeUsers() async {
+    isLoading.value = true;
+    int deletedCount = 0;
+    try {
+      final List<String> fakeUserIds = [];
+      for (var user in users) {
+        final email = (user['email'] ?? '').toString().trim();
+        final username = (user['username'] ?? '').toString().trim();
+        
+        // يعتبر وهمي إذا كان الإيميل فارغاً، أو لا يحتوي على @، أو الاسم فارغاً
+        if (email.isEmpty || !email.contains('@') || username.isEmpty) {
+          final id = user['id']?.toString() ?? '';
+          if (id.isNotEmpty) {
+            fakeUserIds.add(id);
+          }
+        }
+      }
+
+      if (fakeUserIds.isEmpty) {
+        _safeSnackbar('تنبيه', 'لم يتم العثور على أي مستخدمين وهميين لتنظيفهم 🧹');
+        return;
+      }
+
+      // حذف المستخدمين من Firestore
+      for (var id in fakeUserIds) {
+        await FirebaseFirestore.instance.collection('users').doc(id).delete();
+        if (_syncService != null) {
+          await _syncService!.deleteUserPermissionsFromCloud(id);
+        }
+        deletedCount++;
+      }
+
+      _safeSnackbar('نجح التنظيف 🧹', 'تم حذف $deletedCount مستخدم وهمي بنجاح!');
+      selectedUser.value = null;
+      selectedUserPermissions.clear();
+    } catch (e) {
+      debugPrint('Error cleaning fake users: $e');
+      _safeSnackbar('خطأ', 'فشل تنظيف المستخدمين الوهميين: $e');
+    } finally {
+      isLoading.value = false;
     }
   }
 
@@ -545,86 +1126,6 @@ class AdminController extends GetxController {
     return counts;
   }
 
-  // 🌐 Global Config Management
-  final RxBool isConfigValid = true.obs;
-
-  /// Check if world settings exist in Firestore and load them for editing
-  Future<void> checkConfigStatus() async {
-    try {
-      final snap = await FirebaseFirestore.instance
-          .collection('global_config')
-          .doc('ai_settings')
-          .get();
-      
-      if (snap.exists) {
-        final data = snap.data()!;
-        isManagedActiveEditing.value = data['is_managed_active'] ?? true;
-        freeDailyLimitEditing.value = data['free_daily_limit'] ?? 50;
-        
-        final keys = data['managed_keys'] as Map<String, dynamic>? ?? {};
-        managedKeysEditing.assignAll(keys.map((k, v) => MapEntry(k, v.toString())));
-        
-        isConfigValid.value = true;
-      } else {
-        isConfigValid.value = false;
-      }
-    } catch (e) {
-      isConfigValid.value = false;
-    }
-  }
-
-  /// Update Global AI Settings to Firestore
-  Future<void> updateGlobalAiSettings() async {
-    isLoading.value = true;
-    try {
-      await FirebaseFirestore.instance
-          .collection('global_config')
-          .doc('ai_settings')
-          .set({
-        'is_managed_active': isManagedActiveEditing.value,
-        'free_daily_limit': freeDailyLimitEditing.value,
-        'managed_keys': managedKeysEditing,
-        'last_updated': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-
-      isConfigValid.value = true;
-      Get.snackbar('نجح ✅', 'تم تحديث الإعدادات العالمية بنجاح');
-      
-      // Refresh local state in ManagedAiService if listener doesn't trigger fast enough
-      // Although snapshots listener should handle it.
-    } catch (e) {
-      Get.snackbar('خطأ ❌', 'فشل تحديث الإعدادات: $e');
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  /// Initialize default global config
-  Future<void> initializeGlobalConfig() async {
-    isLoading.value = true;
-    try {
-      await FirebaseFirestore.instance
-          .collection('global_config')
-          .doc('ai_settings')
-          .set({
-        'is_managed_active': true,
-        'free_daily_limit': 50,
-        'managed_keys': {
-          'gemini': 'YOUR_GEMINI_KEY_HERE',
-          'stability': 'YOUR_STABILITY_KEY_HERE',
-          'kling': 'USER:KEY',
-        },
-        'system_status': 'online',
-        'last_updated': FieldValue.serverTimestamp(),
-      });
-      isConfigValid.value = true;
-      Get.snackbar('نجح', 'تم تهيئة الإعدادات العالمية بنجاح ✅');
-    } catch (e) {
-      Get.snackbar('خطأ', 'فشل تهيئة الإعدادات: $e');
-    } finally {
-      isLoading.value = false;
-    }
-  }
 
   /// Sync Local UI Controls (Permissions Registry) to Cloud
   Future<void> syncSystemControls() async {
@@ -644,94 +1145,6 @@ class AdminController extends GetxController {
     }
   }
 
-  /// 📥 Import the admin's own keys from ApiController or DB to avoid re-typing
-  Future<void> importPersonalKeys() async {
-    try {
-      int importedCount = 0;
-      final Map<String, String> newKeys = Map.from(managedKeysEditing);
-
-      // 1. Try ApiController first (In-memory cached keys)
-      if (Get.isRegistered<ApiController>()) {
-        final apiController = Get.find<ApiController>();
-        final personalProviders = apiController.providers;
-        
-        personalProviders.forEach((type, provider) {
-          if (provider.apiKey.isNotEmpty) {
-            final keyName = type.name;
-            newKeys[keyName] = provider.apiKey;
-            importedCount++;
-          }
-        });
-      }
-
-      // 2. Fallback: Secure Storage (Primary storage for most settings)
-      if (kDebugMode) debugPrint('🧪 Admin: Trying SecureStorage to import keys...');
-      if (Get.isRegistered<SecureStorageService>()) {
-        final secureStorage = Get.find<SecureStorageService>();
-        
-        // Comprehensive list of all providers to import
-        final List<String> allProviders = [
-          'gemini', 'serpapi', 'stability', 'kling', 'github', 
-          'removebg', 'deepseek', 'anthropic', 'openai', 'groq', 'azure'
-        ];
-        
-        for (final service in allProviders) {
-          final key = await secureStorage.getApiKey(service);
-          if (key.isNotEmpty) {
-            newKeys[service] = key;
-            importedCount++;
-          }
-          
-          // 🔐 Special: Handle Kling Secret Key
-          if (service == 'kling') {
-            final secret = await secureStorage.getSecretKey(ProviderType.kling);
-            if (secret.isNotEmpty) {
-              newKeys['kling_secret'] = secret;
-            }
-          }
-        }
-
-        // 🗝️ Special: Handle GitHub Hexa-Keys (v4.0)
-        final List<String> gKeys = [];
-        for (int i = 1; i <= 6; i++) {
-          final k = await secureStorage.getApiKey('github_key_$i');
-          if (k.isNotEmpty) {
-            gKeys.add(k);
-          }
-        }
-        if (gKeys.isNotEmpty) {
-          newKeys['github_hexa'] = jsonEncode(gKeys);
-          importedCount++;
-          if (kDebugMode) debugPrint('✅ Admin: Imported ${gKeys.length} GitHub Hexa-Keys');
-        }
-      }
-
-      // 3. Special Case: Gemini OAuth Token (Magic UX)
-      if (newKeys['gemini'] == null || newKeys['gemini']!.isEmpty) {
-        if (Get.isRegistered<AuthController>()) {
-          final auth = Get.find<AuthController>();
-          if (auth.geminiAccessToken.value.isNotEmpty) {
-            newKeys['gemini'] = 'TOKEN:${auth.geminiAccessToken.value}';
-            importedCount++;
-            if (kDebugMode) debugPrint('✨ Admin: Imported Gemini OAuth Token');
-          }
-        }
-      }
-
-      managedKeysEditing.assignAll(newKeys);
-      
-      if (importedCount > 0) {
-        Get.snackbar('نجح 📥', 'تم استيراد $importedCount من مفاتيحك الشخصية بنجاح. لا تنسَ الحفظ ✨');
-        if (kDebugMode) debugPrint('✅ Admin: Imported keys: ${newKeys.keys.join(', ')}');
-      } else {
-        Get.snackbar('تنبيه', 'لم يتم العثور على مفاتيح شخصية. يرجى التأكد من إدخالها في شاشة الإعدادات أولاً.');
-        if (kDebugMode) debugPrint('⚠️ Admin: No personal keys found in ApiController or DB');
-      }
-    } catch (e) {
-      debugPrint('⚠️ Admin: Failed to import personal keys: $e');
-      Get.snackbar('خطأ', 'فشل استيراد المفاتيح: $e');
-    }
-  }
 
   @override
   void onClose() {

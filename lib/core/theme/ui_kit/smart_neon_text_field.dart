@@ -13,6 +13,7 @@ class SmartNeonTextField extends StatelessWidget {
   final Iterable<String>? hints;
   final Color accentColor;
   final Function(String)? onSubmitted;
+  final TextAlign textAlign;
 
   const SmartNeonTextField({
     super.key,
@@ -26,6 +27,7 @@ class SmartNeonTextField extends StatelessWidget {
     this.hints,
     this.accentColor = const Color(0xFF00FF88),
     this.onSubmitted,
+    this.textAlign = TextAlign.start,
   });
 
   @override
@@ -42,6 +44,7 @@ class SmartNeonTextField extends StatelessWidget {
         keyboardType: keyboardType,
         autofillHints: hints,
         onSubmitted: onSubmitted,
+        textAlign: textAlign,
         style: GoogleFonts.cairo(color: Colors.white, fontSize: 15),
         decoration: InputDecoration(
           labelText: label,

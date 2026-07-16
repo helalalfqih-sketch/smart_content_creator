@@ -44,6 +44,7 @@ class ChatStateService extends GetxService {
     lastBrandName.value = "";
     lastBrandNameEn.value = "";
     lastModel.value = "";
+    latestUploadPath.value = null;
     pipelineProgress.value = 0.0;
     pipelineMessage.value = "";
     isLoading.value = false;

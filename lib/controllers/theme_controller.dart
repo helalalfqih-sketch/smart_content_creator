@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../core/storage/app_storage_service.dart';
-import '../core/storage/storage_keys.dart';
-
 class ThemeController extends GetxController {
-  final _isDarkMode = false.obs;
+  final _isDarkMode = true.obs;
   
-  bool get isDarkMode => _isDarkMode.value;
-  ThemeMode get themeMode => _isDarkMode.value ? ThemeMode.dark : ThemeMode.light;
-
-  final AppStorageService _storage = Get.find<AppStorageService>();
+  bool get isDarkMode => true;
+  ThemeMode get themeMode => ThemeMode.dark;
 
   @override
   void onInit() {
@@ -18,21 +13,19 @@ class ThemeController extends GetxController {
   }
 
   void _loadThemeFromStorage() {
-    _isDarkMode.value = _storage.read<bool>(StorageKeys.isDarkMode) ?? false;
-    Get.changeThemeMode(themeMode);
+    // 🛡️ Forcing Dark Mode in this version
+    _isDarkMode.value = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.changeThemeMode(ThemeMode.dark);
+    });
   }
 
   Future<void> toggleTheme() async {
-    _isDarkMode.value = !_isDarkMode.value;
-    Get.changeThemeMode(themeMode);
-    await _storage.write(StorageKeys.isDarkMode, _isDarkMode.value);
-    debugPrint('🌙 Theme changed to: ${_isDarkMode.value ? "Dark" : "Light"}');
+    // 🛡️ Disabled for now to ensure UI stability in Dark Mode
+    Get.snackbar('معلومة', 'وضع الإضاءة الفاتح قيد التطوير، التطبيق يعمل حالياً بالوضع المظلم الفاخر.');
   }
 
   Future<void> setTheme(bool isDark) async {
-    if (_isDarkMode.value == isDark) return;
-    _isDarkMode.value = isDark;
-    Get.changeThemeMode(themeMode);
-    await _storage.write(StorageKeys.isDarkMode, isDark);
+    // 🛡️ Disabled
   }
 }

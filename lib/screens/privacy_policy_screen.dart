@@ -11,6 +11,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           title: Text(
             'سياسة الخصوصية',
@@ -19,7 +20,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
           centerTitle: true,
           elevation: 0,
           backgroundColor: Colors.transparent,
-          foregroundColor: const Color.fromARGB(221, 246, 0, 0),
+          foregroundColor: Colors.white,
         ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -95,7 +96,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
       style: GoogleFonts.cairo(
         fontSize: 15,
         height: 1.6,
-        color: const Color.fromARGB(255, 255, 0, 0),
+        color: Colors.white70,
       ),
     );
   }

@@ -6,8 +6,8 @@ import '../services/db_service.dart';
 import 'auth_controller.dart';
 
 class ChatHistoryController extends GetxController {
-  final DBService _dbService = Get.find<DBService>();
-  final AppStorageService _storage = Get.find<AppStorageService>();
+  late DBService _dbService;
+  late AppStorageService _storage;
 
   // Observables
   final sessions = <Map<String, dynamic>>[].obs;
@@ -17,10 +17,11 @@ class ChatHistoryController extends GetxController {
 
   @override
   void onInit() {
+    _dbService = Get.find<DBService>();
+    _storage = Get.find<AppStorageService>();
     super.onInit();
 
-    // 1. استعادة معرف الجلسة الأخير
-    _loadLastSession();
+    // يتم بدء محادثة جديدة دائماً عند التشغيل (مثل Gemini/ChatGPT)
 
     // 2. مستمع لحفظ الجلسة فور تغييرها
     ever(currentSessionId, (int? id) => _saveLastSession(id));
@@ -28,22 +29,16 @@ class ChatHistoryController extends GetxController {
     // Listen to Auth changes to reload sessions when user changes (login/logout/switch)
     if (Get.isRegistered<AuthController>()) {
       final auth = Get.find<AuthController>();
-      // Only reload when checking is FINISHED (false)
+      // 1. Listen to Session Check status
       ever(auth.isCheckingSession, (bool isChecking) {
         if (!isChecking) {
           loadSessions();
         }
       });
+      // 2. Listen to UID changes (Crucial for multi-account or anonymous-to-real transitions)
+      ever(auth.firebaseUidRx, (_) => loadSessions());
     }
     loadSessions();
-  }
-
-  void _loadLastSession() {
-    final lastId = _storage.read<int>(StorageKeys.lastChatSessionId);
-    if (lastId != null && currentSessionId.value == null) {
-      currentSessionId.value = lastId;
-      if (kDebugMode) debugPrint("💾 History Controller: Restored last session ID: $lastId");
-    }
   }
 
   Future<void> _saveLastSession(int? id) async {
@@ -75,15 +70,20 @@ class ChatHistoryController extends GetxController {
     try {
       isLoading.value = true;
       final userId = _currentUserId;
-      final results = await _dbService.getSessions(userId: userId);
+      final firebaseUid = _currentFirebaseUid;
+      
+      final results = await _dbService.getSessions(
+        userId: userId,
+        firebaseUid: firebaseUid,
+      );
       sessions.assignAll(results);
       
-      if (results.isEmpty) {
-        final total = await _dbService.getRecords('chat_sessions', limit: 1);
-        canMigrate.value = total.isNotEmpty;
-      } else {
-        canMigrate.value = false;
-      }
+      // التحقق من وجود محادثات قديمة أو محلية غير مرتبطة بالحساب الحالي
+      final legacyResults = await _dbService.getRecords('chat_sessions', 
+          where: '(user_id IS NULL OR user_id = ?) AND firebase_uid IS NULL', 
+          whereArgs: ['1'], 
+          limit: 1);
+      canMigrate.value = legacyResults.isNotEmpty && userId != '1' && userId != null;
     } catch (e) {
       debugPrint("❌ History Controller: Error loading sessions: $e");
     } finally {
@@ -120,12 +120,17 @@ class ChatHistoryController extends GetxController {
 
   void selectSession(int id) {
     currentSessionId.value = id;
-    Get.back(); // Close drawer
+    // إغلاق القائمة الجانبية أو أي نافذة منبثقة فوراً لرؤية المحادثة المفتوحة
+    if (Get.isOverlaysOpen) {
+      Get.back();
+    }
   }
 
   void startNewChat() {
     currentSessionId.value = null;
-    Get.back(); // Close drawer
+    if (Get.isOverlaysOpen) {
+      Get.back();
+    }
   }
 
   void resetConversation() {
@@ -144,6 +149,9 @@ class ChatHistoryController extends GetxController {
 
   Future<void> deleteSession(int id) async {
     try {
+      // Delete messages for this session explicitly (SQLite foreign_keys may be disabled)
+      await _dbService.deleteRecord('chat_history',
+          where: 'session_id = ?', whereArgs: [id]);
       await _dbService.deleteRecord('chat_sessions', where: 'id = ?', whereArgs: [id]);
       if (currentSessionId.value == id) {
         currentSessionId.value = null;
@@ -158,6 +166,20 @@ class ChatHistoryController extends GetxController {
     try {
       final userId = _currentUserId;
       final fbUid = _currentFirebaseUid;
+
+      // Fetch current user sessions IDs first, so we can delete their messages too.
+      final sessionsToDelete = await _dbService.getSessions(
+        userId: userId,
+        firebaseUid: fbUid,
+      );
+      final ids = sessionsToDelete
+          .map((s) => s['id'])
+          .whereType<int>()
+          .toList();
+      for (final id in ids) {
+        await _dbService.deleteRecord('chat_history',
+            where: 'session_id = ?', whereArgs: [id]);
+      }
       
       // Delete sessions matching the local ID, Firebase UID, OR legacy sessions with no ID
       final List<String> conditions = ['user_id IS NULL'];

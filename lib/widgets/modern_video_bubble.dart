@@ -1,32 +1,46 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:gal/gal.dart';
+import 'video_full_screen_viewer.dart';
+import 'package:get/get.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 /// 🎬 مشغّل فيديو حديث داخل فقاعة الشات
 /// مستوحى من واجهة Google Gemini
 /// يدعم: Seekbar، أزرار مشاركة/تحميل، عرض الوقت
 class ModernVideoBubble extends StatefulWidget {
+  final String id;
   final String? videoPath;
   final String? thumbnailUrl;
   final bool isLocal;
+  final double? progress;
 
   const ModernVideoBubble({
     super.key,
+    required this.id,
     required this.videoPath,
     this.thumbnailUrl,
     this.isLocal = false,
+    this.progress,
+    this.onRefresh,
+    this.isPending = false,
   });
+
+  final VoidCallback? onRefresh;
+  final bool isPending;
 
   @override
   State<ModernVideoBubble> createState() => _ModernVideoBubbleState();
 }
 
 class _ModernVideoBubbleState extends State<ModernVideoBubble>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   VideoPlayerController? _controller;
   bool _isInitialized = false;
   bool _isPlaying = false;
@@ -35,6 +49,10 @@ class _ModernVideoBubbleState extends State<ModernVideoBubble>
   String? _thumbnailPath;
   bool _isThumbnailLoading = true;
   bool _isSaving = false;
+  bool _autoDownloadWhenReady = false;
+  bool _isInitializing = false; // 🛡️ حارس التهيئة لمنع الـ Loop
+  String? _lastInitializedPath; // 🛡️ تتبع الرابط الأخير لتمكين الحماية القصوى
+  bool _isThumbnailGenerating = false; // 🛡️ حارس توليد الغلاف
 
   late AnimationController _controlsFadeController;
   late Animation<double> _controlsFade;
@@ -42,6 +60,8 @@ class _ModernVideoBubbleState extends State<ModernVideoBubble>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    
     _controlsFadeController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -49,23 +69,50 @@ class _ModernVideoBubbleState extends State<ModernVideoBubble>
     _controlsFade =
         Tween<double>(begin: 1.0, end: 0.0).animate(_controlsFadeController);
 
-    if (widget.isLocal) {
-      _initializeVideo();
-    } else {
-      _generateThumbnail();
+    // 🚀 بدء التهيئة بعد رندر الفريم الأول لضمان استقرار الواجهة
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _initializeVideo();
+        _generateThumbnail();
+      }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      if (_isPlaying) {
+        _togglePlay(); // Pause video when app is not in foreground
+      }
     }
   }
 
   /// توليد غلاف للفيديو
   Future<void> _generateThumbnail() async {
+    if (_isThumbnailGenerating || _thumbnailPath != null) {
+      return;
+    }
+    
     try {
+      _isThumbnailGenerating = true;
       if (widget.thumbnailUrl != null) {
-        if (mounted) setState(() => _isThumbnailLoading = false);
+        if (mounted) {
+          setState(() {
+            _isThumbnailLoading = false;
+            _isThumbnailGenerating = false;
+          });
+        }
         return;
       }
 
-      if (!widget.isLocal) {
-        if (mounted) setState(() => _isThumbnailLoading = false);
+      if (widget.videoPath == null || !widget.isLocal) {
+        if (mounted) {
+          setState(() {
+            _isThumbnailLoading = false;
+            _isThumbnailGenerating = false;
+          });
+        }
         return;
       }
 
@@ -77,78 +124,189 @@ class _ModernVideoBubbleState extends State<ModernVideoBubble>
         quality: 85,
       );
 
-      if (mounted) {
-        setState(() {
-          _thumbnailPath = fileName;
-          _isThumbnailLoading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _thumbnailPath = fileName;
+        _isThumbnailLoading = false;
+        _isThumbnailGenerating = false;
+      });
     } catch (e) {
-      if (mounted) setState(() => _isThumbnailLoading = false);
+      if (!mounted) return;
+      setState(() {
+        _isThumbnailLoading = false;
+        _isThumbnailGenerating = false;
+      });
     }
   }
 
   Future<void> _initializeVideo() async {
-    try {
-      if (_controller != null) return;
-      if (widget.videoPath == null) return;
+    // 🛡️ حماية 0: منع التهيئة إذا لم تكن الشاشة مرئية أو المسار غير صحيح (للحفاظ على عتاد الجهاز)
+    final currentRoute = Get.currentRoute;
+    if (currentRoute != '/AiChatScreen' && 
+        currentRoute != '/home' && 
+        !currentRoute.contains('AiChatScreen')) {
+      return;
+    }
 
-      if (widget.isLocal) {
-        _controller = VideoPlayerController.file(File(widget.videoPath!));
-      } else {
-        _controller =
-            VideoPlayerController.networkUrl(Uri.parse(widget.videoPath!));
+    if (widget.videoPath == null || widget.videoPath!.isEmpty) {
+      debugPrint("🚫 [VideoBubble] Init Aborted: No Source for ${widget.id}");
+      return;
+    }
+    
+    // 🛡️ حماية 1: منع التهيئة المكررة إذا كانت العملية جارية
+    if (_isInitializing) {
+      return;
+    }
+    
+    // 🛡️ حماية 2: إذا كان المشغل مهيأ بالفعل لنفس الرابط، لا تفعل شيئاً
+    if (_isInitialized && _controller != null && _lastInitializedPath == widget.videoPath) {
+      return;
+    }
+
+    try {
+      if (!mounted) return;
+      _isInitializing = true;
+      
+      // 🛡️ حماية 3: إذا كان الرابط هو نفسه الذي تم رندره للتو، تجاهل الطلب
+      if (_lastInitializedPath == widget.videoPath && _isInitialized) {
+        _isInitializing = false;
+        return;
       }
 
-      await _controller!.initialize();
+      debugPrint("🎬 [VideoBubble] Starting protected initialization: ${widget.id} | Source: ${widget.videoPath}");
 
-      _controller!.addListener(() {
-        if (!mounted) return;
+      // 1. Dispose old controller safely
+      if (_controller != null) {
+        final oldController = _controller!;
+        _controller = null;
+        // لا نحدث الحالة هنا لتجنب وميض الواجهة أثناء التغيير السريع
+        await oldController.dispose();
+      }
+      
+      final VideoPlayerController newController;
+      if (widget.isLocal) {
+        newController = VideoPlayerController.file(File(widget.videoPath!));
+      } else {
+        newController = VideoPlayerController.networkUrl(Uri.parse(widget.videoPath!));
+      }
 
-        // تحديث حالة التخزين المؤقت
-        final isBuffering = _controller!.value.isBuffering;
-        if (isBuffering != _isBuffering) {
-          setState(() => _isBuffering = isBuffering);
-        }
+      _controller = newController;
+      await newController.initialize();
 
-        // إعادة التشغيل من البداية عند الانتهاء
-        if (_controller!.value.position >= _controller!.value.duration &&
-            _controller!.value.duration > Duration.zero) {
-          setState(() {
-            _isPlaying = false;
-            _showControls = true;
-            _controlsFadeController.reverse();
-            _controller!.seekTo(Duration.zero);
-          });
-        }
+      if (!mounted) {
+        await newController.dispose();
+        _isInitializing = false;
+        _controller = null;
+        return;
+      }
 
-        // تحديث الواجهة للـ seekbar
-        if (_isPlaying && mounted) {
-          setState(() {});
-        }
+      newController.addListener(_videoListener);
+
+      setState(() {
+        _isInitialized = true;
+        _isPlaying = false;
+        _isThumbnailLoading = false;
+        _isInitializing = false; 
+        _lastInitializedPath = widget.videoPath; // تثبيت الرابط الناجح
       });
-
+      
+      // 📥 تفعيل التحميل التلقائي إذا كان مطلوباً
+      if (_autoDownloadWhenReady) {
+        _autoDownloadWhenReady = false; // إعادة التعيين لمنع التكرار
+        _saveVideo();
+      }
+      
+      debugPrint("✅ [VideoBubble] Initialization complete and locked: ${widget.id}");
+    } catch (e) {
+      debugPrint("❌ [VideoBubble] Init Error: $e");
       if (mounted) {
         setState(() {
-          _isInitialized = true;
+          _isInitializing = false;
+          _isInitialized = false;
           _isThumbnailLoading = false;
         });
       }
-    } catch (e) {
-      debugPrint("خطأ في تحميل الفيديو: $e");
-      if (mounted) setState(() => _isThumbnailLoading = false);
+    }
+  }
+
+  void _videoListener() {
+    if (!mounted || _controller == null) return;
+
+    // 🛡️ حماية المسار: إذا غادر المستخدم الشاشة، نوقف المعالجة فوراً
+    final currentRoute = Get.currentRoute;
+    if (currentRoute != '/AiChatScreen' && currentRoute != '/home' && !currentRoute.contains('AiChatScreen')) {
+      if (_isPlaying) {
+        _controller?.pause();
+        _isPlaying = false;
+      }
+      return;
+    }
+
+    final controllerValue = _controller!.value;
+
+    // Update buffering state
+    if (controllerValue.isBuffering != _isBuffering) {
+      setState(() => _isBuffering = controllerValue.isBuffering);
+    }
+
+    // Auto-reset when finished
+    if (controllerValue.position >= controllerValue.duration &&
+        controllerValue.duration > Duration.zero) {
+      setState(() {
+        _isPlaying = false;
+        _showControls = true;
+        _controlsFadeController.reverse();
+        _controller?.seekTo(Duration.zero);
+      });
+    }
+
+    // Update UI for seekbar only when playing
+    if (_isPlaying && mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant ModernVideoBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    
+    // Case 1: Video path changed to a new valid path
+    if (oldWidget.videoPath != widget.videoPath && widget.videoPath != null) {
+      debugPrint("🎬 ModernVideoBubble: videoPath updated -> Re-initializing");
+      _initializeVideo();
+    } 
+    // Case 2: Video path became null (e.g. error or cleared) -> Release resources
+    else if (widget.videoPath == null && _controller != null) {
+      debugPrint("🎬 ModernVideoBubble: videoPath became null -> Disposing controller");
+      _disposeController();
+    }
+  }
+
+  Future<void> _disposeController() async {
+    if (_controller != null) {
+      final oldController = _controller!;
+      _controller = null;
+      if (mounted) {
+        setState(() => _isInitialized = false);
+      }
+      await oldController.dispose();
     }
   }
 
   @override
   void dispose() {
-    _controller?.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    _disposeController();
     _controlsFadeController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (widget.isPending || (widget.videoPath == null && widget.thumbnailUrl == null)) {
+      return _buildGeneratingState();
+    }
+
     // حالة التحميل الأولي
     if (!_isInitialized &&
         (widget.isLocal || _isThumbnailLoading) &&
@@ -196,6 +354,131 @@ class _ModernVideoBubbleState extends State<ModernVideoBubble>
     );
   }
 
+  /// حالة التوليد (AI Generating)
+  Widget _buildGeneratingState() {
+    return Container(
+      width: 320,
+      height: 220, // زيادة الارتفاع قليلاً للزر الجديد
+      decoration: BoxDecoration(
+        color: const Color(0xFF0F0F1A),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF00FF88).withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF00FF88).withValues(alpha: 0.05),
+            blurRadius: 20,
+            spreadRadius: 2,
+          )
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(seconds: 2),
+                curve: Curves.easeInOut,
+                builder: (context, value, child) {
+                  return Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF00FF88).withValues(alpha: 0.2 * value),
+                          blurRadius: 15 * value,
+                          spreadRadius: 2 * value,
+                        )
+                      ],
+                    ),
+                    child: const CircularProgressIndicator(
+                      color: Color(0xFF00FF88),
+                      strokeWidth: 2,
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 18),
+              Text(
+                '🎬 جاري التوليد الذكي... ${widget.progress != null ? "(${(widget.progress! * 100).toInt()}%)" : ""}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'IBMPlexSansArabic',
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  'يتم الآن تحريك المنتج بأحدث تقنيات الذكاء الاصطناعي 🚀',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 12,
+                    fontFamily: 'IBMPlexSansArabic',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // 📥 زر التحميل في الخلفية
+              if (!_autoDownloadWhenReady)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() => _autoDownloadWhenReady = true);
+                    Get.snackbar(
+                      '📥 وضع الانتظار',
+                      'سيتم تحميل الفيديو تلقائياً فور اكتمال التوليد 🚀',
+                      snackPosition: SnackPosition.BOTTOM,
+                      backgroundColor: const Color(0xFF00FF88).withValues(alpha: 0.8),
+                      colorText: Colors.black,
+                      margin: const EdgeInsets.all(15),
+                      borderRadius: 12,
+                      icon: const Icon(Icons.downloading_rounded, color: Colors.black),
+                    );
+                  },
+                  icon: const Icon(Icons.download_for_offline_rounded, size: 18),
+                  label: const Text('تحميل عند الجاهزية', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white10,
+                    foregroundColor: const Color(0xFF00FF88),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                )
+              else
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.check_circle_rounded, color: Color(0xFF00FF88), size: 16),
+                    const SizedBox(width: 6),
+                    Text(
+                      'سيتم التحميل تلقائياً 📥',
+                      style: TextStyle(color: const Color(0xFF00FF88).withValues(alpha: 0.8), fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          Positioned(
+            bottom: 12,
+            right: 12,
+            child: Icon(
+              Icons.auto_awesome,
+              color: const Color(0xFF00FF88).withValues(alpha: 0.3),
+              size: 20,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// حالة التحميل
   Widget _buildLoadingState() {
     return Container(
@@ -231,23 +514,26 @@ class _ModernVideoBubbleState extends State<ModernVideoBubble>
     );
   }
 
-  /// المحتوى الرئيسي (فيديو أو غلاف)
   Widget _buildMainContent() {
     if (_isInitialized && _controller != null) {
+      debugPrint("📺 [VideoBubble] Rendering VideoPlayer for ${widget.id}");
       return VideoPlayer(_controller!);
     }
-
+    
     if (widget.thumbnailUrl != null) {
-      return Image.network(
-        widget.thumbnailUrl!,
+      debugPrint("🖼️ [VideoBubble] Rendering Network Thumbnail for ${widget.id}");
+      return CachedNetworkImage(
+        imageUrl: widget.thumbnailUrl!,
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
-        errorBuilder: (c, e, s) => Container(color: Colors.grey[900]),
+        placeholder: (context, url) => _buildLoadingState(),
+        errorWidget: (context, url, error) => const Icon(Icons.error),
       );
     }
 
     if (_thumbnailPath != null) {
+      debugPrint("🖼️ [VideoBubble] Rendering Local Thumbnail for ${widget.id}");
       return Image.file(
         File(_thumbnailPath!),
         fit: BoxFit.cover,
@@ -259,8 +545,44 @@ class _ModernVideoBubbleState extends State<ModernVideoBubble>
     return Container(
       color: const Color(0xFF1A1A2E),
       child: Center(
-        child: Icon(Icons.movie_creation_outlined,
-            color: const Color(0xFF00FF88).withValues(alpha: 0.2), size: 50),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              !_isInitialized && !_isThumbnailLoading && widget.videoPath != null
+                  ? Icons.error_outline_rounded
+                  : Icons.movie_creation_outlined,
+              color: (!_isInitialized && !_isThumbnailLoading && widget.videoPath != null)
+                  ? Colors.redAccent.withValues(alpha: 0.5)
+                  : const Color(0xFF00FF88).withValues(alpha: 0.2),
+              size: 50,
+            ),
+            if (!_isInitialized && !_isThumbnailLoading && widget.videoPath != null)
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  children: [
+                    Text(
+                      'فشل تحميل الفيديو',
+                      style: TextStyle(
+                        color: Colors.redAccent.withValues(alpha: 0.5),
+                        fontSize: 10,
+                      ),
+                    ),
+                    if (widget.onRefresh != null)
+                      TextButton.icon(
+                        onPressed: widget.onRefresh,
+                        icon: const Icon(Icons.refresh, size: 14, color: Color(0xFF00FF88)),
+                        label: const Text(
+                          'تحديث الرابط',
+                          style: TextStyle(color: Color(0xFF00FF88), fontSize: 10),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -298,6 +620,19 @@ class _ModernVideoBubbleState extends State<ModernVideoBubble>
                 icon: Icons.share_rounded,
                 onTap: _shareVideo,
                 tooltip: 'مشاركة',
+              ),
+              const SizedBox(width: 6),
+              _buildOverlayButton(
+                icon: Icons.fullscreen_rounded,
+                onTap: () {
+                  if (widget.videoPath != null) {
+                    Get.to(() => VideoFullScreenViewer(
+                      videoUrl: widget.videoPath!,
+                      isLocal: widget.isLocal,
+                    ), transition: Transition.zoom);
+                  }
+                },
+                tooltip: 'شاشة كاملة',
               ),
               const SizedBox(width: 6),
               _buildOverlayButton(
@@ -479,64 +814,37 @@ class _ModernVideoBubbleState extends State<ModernVideoBubble>
   //                  الأحداث
   // ═══════════════════════════════════════════
 
-  void _onVideoTap() {
-    if (!_isInitialized) {
-      _initializeAndPlay();
-      return;
-    }
-
-    if (_isPlaying) {
-      setState(() => _showControls = !_showControls);
-      if (_showControls) {
-        // إخفاء تلقائي بعد 3 ثواني
-        Future.delayed(const Duration(seconds: 3), () {
-          if (mounted && _isPlaying) {
-            setState(() => _showControls = false);
-          }
-        });
-      }
-    } else {
-      _togglePlay();
-    }
-  }
-
   void _togglePlay() {
-    if (!_isInitialized) {
-      _initializeAndPlay();
-      return;
-    }
+    if (_controller == null || !_isInitialized) return;
+
     setState(() {
-      if (_isPlaying) {
+      if (_controller!.value.isPlaying) {
         _controller!.pause();
+        _isPlaying = false;
         _showControls = true;
       } else {
         _controller!.play();
-        // إخفاء تلقائي بعد 3 ثواني
-        Future.delayed(const Duration(seconds: 3), () {
+        _isPlaying = true;
+        // إخفاء التحكمات بعد ثانيتين من التشغيل
+        Future.delayed(const Duration(seconds: 2), () {
           if (mounted && _isPlaying) {
             setState(() => _showControls = false);
+            _controlsFadeController.forward();
           }
         });
       }
-      _isPlaying = !_isPlaying;
     });
   }
 
-  Future<void> _initializeAndPlay() async {
-    setState(() => _isThumbnailLoading = true);
-    await _initializeVideo();
-    if (_isInitialized) {
-      _controller!.play();
-      setState(() {
-        _isPlaying = true;
-        _showControls = true;
-      });
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted && _isPlaying) {
-          setState(() => _showControls = false);
-        }
-      });
+  void _onVideoTap() {
+    if (widget.videoPath == null) return;
+    
+    if (!_isInitialized) {
+      _initializeVideo();
+      return;
     }
+
+    _togglePlay();
   }
 
   /// 📤 مشاركة الفيديو
@@ -579,23 +887,26 @@ class _ModernVideoBubbleState extends State<ModernVideoBubble>
       if (widget.videoPath == null) return;
       setState(() => _isSaving = true);
 
-      if (widget.isLocal) {
-        await SharePlus.instance.share(
-          ShareParams(
-            files: [XFile(widget.videoPath!)],
-            text: 'حفظ الفيديو',
-          ),
-        );
-      } else {
+      String finalPath = widget.videoPath!;
+      
+      // إذا كان رابط شبكة، نحمله أولاً
+      if (!widget.isLocal) {
         final response = await http.get(Uri.parse(widget.videoPath!));
         final tempDir = await getTemporaryDirectory();
         final file = File(
             '${tempDir.path}/video_${DateTime.now().millisecondsSinceEpoch}.mp4');
         await file.writeAsBytes(response.bodyBytes);
-        await SharePlus.instance.share(
-          ShareParams(
-            files: [XFile(file.path)],
-            text: 'حفظ الفيديو',
+        finalPath = file.path;
+      }
+
+      // 💾 الحفظ الفعلي في الاستوديو (Gallery)
+      await Gal.putVideo(finalPath);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ تم حفظ الفيديو في الاستوديو بنجاح!'),
+            backgroundColor: Colors.green,
           ),
         );
       }
@@ -604,6 +915,14 @@ class _ModernVideoBubbleState extends State<ModernVideoBubble>
     } catch (e) {
       setState(() => _isSaving = false);
       debugPrint('❌ Save error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ فشل حفظ الفيديو: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
     }
   }
 

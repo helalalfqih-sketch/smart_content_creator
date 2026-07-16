@@ -49,7 +49,8 @@ mixin ChatMediaMixin on State<AiChatScreen> {
             .toList();
 
         for (var file in pickedFiles) {
-          final extension = p.extension(file.path).toLowerCase().replaceAll('.', '');
+          final extension =
+              p.extension(file.path).toLowerCase().replaceAll('.', '');
 
           if (['jpg', 'jpeg', 'png'].contains(extension)) {
             handlePickedImages([file]);
@@ -85,7 +86,8 @@ mixin ChatMediaMixin on State<AiChatScreen> {
         progressTimer?.cancel();
         setState(() {
           processingProgress = 1.0;
-          preAnalysisResult = null; // Analysis will be done properly by AIOrchestrator on send
+          preAnalysisResult =
+              null; // Analysis will be done properly by AIOrchestrator on send
         });
       }
     }
@@ -116,7 +118,7 @@ mixin ChatMediaMixin on State<AiChatScreen> {
       selectedVideo = video;
       selectedImages = [];
     });
-    
+
     // logic moved from screen to mixin if applicable, or kept in UI
     // For now, let's keep the UI bottom sheet in the screen but call this method
   }
@@ -130,7 +132,8 @@ mixin ChatMediaMixin on State<AiChatScreen> {
 
   Future<void> compressImages(List<File> files) async {
     try {
-      final List<File> compressedList = await compute(ImageUtils.batchCompressAndRead, files);
+      final List<File> compressedList =
+          await compute(ImageUtils.batchCompressAndRead, files);
       if (!mounted) return;
       setState(() {
         compressedImages = compressedList;
@@ -162,7 +165,8 @@ mixin ChatMediaMixin on State<AiChatScreen> {
       if (source == ImageSource.gallery) {
         final List<XFile> pickedFiles = await picker.pickMultiImage();
         if (pickedFiles.isNotEmpty) {
-          final List<File> files = pickedFiles.map((x) => File(x.path)).toList();
+          final List<File> files =
+              pickedFiles.map((x) => File(x.path)).toList();
           handlePickedImages(files);
         }
       } else {

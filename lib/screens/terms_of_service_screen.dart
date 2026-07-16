@@ -10,6 +10,7 @@ class TermsOfServiceScreen extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           title: Text(
             'شروط الاستخدام',
@@ -18,7 +19,7 @@ class TermsOfServiceScreen extends StatelessWidget {
           centerTitle: true,
           elevation: 0,
           backgroundColor: Colors.transparent,
-          foregroundColor: Colors.black87,
+          foregroundColor: Colors.white,
         ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -91,7 +92,7 @@ class TermsOfServiceScreen extends StatelessWidget {
       style: GoogleFonts.cairo(
         fontSize: 15,
         height: 1.6,
-        color: Colors.black87,
+        color: Colors.white70,
       ),
     );
   }

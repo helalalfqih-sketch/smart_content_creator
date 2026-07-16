@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart'; // For kDebugMode, debugPrint - Reload Force
 import 'package:get/get.dart';
 import '../core/models/api_provider.dart';
@@ -8,18 +6,16 @@ import '../core/storage/app_storage_service.dart';
 import '../services/ai_provider.dart';
 import '../services/gemini_service.dart';
 import '../services/db_service.dart';
-import '../services/managed_ai_service.dart';
 import '../core/utils/snackbar_utils.dart';
 import '../core/utils/error_handler.dart';
-import '../core/utils/smart_exception.dart';
 import 'settings_controller.dart';
-import 'auth_controller.dart';
+// UnifiedBackendService removed - not registered in this project
 
 enum ApiStatus { active, limited, error, unknown }
 
 class ApiController extends GetxController {
-  final DBService _dbService; // New DB dependency
   final AppStorageService _storage;
+  late final DBService _dbService;
 
   late final Rx<ProviderType> _activeProvider;
   late final RxnString _testStatus;
@@ -60,9 +56,8 @@ class ApiController extends GetxController {
   }
 
   ApiController([AppStorageService? storage])
-      : _storage = storage ?? Get.find<AppStorageService>(),
-        _dbService = Get.put(DBService()) {
-    // Ensure DBService is available
+      : _storage = storage ?? Get.find<AppStorageService>() {
+    _dbService = Get.put(DBService());
     _activeProvider = ProviderType.gemini.obs;
     _testStatus = RxnString();
     _isTesting = false.obs;
@@ -70,11 +65,6 @@ class ApiController extends GetxController {
   }
 
   void showError(Object e) {
-    // 🧠 Managed AI: Check for Quota Exceeded (v3.0)
-    if (e is SmartUserException && e.isQuotaExceeded) {
-      _showSubscriptionDialog();
-      return;
-    }
 
     // 🧠 Use Smart Error Handler for friendly messages
     final smartError = ErrorHandler.mapError(e);
@@ -192,8 +182,6 @@ class ApiController extends GetxController {
       final result = await provider.analyzeImage(bytes, prompt,
           apiKey: apiKey, history: history);
 
-      // 🧠 Managed AI: Deduct Credit (v3.0)
-      _checkAndDeductManagedCredit(apiKey, type);
 
       // AUTO-SAVE PRODUCT
       await _dbService.insertRecord('products', {
@@ -221,8 +209,6 @@ class ApiController extends GetxController {
       final result =
           await provider.generateText(prompt, apiKey: apiKey, history: history);
 
-      // 🧠 Managed AI: Deduct Credit if applicable (v3.0)
-      _checkAndDeductManagedCredit(apiKey, type);
 
       return result;
     } catch (e) {
@@ -232,26 +218,6 @@ class ApiController extends GetxController {
     }
   }
 
-  /// 📉 Managed AI Helper: Deduct credits if a system key was used
-  void _checkAndDeductManagedCredit(String keyUsed, ProviderType type) async {
-    try {
-      final settings = Get.find<SettingsController>();
-      final userKey = settings.getApiKey(type);
-
-      // If key is NOT the user's private key, it's the managed one
-      if (userKey.isEmpty || userKey != keyUsed) {
-        final auth = Get.find<AuthController>();
-        final managedAi = Get.find<ManagedAiService>();
-        if (auth.firebaseUid != null) {
-          await managedAi.deductCredit(auth.firebaseUid);
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('⚠️ ApiController: Failed to deduct credit: $e');
-      }
-    }
-  }
 
   Stream<String> generateTextStream(String prompt,
       {Uint8List? imageBytes,
@@ -261,19 +227,14 @@ class ApiController extends GetxController {
       final (provider, apiKey, type) =
           await AIProviderFactory.getSmartProvider();
 
-      bool creditDeducted = false;
+      // Backend routing disabled - using local provider directly
 
+      // Legacy/Fallback path
       await for (final chunk in provider.generateTextStream(prompt,
           apiKey: apiKey,
           imageBytes: imageBytes,
           videoBytes: videoBytes,
           history: history)) {
-        // 📉 Managed AI: Deduct once on first chunk (v3.0)
-        if (!creditDeducted && chunk.isNotEmpty) {
-          _checkAndDeductManagedCredit(apiKey, type);
-          creditDeducted = true;
-        }
-
         yield chunk;
       }
     } catch (e) {
@@ -292,8 +253,6 @@ class ApiController extends GetxController {
         final result = await provider.generateMarketingContent(prompt,
             apiKey: apiKey);
 
-        // 🧠 Managed AI: Deduct Credit (v3.0)
-        _checkAndDeductManagedCredit(apiKey, type);
 
         return {'content': result};
       } else {
@@ -343,54 +302,4 @@ Actions can be: "generate_video", "analyze_trends", "generate_script".
         imageBytes: imageBytes, videoBytes: videoBytes, history: history);
   }
 
-  /// 📣 Managed AI: Show Subscription Dialog (v3.0)
-  void _showSubscriptionDialog() {
-    Get.dialog(
-      Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('⚠️ الأرصدة غير كافية',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.stars, color: Colors.orange, size: 60),
-              const SizedBox(height: 16),
-              const Text(
-                'لقد استهلكت جميع الأرصدة المتاحة للنظام المدار اليوم.',
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'يمكنك المتابعة عبر إضافة مفتاح API الخاص بك مجاناً، أو الترقية للباقة الاحترافية للاستمرار في استخدام نظامنا.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 13),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Get.back(),
-              child: const Text('إغلاق'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6200EE),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-              onPressed: () {
-                Get.back();
-                Get.toNamed('/settings'); // Redirect to settings
-              },
-              child: const Text('إعدادات المفاتيح 🗝️'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

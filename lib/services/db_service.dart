@@ -10,7 +10,7 @@ import 'package:path/path.dart';
 /// يستخدم نظام Generic CRUD لاختصار 2200 سطر إلى هيكل ذكي وسهل الصيانة.
 class DBService extends GetxService {
   static Database? _database;
-  static const int _dbVersion = 26;
+  static const int _dbVersion = 31;
   bool _schemaChecked = false;
 
   // ---------------------------------------------------------------------------
@@ -86,8 +86,10 @@ class DBService extends GetxService {
       ai_response TEXT,
       message_type TEXT DEFAULT 'text',
       media_path TEXT,
+      video_url TEXT,
       product_context TEXT,
       meta_data TEXT, 
+      state TEXT DEFAULT 'completed',
       created_at TEXT NOT NULL,
       user_id TEXT,
       firebase_uid TEXT,
@@ -170,6 +172,43 @@ class DBService extends GetxService {
     batch.execute('''CREATE TABLE product_media(id INTEGER PRIMARY KEY AUTOINCREMENT, file_path TEXT, media_type TEXT, session_id INTEGER, created_at TEXT)''');
     batch.execute('''CREATE TABLE activity_logs(id INTEGER PRIMARY KEY AUTOINCREMENT, action TEXT NOT NULL, details TEXT, created_at TEXT NOT NULL)''');
     batch.execute('''CREATE TABLE referrals(id INTEGER PRIMARY KEY AUTOINCREMENT, referrer_id TEXT, timestamp TEXT)''');
+    batch.execute('''CREATE TABLE conversations(id INTEGER PRIMARY KEY AUTOINCREMENT, firebase_uid TEXT, created_at TEXT)''');
+
+    // 8. كتالوج المنتجات (Meta Commerce Manager)
+    batch.execute('''CREATE TABLE catalog_products(
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      availability TEXT DEFAULT 'in stock',
+      condition TEXT DEFAULT 'new',
+      price REAL DEFAULT 0.0,
+      currency TEXT DEFAULT 'YER',
+      link TEXT,
+      image_link TEXT,
+      additional_image_links TEXT,
+      video_url TEXT,
+      brand TEXT,
+      google_product_category TEXT,
+      fb_product_category TEXT,
+      quantity INTEGER DEFAULT 1,
+      sale_price REAL,
+      sale_price_effective_date TEXT,
+      item_group_id TEXT,
+      gender TEXT,
+      color TEXT,
+      size TEXT,
+      age_group TEXT,
+      material TEXT,
+      pattern TEXT,
+      shipping TEXT,
+      shipping_weight TEXT,
+      gtin TEXT,
+      product_tags TEXT,
+      style TEXT,
+      created_at TEXT,
+      updated_at TEXT,
+      is_synced INTEGER DEFAULT 0
+    )''');
 
     await batch.commit();
     await _insertDefaultControls(db);
@@ -181,11 +220,70 @@ class DBService extends GetxService {
     if (oldVersion < 26) {
        await _insertDefaultControls(db);
     }
+    if (oldVersion < 27) {
+       // إضافة عمود الحالة لتتبع الرسائل الجاري معالجتها
+       await db.execute("ALTER TABLE chat_history ADD COLUMN state TEXT DEFAULT 'completed'");
+    }
+    if (oldVersion < 28) {
+       // إضافة عمود لرابط الفيديو لتجنب تعارض الأسماء
+       await db.execute("ALTER TABLE chat_history ADD COLUMN video_url TEXT");
+    }
+    if (oldVersion < 29) {
+      // توسعة سجل عناصر التحكم الافتراضي للشاشات والأزرار
+      await _insertDefaultControls(db);
+    }
+    if (oldVersion < 30) {
+      // إضافة جدول كتالوج المنتجات للمزامنة مع Meta Commerce Manager
+      await db.execute('''CREATE TABLE IF NOT EXISTS catalog_products(
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT,
+        availability TEXT DEFAULT 'in stock',
+        condition TEXT DEFAULT 'new',
+        price REAL DEFAULT 0.0,
+        currency TEXT DEFAULT 'YER',
+        link TEXT,
+        image_link TEXT,
+        additional_image_links TEXT,
+        video_url TEXT,
+        brand TEXT,
+        google_product_category TEXT,
+        fb_product_category TEXT,
+        quantity INTEGER DEFAULT 1,
+        sale_price REAL,
+        sale_price_effective_date TEXT,
+        item_group_id TEXT,
+        gender TEXT,
+        color TEXT,
+        size TEXT,
+        age_group TEXT,
+        material TEXT,
+        pattern TEXT,
+        shipping TEXT,
+        shipping_weight TEXT,
+        gtin TEXT,
+        product_tags TEXT,
+        style TEXT,
+        created_at TEXT,
+        updated_at TEXT,
+        is_synced INTEGER DEFAULT 0
+      )''');
+    }
+    if (oldVersion < 31) {
+      // إضافة صلاحية كتالوج المنتجات
+      await _insertDefaultControls(db);
+    }
   }
 
   // 🛡️ Failsafe Table Checker
   Future<void> _ensureColumnsExist(Database db) async {
     try {
+      // 🛡️ Ensure missing tables are created
+      final tableCheck = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='conversations'");
+      if (tableCheck.isEmpty) {
+        await db.execute('''CREATE TABLE conversations(id INTEGER PRIMARY KEY AUTOINCREMENT, firebase_uid TEXT, created_at TEXT)''');
+      }
+
       final columnsToAdd = {
         'chat_sessions': ['firebase_uid TEXT', 'is_synced INTEGER DEFAULT 0'],
         'chat_history': ['firebase_uid TEXT', 'message_type TEXT', 'media_path TEXT', 'embedding TEXT', 'product_context TEXT'],
@@ -259,18 +357,37 @@ class DBService extends GetxService {
   // 4. الدوال المعقدة (Legacy Complex Logic - Preserved) 🧠
   // ---------------------------------------------------------------------------
 
-  Future<List<Map<String, dynamic>>> getSessions({int limit = 50, String? userId}) async {
+  Future<List<Map<String, dynamic>>> getSessions({int limit = 50, String? userId, String? firebaseUid}) async {
     final d = await db;
-    String where = userId != null ? '(user_id = ? OR user_id IS NULL)' : '1=1';
+    
+    List<String> conditions = [];
+    List<dynamic> args = [];
+    
+    if (userId != null) {
+      conditions.add('user_id = ?');
+      args.add(userId);
+    }
+    if (firebaseUid != null) {
+      conditions.add('firebase_uid = ?');
+      args.add(firebaseUid);
+    }
+    
+    // نقوم بجلب المحادثات الخاصة بالمستخدم + المحادثات المحلية (Anonymous) التي لم تُربط بحساب بعد
+    // نقوم بجلب المحادثات الخاصة بالمستخدم + المحادثات المحلية (التي تحمل الرقم 1 أو فارغة)
+    String where = conditions.isNotEmpty 
+        ? '(${conditions.join(' OR ')} OR (user_id IS NULL OR user_id = "1" OR firebase_uid IS NULL))' 
+        : '(user_id IS NULL OR user_id = "1" OR firebase_uid IS NULL)';
+    
     final sql = '''
       SELECT s.*, 
       (SELECT h.media_path FROM chat_history h WHERE h.session_id = s.id AND h.message_type = 'image' ORDER BY h.created_at DESC LIMIT 1) as image_path
       FROM chat_sessions s WHERE $where ORDER BY last_message_at DESC LIMIT $limit
     ''';
-    return await d.rawQuery(sql, userId != null ? [userId] : []);
+    
+    return await d.rawQuery(sql, args);
   }
 
-  Future<int> logChatMessage(String provider, String userMessage, String aiResponse, {int? sessionId, String messageType = 'text', String? mediaPath, String? userId, String? firebaseUid, String? embedding, String? metaData, String? productContext}) async {
+  Future<int> logChatMessage(String provider, String userMessage, String aiResponse, {int? sessionId, String messageType = 'text', String? mediaPath, String? videoUrl, String? state, String? userId, String? firebaseUid, String? embedding, String? metaData, String? productContext}) async {
     final now = DateTime.now().toIso8601String();
     if (sessionId != null) {
       await updateRecord('chat_sessions', {
@@ -285,6 +402,8 @@ class DBService extends GetxService {
       'ai_response': aiResponse,
       'message_type': messageType,
       'media_path': mediaPath,
+      'video_url': videoUrl,
+      'state': state ?? 'completed',
       'product_context': productContext,
       'meta_data': metaData,
       'created_at': now,
@@ -333,7 +452,24 @@ class DBService extends GetxService {
       {'control_name': 'admin_dashboard_screen', 'description': 'لوحة تحكم المدير', 'category': 'Admin'},
       {'control_name': 'ai_chat_screen', 'description': 'شاشة المساعد الذكي', 'category': 'Home'},
       {'control_name': 'video_gen', 'description': 'توليد فيديو بالذكاء الاصطناعي', 'category': 'Studio'},
-      // ... يمكن إضافة البقية لاحقاً
+      {'control_name': 'settings_screen', 'description': 'شاشة الإعدادات', 'category': 'screen'},
+      {'control_name': 'api_settings_screen', 'description': 'إعدادات مفاتيح API', 'category': 'screen'},
+      {'control_name': 'creator_profile_screen', 'description': 'شاشة الملف الإبداعي', 'category': 'screen'},
+      {'control_name': 'ai_studio_screen', 'description': 'استوديو الذكاء الاصطناعي', 'category': 'screen'},
+      {'control_name': 'upload_screen', 'description': 'شاشة رفع المحتوى', 'category': 'screen'},
+      {'control_name': 'trend_screen', 'description': 'شاشة الترندات', 'category': 'screen'},
+      {'control_name': 'home_screen', 'description': 'الشاشة الرئيسية', 'category': 'screen'},
+      {'control_name': 'catalog_screen', 'description': 'شاشة كتالوج المنتجات لـ Meta', 'category': 'screen'},
+      {'control_name': 'chat_image_attach', 'description': 'زر إرفاق صورة بالدردشة', 'category': 'button'},
+      {'control_name': 'chat_camera_attach', 'description': 'زر الكاميرا بالدردشة', 'category': 'button'},
+      {'control_name': 'chat_file_attach', 'description': 'زر إرفاق ملف بالدردشة', 'category': 'button'},
+      {'control_name': 'chat_audio_enhance', 'description': 'زر تحسين الصوت بالدردشة', 'category': 'button'},
+      {'control_name': 'use_managed_keys', 'description': 'السماح باستخدام مفاتيح الأدمن', 'category': 'System'},
+      {'control_name': 'managed_key_gemini', 'description': 'وصول مفتاح Gemini المُدار', 'category': 'System'},
+      {'control_name': 'managed_key_serpapi', 'description': 'وصول مفتاح SerpApi المُدار', 'category': 'System'},
+      {'control_name': 'managed_key_stability', 'description': 'وصول مفتاح Stability المُدار', 'category': 'System'},
+      {'control_name': 'managed_key_kling', 'description': 'وصول مفتاح Kling المُدار', 'category': 'System'},
+      {'control_name': 'managed_key_github', 'description': 'وصول مفتاح GitHub المُدار', 'category': 'System'},
     ];
     for (var control in controls) {
       await db.insert('ui_controls', {...control, 'created_at': DateTime.now().toIso8601String()}, conflictAlgorithm: ConflictAlgorithm.ignore);

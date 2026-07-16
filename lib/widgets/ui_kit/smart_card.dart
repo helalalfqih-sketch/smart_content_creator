@@ -1,11 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../../theme/app_theme.dart';
 
 class SmartCard extends StatefulWidget {
   final Widget child;
   final bool active;
   final VoidCallback? onTap;
   final Duration hoverDuration;
+  final EdgeInsetsGeometry? padding;
 
   const SmartCard({
     super.key,
@@ -13,6 +15,7 @@ class SmartCard extends StatefulWidget {
     this.active = false,
     this.onTap,
     this.hoverDuration = const Duration(milliseconds: 150),
+    this.padding,
   });
 
   @override
@@ -31,7 +34,7 @@ class _SmartCardState extends State<SmartCard>
       duration: widget.hoverDuration,
       vsync: this,
     );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.04).animate(
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.02).animate(
       CurvedAnimation(parent: _hoverController, curve: Curves.easeInOut),
     );
   }
@@ -51,32 +54,34 @@ class _SmartCardState extends State<SmartCard>
         onTap: widget.onTap,
         child: ScaleTransition(
           scale: _scaleAnimation,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  color: Theme.of(context).cardTheme.color ?? Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
-                  border: Border.all(
-                    color: widget.active
-                        ? Theme.of(context).primaryColor.withValues(alpha: 0.5)
-                        : Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
-                    width: widget.active ? 2 : 1,
-                  ),
-                  boxShadow: widget.active
-                      ? [
-                          BoxShadow(
-                            color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
-                            blurRadius: 20,
-                            spreadRadius: 2,
-                          ),
-                        ]
-                      : null,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppTheme.borderRadius),
+              color: AppTheme.surfaceColor,
+              border: Border.all(
+                color: widget.active
+                    ? AppTheme.primary
+                    : Colors.white.withValues(alpha: 0.05),
+                width: widget.active ? 1.5 : 1,
+              ),
+              boxShadow: widget.active
+                  ? [
+                      BoxShadow(
+                        color: AppTheme.primary.withValues(alpha: 0.1),
+                        blurRadius: 20,
+                        spreadRadius: 2,
+                      ),
+                    ]
+                  : [],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(AppTheme.borderRadius),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                child: Padding(
+                  padding: widget.padding ?? const EdgeInsets.all(16),
+                  child: widget.child,
                 ),
-                padding: const EdgeInsets.all(16),
-                child: widget.child,
               ),
             ),
           ),
@@ -85,3 +90,4 @@ class _SmartCardState extends State<SmartCard>
     );
   }
 }
+

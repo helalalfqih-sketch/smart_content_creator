@@ -11,15 +11,21 @@ class SnackBarUtils {
     showSmartSnackBar(title: title, message: message, isError: false);
   }
 
+  static void showWarning(String title, String message) {
+    showSmartSnackBar(title: title, message: message, isWarning: true);
+  }
+
   // New Ultra-VIP SnackBar using Get.rawSnackbar for custom styling
   static void showSmartSnackBar({
     required String title,
     required String message,
     bool isError = false,
+    bool isWarning = false,
     int durationSeconds = 4,
   }) {
-    final Color primaryColor =
-        isError ? const Color(0xFFFF5252) : const Color(0xFF2DD486);
+    final Color primaryColor = isError 
+        ? const Color(0xFFFF5252) 
+        : (isWarning ? const Color(0xFFFFB300) : const Color(0xFF2DD486));
 
     Get.rawSnackbar(
       snackPosition: SnackPosition.TOP,

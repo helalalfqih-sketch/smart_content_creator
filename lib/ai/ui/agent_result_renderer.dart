@@ -68,6 +68,9 @@ class AgentResultRenderer {
         return _buildError(
             "Data is ${result.data.runtimeType}, expected ContentPlanData");
 
+      case AgentResultType.videoTask:
+        return _buildVideoTaskStatus();
+
       case AgentResultType.text:
         return _buildTextMessage(result.data.toString());
 
@@ -80,7 +83,45 @@ class AgentResultRenderer {
     }
   }
 
+  static Widget _buildVideoTaskStatus() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF00FF88).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF00FF88).withValues(alpha: 0.2)),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.5,
+              color: Color(0xFF00FF88),
+            ),
+          ),
+          SizedBox(width: 8),
+          Text(
+            "جاري المعالجة في الخلفية...",
+            style: TextStyle(
+              color: Color(0xFF00FF88),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   static Widget _buildTextMessage(String text) {
+    // 💡 التحويل التلقائي للمهام القديمة: إذا كان النص يحتوي على معرف مهمة فيديو، نعرض حالة الفيديو بدلاً من الـ JSON
+    if (text.contains('"task_id":') || text.contains('task_id')) {
+      return _buildVideoTaskStatus();
+    }
+
     return Padding(
       padding: const EdgeInsets.all(12.0),
       child: Text(text),

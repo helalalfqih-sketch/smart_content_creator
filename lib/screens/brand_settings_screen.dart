@@ -7,6 +7,7 @@ import '../models/brand_identity_model.dart';
 import '../services/firestore_user_service.dart';
 import '../controllers/auth_controller.dart';
 import '../core/widgets/glass_container.dart';
+import '../theme/app_theme.dart';
 
 class BrandSettingsController extends GetxController {
   final FirestoreUserService _firestoreService = Get.find<FirestoreUserService>();
@@ -82,11 +83,11 @@ class BrandSettingsController extends GetxController {
       await _firestoreService.saveBrandIdentity(uid: uid, brand: updatedBrand);
       brandIdentity.value = updatedBrand;
       
-      Get.snackbar("بنجاح", "تم حفظ إعدادات البراند بنجاح ✅",
-          backgroundColor: Colors.green, colorText: Colors.white);
+      Get.snackbar("تم بنجاح", "تم حفظ إعدادات العلامة التجارية",
+          backgroundColor: AppTheme.primary.withValues(alpha: 0.2), colorText: Colors.white);
     } catch (e) {
       Get.snackbar("خطأ", "فشل الحفظ: $e",
-          backgroundColor: Colors.red, colorText: Colors.white);
+          backgroundColor: Colors.red.withValues(alpha: 0.2), colorText: Colors.white);
     } finally {
       isLoading.value = false;
     }
@@ -103,7 +104,7 @@ class BrandSettingsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D10),
       appBar: AppBar(
-        title: const Text('إعدادات الهوية والبراند 🏷️',
+        title: const Text('هوية العلامة التجارية',
             style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -115,7 +116,7 @@ class BrandSettingsScreen extends StatelessWidget {
       ),
       body: Obx(() {
         if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFF2DD486)));
+          return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
         }
 
         return SingleChildScrollView(
@@ -135,7 +136,7 @@ class BrandSettingsScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.05),
                           shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFF2DD486), width: 2),
+                          border: Border.all(color: AppTheme.primary, width: 2),
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(60.r),
@@ -144,7 +145,9 @@ class BrandSettingsScreen extends StatelessWidget {
                               : controller.brandIdentity.value?.logoUrl != null
                                   ? (controller.brandIdentity.value!.logoUrl!.startsWith('http')
                                       ? Image.network(controller.brandIdentity.value!.logoUrl!, fit: BoxFit.cover)
-                                      : Image.file(File(controller.brandIdentity.value!.logoUrl!), fit: BoxFit.cover))
+                                      : (File(controller.brandIdentity.value!.logoUrl!).existsSync()
+                                          ? Image.file(File(controller.brandIdentity.value!.logoUrl!), fit: BoxFit.cover)
+                                          : const Icon(Icons.store_rounded, size: 50, color: Colors.white24)))
                                   : const Icon(Icons.store_rounded, size: 50, color: Colors.white24),
                         ),
                       ),
@@ -154,7 +157,7 @@ class BrandSettingsScreen extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(8),
                           decoration: const BoxDecoration(
-                            color: Color(0xFF2DD486),
+                            color: AppTheme.primary,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.camera_alt, size: 20, color: Colors.black),
@@ -190,14 +193,13 @@ class BrandSettingsScreen extends StatelessWidget {
               ElevatedButton(
                 onPressed: controller.saveSettings,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2DD486),
+                  backgroundColor: AppTheme.primary,
                   foregroundColor: Colors.black,
                   padding: EdgeInsets.symmetric(vertical: 18.h),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
-                  elevation: 10,
-                  shadowColor: const Color(0xFF2DD486).withValues(alpha: 0.3),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28.r)),
+                  elevation: 0,
                 ),
-                child: const Text('حفظ الهوية 🚀',
+                child: const Text('حفظ',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ),
             ],
@@ -212,7 +214,7 @@ class BrandSettingsScreen extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         title,
-        style: const TextStyle(color: Color(0xFF2DD486), fontWeight: FontWeight.bold, fontSize: 16),
+        style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold, fontSize: 16),
       ),
     );
   }

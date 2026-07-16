@@ -7,6 +7,7 @@ import 'context_preview_bar.dart';
 import '../../ai/core/agent_models.dart'; // 🧬 Needed for SuggestedAction
 import '../../controllers/settings_controller.dart';
 import '../../core/models/api_provider.dart';
+import '../../theme/app_theme.dart';
 
 /// 💬 Chat Input Area - Complete input section for chat
 ///
@@ -32,7 +33,6 @@ class ChatInputArea extends StatelessWidget {
 
   final List<SuggestedAction>? smartActions; // 🧠 New: Smart Actions from AI
   final Function(SuggestedAction)? onActionTap; // ⚡ Action Handler
-  final VoidCallback? onShowQuickTools; // ⚡ Quick Tools Menu
   final VoidCallback? onAudioEnhance; // 🎵 AI Audio Enhancement Trigger
 
   const ChatInputArea({
@@ -54,7 +54,6 @@ class ChatInputArea extends StatelessWidget {
     this.onClearContext,
     this.smartActions,
     this.onActionTap,
-    this.onShowQuickTools,
     this.onAudioEnhance,
   });
 
@@ -66,11 +65,15 @@ class ChatInputArea extends StatelessWidget {
     });
 
     final settings = Get.find<SettingsController>();
-    return Container(
-      // 💎 المنصة العائمة (Floating Dock)
-      margin: const EdgeInsets.fromLTRB(8, 0, 8, 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(15),
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.4,
+      ),
+      child: Container(
+        // 💎 المنصة العائمة (Floating Dock)
+        margin: const EdgeInsets.fromLTRB(8, 0, 8, 6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(15),
         boxShadow: [
           // Aura Glow (توهج هادئ)
           BoxShadow(
@@ -180,8 +183,9 @@ class ChatInputArea extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildMediaStrip() {
     return Padding(
@@ -685,21 +689,24 @@ class ChatInputArea extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFF2DD486).withValues(alpha: 0.1) : Colors.transparent,
+        color: isSelected ? AppTheme.primary.withValues(alpha: 0.1) : Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isSelected ? const Color(0xFF2DD486).withValues(alpha: 0.3) : Colors.transparent,
+          color: isSelected ? AppTheme.primary.withValues(alpha: 0.3) : Colors.transparent,
         ),
       ),
       child: ListTile(
         onTap: type != null ? () {
           settings.setActiveProvider(type);
           Get.back();
-        } : null,
+        } : (isUpgrade ? () {
+          Get.back();
+          Get.toNamed('/subscription');
+        } : null),
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF2DD486) : Colors.white.withValues(alpha: 0.05),
+            color: isSelected ? AppTheme.primary : Colors.white.withValues(alpha: 0.05),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: isSelected ? Colors.black : Colors.white70, size: 20),
@@ -722,11 +729,11 @@ class ChatInputArea extends StatelessWidget {
           ),
         ),
         trailing: isSelected 
-          ? const Icon(Icons.check_circle_rounded, color: Color(0xFF2DD486))
+          ? const Icon(Icons.check_circle_rounded, color: AppTheme.primary)
           : (isUpgrade ? Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFF2DD486),
+                color: AppTheme.primary,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Text("ترقية", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10, fontFamily: 'IBMPlexSansArabic')),

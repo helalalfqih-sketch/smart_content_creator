@@ -108,4 +108,34 @@ class SecureStorageService extends GetxService {
   Future<void> clearAll() async {
     await _storage.deleteAll();
   }
+
+  // -----------------------------------------------------------------------
+  // 🏪 Store Signature Methods (توقيع المتجر)
+  // -----------------------------------------------------------------------
+
+  Future<void> saveStoreSignature({
+    required String storeName,
+    required String phone,
+    required String address,
+    required String delivery,
+  }) async {
+    await _storage.write(key: 'store_name', value: storeName);
+    await _storage.write(key: 'store_phone', value: phone);
+    await _storage.write(key: 'store_address', value: address);
+    await _storage.write(key: 'store_delivery', value: delivery);
+  }
+
+  Future<Map<String, String>> getStoreSignature() async {
+    return {
+      'storeName': await _storage.read(key: 'store_name') ?? '',
+      'phone':     await _storage.read(key: 'store_phone') ?? '',
+      'address':   await _storage.read(key: 'store_address') ?? '',
+      'delivery':  await _storage.read(key: 'store_delivery') ?? '',
+    };
+  }
+
+  Future<bool> hasStoreSignature() async {
+    final name = await _storage.read(key: 'store_name');
+    return name != null && name.isNotEmpty;
+  }
 }

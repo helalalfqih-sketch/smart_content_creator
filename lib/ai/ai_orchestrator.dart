@@ -82,7 +82,14 @@ class AIOrchestrator extends GetxService {
     if (currentSessionProduct == null && lastProduct != null) {
       currentSessionProduct = lastProduct.productName;
       _agent.lastAnalyzedProduct.value = currentSessionProduct;
-      debugPrint("🔄 [Context Sync]: Restored Product Name from DB: $currentSessionProduct");
+
+      // 🔥 Restore the professional English search query to maintain search quality across restarts
+      if (lastProduct.searchQuery.isNotEmpty) {
+        _agent.lastSearchQuery.value = lastProduct.searchQuery;
+      }
+
+      debugPrint(
+          "🔄 [Context Sync]: Restored Product ($currentSessionProduct) and SearchQuery from DB");
     }
 
     // 🆕 جلب آخر 3 رسائل من الجلسة الحالية للسياق
@@ -102,7 +109,8 @@ class AIOrchestrator extends GetxService {
       activeScreen: Get.currentRoute,
       recentMessages: recentMessages, // 🆕 آخر 3 رسائل
     );
-    AppLogger.info('EXITING: _buildContext with context: ${context.productName}');
+    AppLogger.info(
+        'EXITING: _buildContext with context: ${context.productName}');
     return context;
   }
 
@@ -117,7 +125,8 @@ class AIOrchestrator extends GetxService {
     bool forceNewSession = false,
     dio.CancelToken? cancelToken,
   }) async {
-    AppLogger.info('ENTERING: processUserInput with text: $text, images: ${images?.length}, video: ${video != null}');
+    AppLogger.info(
+        'ENTERING: processUserInput with text: $text, images: ${images?.length}, video: ${video != null}');
     try {
       final image = (images != null && images.isNotEmpty) ? images.first : null;
       debugPrint(
@@ -138,10 +147,12 @@ class AIOrchestrator extends GetxService {
       // لضمان استخراج اسم المنتج وحفظه في الذاكرة.
       dynamic preAnalyzedResult;
       if (images != null && images.isNotEmpty) {
-        debugPrint("🧠 AIOrchestrator: Image detected, forcing pre-analysis before context build...");
+        debugPrint(
+            "🧠 AIOrchestrator: Image detected, forcing pre-analysis before context build...");
         _agent.isLoading.value = true;
         _agent.pipelineMessage.value = "جاري التعرّف على تفاصيل   👁️";
-        preAnalyzedResult = await preAnalyze(images.first, cancelToken: cancelToken);
+        preAnalyzedResult =
+            await preAnalyze(images.first, cancelToken: cancelToken);
       }
 
       final context = await _buildContext();
@@ -157,19 +168,18 @@ class AIOrchestrator extends GetxService {
       if (prompt.isNotEmpty && _containsUrl(prompt) && isJinaAutoEnabled) {
         final rawUrl = _extractUrl(prompt);
         final url = _cleanUrl(rawUrl);
-        
+
         // تجنب استخراج الروابط الداخلية أو غير المرغوب فيها
         if (url != null &&
             !url.contains("google.com") &&
             !url.contains("firebaseapp.com")) {
-          
           _agent.pipelineMessage.value =
               "جاري استخراج بيانات المنتج من الرابط... ⛏️";
           _agent.isLoading.value = true;
 
           final cleanContent =
               await Get.find<JinaService>().fetchCleanContent(url);
-          
+
           _agent.isLoading.value = false;
           _agent.pipelineMessage.value = "";
 
@@ -179,8 +189,10 @@ class AIOrchestrator extends GetxService {
             debugPrint("✅ AIOrchestrator: URL content extracted and injected.");
           } else {
             // 🛡️ [Silent Fallback]: فشل الاستخراج، الاعتماد على تخمين Gemini للرابط
-            debugPrint("📡 [Silent Fallback]: Content extraction failed for $url, using raw URL inference.");
-            prompt = "$prompt\n\n[نظام]: فشل استخراج البيانات برمجياً من الرابط ($url). يرجى تحليل الرابط و 'slug' الخاص به لاستنتاج المنتج والموضوع والرد بناءً على ذلك.";
+            debugPrint(
+                "📡 [Silent Fallback]: Content extraction failed for $url, using raw URL inference.");
+            prompt =
+                "$prompt\n\n[نظام]: فشل استخراج البيانات برمجياً من الرابط ($url). يرجى تحليل الرابط و 'slug' الخاص به لاستنتاج المنتج والموضوع والرد بناءً على ذلك.";
           }
         }
       }
@@ -214,8 +226,9 @@ class AIOrchestrator extends GetxService {
       debugPrint("🧠 AIOrchestrator: Using Session: $currentSessionId");
 
       // 🆕 2. إضافة رسالة المستخدم للسجل والواجهة (إخفاء بيانات السحب من الواجهة)
-      final uiContent =
-          text ?? (image != null ? 'صورة' : (video != null ? 'فيديو' : 'نص'));
+      final String uiContent = (text == null || text.trim().isEmpty)
+          ? (image != null ? 'صورة' : (video != null ? 'فيديو' : 'نص'))
+          : text;
 
       final bool alreadyAdded = _agent.history.any((m) =>
           m.role == 'user' &&
@@ -295,12 +308,15 @@ class AIOrchestrator extends GetxService {
         if (images.length >= 3 && prompt.trim().isEmpty) {
           _agent.pipelineMessage.value =
               "جاري إجراء تحليل مجمع للمنتج (3D Mode)... 🧊";
-          await _agent.executeTask(AiDecisionEngine.createTask(
-            "تحليل مجمع لهذه الصور",
-            images: images,
-            context: context,
-            overrideIntent: Intent.productDetected,
-          ), cancelToken: cancelToken);
+          await _agent.executeTask(
+              AiDecisionEngine.createTask(
+                "تحليل مجمع لهذه الصور",
+                images: images,
+                context: context,
+                overrideIntent: Intent.productDetected,
+              ),
+              skipHistory: true,
+              cancelToken: cancelToken);
           _agent.isLoading.value = false;
           _agent.pipelineMessage.value = "";
           AppLogger.info('EXITING: processUserInput (Batch Analysis)');
@@ -311,7 +327,9 @@ class AIOrchestrator extends GetxService {
           _agent.pipelineMessage.value =
               "جاري استيعاب (المنتج + القالب) في وجبة واحدة... 🍱";
           await _agent.analyzeJointProductAndTemplate(images,
-              userPrompt: prompt, preAnalyzedResult: preAnalyzedResult, cancelToken: cancelToken);
+              userPrompt: prompt,
+              preAnalyzedResult: preAnalyzedResult,
+              cancelToken: cancelToken);
 
           // إذا كان هناك نص مع الصورتين، سنكمل للـ Classifier لاحقاً إذا لزم الأمر،
           // ولكن غالباً الـ analyzeJoint سيتكفل بالبداية الصحيحة.
@@ -324,8 +342,13 @@ class AIOrchestrator extends GetxService {
         } else if (prompt.trim().isEmpty) {
           // صورة واحدة فقط وبدون نص -> تحليل كلاسيكي
           _agent.pipelineMessage.value = "جاري تحليل المنتج... 🔍";
-          await _agent.analyzeProductAndFetchTrends(images.first,
-              force: true, preAnalyzedResult: preAnalyzedResult, cancelToken: cancelToken); // 🔥 إجبار التحليل ومشاركة النتيجة المسبقة
+          await _agent.analyzeProductAndFetchTrends(
+            images.first,
+            force: true,
+            preAnalyzedResult: preAnalyzedResult,
+            skipHistory: true,
+            cancelToken: cancelToken,
+          );
           _agent.isLoading.value = false;
           _agent.pipelineMessage.value = "";
           AppLogger.info('EXITING: processUserInput (Classic Analysis)');
@@ -337,7 +360,8 @@ class AIOrchestrator extends GetxService {
       if (_isSimpleGreeting(prompt)) {
         _agent.isLoading.value = false;
         _agent.pipelineMessage.value = "";
-        await _agent.sendUserMessage(prompt, cancelToken: cancelToken);
+        await _agent.sendUserMessage(prompt,
+            skipHistory: true, cancelToken: cancelToken);
         AppLogger.info('EXITING: processUserInput (Simple Greeting)');
         return;
       }
@@ -363,7 +387,8 @@ class AIOrchestrator extends GetxService {
         debugPrint("🚀 [Intent Detected]: Fast-Path Remove Background");
         await _agent.handleAction('remove_background',
             payload: context.productName, cancelToken: cancelToken);
-        AppLogger.info('EXITING: processUserInput (Background Removal Fast-Path)');
+        AppLogger.info(
+            'EXITING: processUserInput (Background Removal Fast-Path)');
         return;
       }
 
@@ -371,19 +396,23 @@ class AIOrchestrator extends GetxService {
       // ⚡ Fast Path: محادثة قصيرة جداً أو سياقية (Optimization) — تجنب المخطط للدردشة البسيطة
       final wordCount = prompt.trim().split(RegExp(r'\s+')).length;
       final isContextual = _isContextualReply(normalizedText);
-      
-      if ((wordCount < 5 || isContextual) && !_isTechnicalRequest(normalizedText) && images == null && video == null) {
+
+      if ((wordCount < 5 || isContextual) &&
+          !_isTechnicalRequest(normalizedText) &&
+          images == null &&
+          video == null) {
         _agent.isLoading.value = false;
         _agent.pipelineMessage.value = "";
-        debugPrint("🚀 [Optimization]: Contextual/Short Fast-Path (WordCount: $wordCount, Contextual: $isContextual)");
+        debugPrint(
+            "🚀 [Optimization]: Contextual/Short Fast-Path (WordCount: $wordCount, Contextual: $isContextual)");
         await _agent.respondNormally(prompt, cancelToken: cancelToken);
         AppLogger.info('EXITING: processUserInput (Contextual Optimization)');
         return;
       }
 
       // 1️⃣ PHASE 1: THINK & PLAN
-      final analysis =
-          await _classifier.smartClassify(prompt, context: context, cancelToken: cancelToken);
+      final analysis = await _classifier.smartClassify(prompt,
+          context: context, cancelToken: cancelToken);
 
       if (analysis['source'] == 'local_fallback') {
         _agent.pipelineMessage.value =
@@ -391,7 +420,9 @@ class AIOrchestrator extends GetxService {
       }
 
       final String intentKey = analysis['intent']?.toString() ?? 'chat';
-      final bool isNaturalChat = intentKey == 'TEXT' || intentKey == 'chat' || intentKey == 'casual_chat';
+      final bool isNaturalChat = intentKey == 'TEXT' ||
+          intentKey == 'chat' ||
+          intentKey == 'casual_chat';
 
       // 🔓 [解放 (liberation)]: If it's natural chat, bypass strict planning/clarification checks.
       // We only enforce strict planning for technical tools (Video/Search/Analysis).
@@ -406,15 +437,18 @@ class AIOrchestrator extends GetxService {
       // 🔓 [解放 (liberation)]: Absolute Fix - Zero Blocking.
       // We process everything. If there's a plan, we execute it.
       // If no steps or low confidence, we fall back to normal chat.
-      
+
       AiPlan plan = _buildPlan(analysis);
       plan = await _reflectAndRefinePlan(plan, context);
 
       final double confidence = (analysis['confidence'] ?? 0.0).toDouble();
 
       // IF No Plan OR Low Confidence OR Natural Chat -> Just Respond Normally
-      if (plan.steps.isEmpty || (confidence < 0.6 && !isNaturalChat) || isNaturalChat) {
-        debugPrint("💬 [Orchestrator]: Falling back to Normal Chat (No plan or low confidence)");
+      if (plan.steps.isEmpty ||
+          (confidence < 0.6 && !isNaturalChat) ||
+          isNaturalChat) {
+        debugPrint(
+            "💬 [Orchestrator]: Falling back to Normal Chat (No plan or low confidence)");
         await _agent.respondNormally(prompt, cancelToken: cancelToken);
         _agent.isLoading.value = false;
         _agent.pipelineMessage.value = "";
@@ -425,7 +459,8 @@ class AIOrchestrator extends GetxService {
       // 3️⃣ PHASE 3: EXECUTE
       if (plan.steps.length > 1) {
         await _executeMultiStepPlan(
-            plan, context, images, video, analysis['product_name'], cancelToken: cancelToken);
+            plan, context, images, video, analysis['product_name'],
+            cancelToken: cancelToken);
       } else {
         final String intentKey = analysis['intent']?.toString() ?? 'chat';
         final String feasibility =
@@ -502,7 +537,8 @@ class AIOrchestrator extends GetxService {
   }
 
   Future<void> _executeMultiStepPlan(AiPlan plan, AppContext context,
-      List<File>? images, File? video, String? extractedProduct, {dio.CancelToken? cancelToken}) async {
+      List<File>? images, File? video, String? extractedProduct,
+      {dio.CancelToken? cancelToken}) async {
     AppLogger.info('ENTERING: _executeMultiStepPlan for goal: ${plan.goal}');
     _agent.pipelineMessage.value = "🚀 جاري تنفيذ خطة العمل: ${plan.goal}";
 
@@ -528,7 +564,8 @@ class AIOrchestrator extends GetxService {
         hasVideo: video != null,
         productName: extractedProduct,
       );
-      await _agent.executeTask(task, cancelToken: cancelToken);
+      await _agent.executeTask(task,
+          skipHistory: true, cancelToken: cancelToken);
       await Future.delayed(const Duration(milliseconds: 500));
     }
     AppLogger.info('EXITING: _executeMultiStepPlan');
@@ -588,7 +625,7 @@ class AIOrchestrator extends GetxService {
       replyToContent: replyToContent,
       replyToRole: replyToRole,
     );
-    await _agent.executeTask(task, cancelToken: cancelToken);
+    await _agent.executeTask(task, skipHistory: true, cancelToken: cancelToken);
     AppLogger.info('EXITING: _executeSingleStep');
   }
 
@@ -611,7 +648,8 @@ class AIOrchestrator extends GetxService {
     Identify alternatives in Arabic for the Smart Content Creator app.
     """;
     final response = await _unifiedAi.generateText(negotiationPrompt,
-        systemPersona: "You are a helpful AI Strategist.", cancelToken: cancelToken);
+        systemPersona: "You are a helpful AI Strategist.",
+        cancelToken: cancelToken);
     _agent.history.add(ChatMessage.assistant(
       content: response,
       productContext: _agent.lastAnalyzedProduct.value,
@@ -686,20 +724,22 @@ class AIOrchestrator extends GetxService {
       replyToContent: replyToContent,
       replyToRole: replyToRole,
     );
-    await _agent.executeTask(task, cancelToken: cancelToken);
+    await _agent.executeTask(task, skipHistory: true, cancelToken: cancelToken);
     AppLogger.info('EXITING: processSmartAction');
   }
 
   Future<dynamic> preAnalyze(File image, {dio.CancelToken? cancelToken}) async {
     AppLogger.info('ENTERING: preAnalyze');
-    final result = await _agent.preAnalyzeImage(image, cancelToken: cancelToken);
-    
+    final result =
+        await _agent.preAnalyzeImage(image, cancelToken: cancelToken);
+
     // 🔥 [Sync]: تحديث الحالة اللحظية للعميل فور نجاح التحليل
     if (result != null && result.isProduct && result.productName != null) {
-      debugPrint("✅ AIOrchestrator: Pre-analysis success! ProductName: ${result.productName}");
+      debugPrint(
+          "✅ AIOrchestrator: Pre-analysis success! ProductName: ${result.productName}");
       _agent.saveProductToMemory(result.productName!);
     }
-    
+
     AppLogger.info('EXITING: preAnalyze');
     return result;
   }
@@ -735,9 +775,25 @@ class AIOrchestrator extends GetxService {
   /// 🛡️ فحص إذا كان الطلب يتطلب أدوات تقنية (Searching for Keywords)
   bool _isTechnicalRequest(String text) {
     final technicalKeywords = [
-      'اعلان', 'إعلان', 'بحث', 'تريند', 'وصف', 'فيديو', 'صورة', 'صوره', 
-      'صمم', 'ارسم', 'حلل', 'تخيل', 'لوجو', 'شعار', 'انمي', 'كرتون',
-      'بكم', 'سعر', 'السعر'
+      'اعلان',
+      'إعلان',
+      'بحث',
+      'تريند',
+      'وصف',
+      'فيديو',
+      'صورة',
+      'صوره',
+      'صمم',
+      'ارسم',
+      'حلل',
+      'تخيل',
+      'لوجو',
+      'شعار',
+      'انمي',
+      'كرتون',
+      'بكم',
+      'سعر',
+      'السعر'
     ];
     return technicalKeywords.any((k) => text.toLowerCase().contains(k));
   }
@@ -746,14 +802,35 @@ class AIOrchestrator extends GetxService {
   bool _isContextualReply(String text) {
     final lower = text.trim().toLowerCase();
     final contextualKeywords = [
-      'نعم', 'أجل', 'ايوه', 'أيوة', 'تم', 'تمام', 'ماشي', 'موافق', 'اوكي', 'ok',
-      'لا', 'كلا', 'بلاش',
-      'أكمل', 'كمل', 'استمر', 'واصل', 'بعدين',
-      'غيره', 'شي ثاني', 'أخر', 'آخر',
-      'فهمت', 'وضحت', 'شكرا', 'يسلمو',
+      'نعم',
+      'أجل',
+      'ايوه',
+      'أيوة',
+      'تم',
+      'تمام',
+      'ماشي',
+      'موافق',
+      'اوكي',
+      'ok',
+      'لا',
+      'كلا',
+      'بلاش',
+      'أكمل',
+      'كمل',
+      'استمر',
+      'واصل',
+      'بعدين',
+      'غيره',
+      'شي ثاني',
+      'أخر',
+      'آخر',
+      'فهمت',
+      'وضحت',
+      'شكرا',
+      'يسلمو',
     ];
-    return contextualKeywords.contains(lower) || 
-           (lower.length <= 10 && contextualKeywords.any((k) => lower == k));
+    return contextualKeywords.contains(lower) ||
+        (lower.length <= 10 && contextualKeywords.any((k) => lower == k));
   }
 
   /// ✍️ توليد وصف تسويقي ذكي تلقائي بناءً على المنتج
@@ -765,22 +842,31 @@ class AIOrchestrator extends GetxService {
     AppLogger.info('ENTERING: generateMarketingDescription for $query');
     try {
       final prompt = """
-أنت خبير تسويق ابتكاري. اكتب وصفاً إعلانياً جذاباً لهذا المنتج ($query) بأسلوب السوشيال ميديا (TikTok/Reels).
-يجب أن يكون النص:
-1. جذاباً وخاطفاً للأبصار.
-2. قصيراً ومباشراً.
-3. يحتوي على رموز تعبيرية (Emojis).
-4. يدعو المستخدم لاتخاذ إجراء (CTA).
-5. باللغة العربية بلهجة بيضاء مفهومة.
+اكتب لي وصفاً تسويقياً ذكياً وجذاباً جداً لمنتج: $query.
+يجب أن تلتزم بتنسيق الرد بالهيكل التالي بدقة تامة، مع إحاطة كل سطر بعلامة النجمة * لجعله خطاً عريضاً:
 
-ملاحظة: لا تضف أي مقدمات، ابدأ بالإعلان مباشرة.
+*🔴🔥 [اسم المنتج مع عبارة تسويقية جذابة] 🔥🔴*
+
+*هل تبحث عن [سؤال يثير اهتمام الزبون]؟ إليك الحل الأمثل*🤩
+
+*[ضع 4 إلى 5 مميزات للمنتج هنا، بحيث يبدأ كل سطر بعلامة الصح الأخضر ✅ وكل سطر محاط بالنجمة *]*
+
+*💥 [عبارة قوية ومحفزة للشراء]*
+
+*📦 [عبارة تحث على الطلب اليوم]*
+
+*سيتم التوضيح اكثر عن المنتج في الفيديو🎥*
+
+🚨 تحذير هام جداً:
+- لا تذكر أي أسعار مطلقاً.
+- لا تذكر أي روابط أو أسماء مواقع/متاجر إلكترونية مثل (Amazon، علي بابا، إلخ) مطلقاً. اجعل الوصف عاماً ومناسباً للنشر المباشر.
 """;
       final result = await _unifiedAi.generateText(
         prompt,
         systemPersona: "Creative Social Media Marketer",
         cancelToken: cancelToken,
       );
-      
+
       AppLogger.info('EXITING: generateMarketingDescription');
       return result;
     } catch (e) {

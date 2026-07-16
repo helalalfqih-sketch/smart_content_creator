@@ -26,6 +26,7 @@ class FirestoreUserService extends GetxService {
   Future<Map<String, dynamic>> getOrCreateUser({
     required String uid,
     required String email,
+    String? name,
   }) async {
     try {
       final ref = _firestore.collection(_usersCollection).doc(uid);
@@ -35,8 +36,10 @@ class FirestoreUserService extends GetxService {
         // إنشاء مستخدم جديد بـ role: "user" تلقائيًا مع إشعار للمدير
         final userData = {
           'email': email,
+          'name': name ?? 'مبدع SMART',
           'role': 'user', // 🔒 دائمًا user - Admin يُعيّن يدويًا فقط
           'isPremium': false, // 🟢 حقل الاشتراك الافتراضي
+          'visualAnalysisCount': 0, // 📸 عداد تحليل الصور (مجاني لأول 15 صورة)
 
           // 🧠 Managed AI Architecture (v3.0)
           'credits': 50, // الرصيد الافتراضي للتجربة
@@ -151,6 +154,42 @@ class FirestoreUserService extends GetxService {
     }
   }
 
+  /// 📸 زيادة عداد التحليل البصري
+  Future<void> incrementVisualAnalysisCount(String uid) async {
+    try {
+      await _firestore.collection(_usersCollection).doc(uid).update({
+        'visualAnalysisCount': FieldValue.increment(1),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ خطأ في زيادة عداد التحليل: $e');
+    }
+  }
+
+  /// 📸 التحقق مما إذا كان مسموحاً للمستخدم إجراء تحليل بصري
+  /// - المشترك (isPremium): مسموح دائماً
+  /// - المستخدم الجديد: مسموح حتى 15 صورة
+  Future<bool> canPerformVisualAnalysis(String uid) async {
+    try {
+      final doc = await _firestore.collection(_usersCollection).doc(uid).get();
+      if (!doc.exists) return false;
+
+      final data = doc.data()!;
+      final bool isPremium = data['isPremium'] as bool? ?? false;
+      final String role = data['role'] as String? ?? 'user';
+      final int count = data['visualAnalysisCount'] as int? ?? 0;
+
+      // إذا كان مشرفاً أو مشتركاً، فله الصلاحية المطلقة
+      if (role == 'admin' || isPremium) return true;
+
+      // إذا لم يكن كذلك، لديه حد 15 صورة
+      return count < 15;
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ خطأ في التحقق من صلاحية التحليل: $e');
+      return false;
+    }
+  }
+
   /// الاستماع للتغييرات في الوقت الفعلي على بيانات المستخدم
   Stream<DocumentSnapshot<Map<String, dynamic>>> watchUser(String uid) {
     return _firestore.collection(_usersCollection).doc(uid).snapshots();
@@ -164,6 +203,22 @@ class FirestoreUserService extends GetxService {
       });
     } catch (e) {
       if (kDebugMode) debugPrint('❌ خطأ في clearUserNotification: $e');
+    }
+  }
+
+  /// 📊 جلب إحصائيات المبدع من السحابة
+  Future<Map<String, dynamic>?> getCreatorStats(String uid) async {
+    try {
+      final doc = await _firestore.collection(_usersCollection).doc(uid).get();
+      if (!doc.exists) return null;
+      
+      final data = doc.data();
+      if (data == null || !data.containsKey('creator_stats')) return null;
+      
+      return data['creator_stats'] as Map<String, dynamic>;
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ فشل جلب الإحصائيات من السحابة: $e');
+      return null;
     }
   }
 

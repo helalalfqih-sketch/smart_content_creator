@@ -36,11 +36,13 @@ class GoogleLensService {
   }
 
   /// 🔍 Structured Similarity Search
-  Future<Map<String, dynamic>> searchByImage(String imageUrl, {dio.CancelToken? cancelToken}) async {
+  /// Supports both URL and Local File Path
+  Future<Map<String, dynamic>> searchByImage(String imageInput, {dio.CancelToken? cancelToken}) async {
     try {
-      final parameters = imageUrl.startsWith('http') 
-          ? {'url': imageUrl} 
-          : {'file': imageUrl}; // Master service handles file upload if needed
+      final bool isUrl = imageInput.startsWith('http');
+      final parameters = isUrl 
+          ? {'url': imageInput} 
+          : {'file': imageInput}; // Master service now handles POST for 'file'
           
       final data = await _master.fetch('google_lens', parameters, cancelToken: cancelToken);
       return data;
@@ -263,8 +265,8 @@ class GoogleShortVideosService {
       final parameters = {
         'q': query,
         'start': start.toString(),
-        'gl': gl ?? 'us',
-        'hl': hl ?? 'en',
+        'gl': gl ?? 'sa',
+        'hl': hl ?? 'ar',
       };
       
       final data = await _master.fetch('google_short_videos', parameters, cancelToken: cancelToken);

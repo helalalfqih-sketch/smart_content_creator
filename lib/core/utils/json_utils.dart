@@ -82,7 +82,35 @@ class JsonUtils {
 
     if (start == -1) return "";
 
-    int end = isObject ? clean.lastIndexOf('}') : clean.lastIndexOf(']');
+    int end = -1;
+    int balance = 0;
+    bool inString = false;
+    bool escaped = false;
+
+    for (int i = start; i < clean.length; i++) {
+      final char = clean[i];
+      
+      if (char == '\\' && inString) {
+        escaped = !escaped;
+      } else if (char == '"' && !escaped) {
+        inString = !inString;
+        escaped = false;
+      } else {
+        escaped = false;
+        if (!inString) {
+          if (char == (isObject ? '{' : '[')) {
+            balance++;
+          } else if (char == (isObject ? '}' : ']')) {
+            balance--;
+            if (balance == 0) {
+              end = i;
+              break;
+            }
+          }
+        }
+      }
+    }
+
     if (end == -1 || end < start) return "";
 
     clean = clean.substring(start, end + 1);

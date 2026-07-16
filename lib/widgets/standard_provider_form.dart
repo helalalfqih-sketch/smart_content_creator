@@ -4,7 +4,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../controllers/settings_controller.dart';
 import '../core/models/api_provider.dart';
 import '../theme/app_theme.dart';
-import 'settings/gemini_smart_auth_card.dart';
 
 class StandardProviderForm extends StatefulWidget {
   final ProviderType providerType;
@@ -45,10 +44,36 @@ class _StandardProviderFormState extends State<StandardProviderForm> {
           children: [
             _buildHeader(controller),
             const SizedBox(height: 16),
-            if (widget.providerType == ProviderType.gemini) ...[
-              const GeminiSmartAuthCard(),
-              const SizedBox(height: 16),
-            ],
+            
+            if (widget.providerType.dashboardUrl != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: InkWell(
+                  onTap: () => launchUrl(Uri.parse(widget.providerType.dashboardUrl!)),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.vpn_key, color: Colors.blue, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            "للحصول على مفتاح جديد لـ ${widget.providerType.displayName}، اضغط هنا.",
+                            style: const TextStyle(color: Colors.blue, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const Icon(Icons.open_in_new, color: Colors.blue, size: 14),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
             if (!hasKey)
               _buildConnectOptions(controller)
             else
@@ -106,19 +131,6 @@ class _StandardProviderFormState extends State<StandardProviderForm> {
   Widget _buildConnectOptions(SettingsController controller) {
     return Column(
       children: [
-        if (widget.providerType != ProviderType.gemini &&
-            widget.providerType != ProviderType.serpapi)
-          _buildChoiceCard(
-            title: "ربط تلقائي ذكي ⚡",
-            subtitle: "تسجيل دخول عبر Google والحصول على إمكانية الوصول الفوري",
-            icon: Icons.account_circle_outlined,
-            color: Colors.white,
-            isPremium: true,
-            onTap: () => controller.linkWithGoogle(widget.providerType),
-          ),
-        if (widget.providerType != ProviderType.gemini &&
-            widget.providerType != ProviderType.serpapi)
-          const SizedBox(height: 12),
         _buildChoiceCard(
           title: "إدخال مفتاح يدوي 🔑",
           subtitle:
@@ -195,13 +207,63 @@ class _StandardProviderFormState extends State<StandardProviderForm> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildManualKeyField(controller),
+        if (widget.providerType.requiresSecretKey) ...[
+          const SizedBox(height: 8),
+          _buildSecretKeyField(controller),
+        ],
         const SizedBox(height: 16),
         _buildConnectionStatus(controller),
+        const SizedBox(height: 20),
+        
+        // 🚀 Activation Button (Switch between providers)
+        Obx(() {
+          final isVideo = widget.providerType.isVideoCapable;
+          // We exclude purely image tools from being "Default Text Providers"
+          final isText = widget.providerType.isTextCapable && 
+                         widget.providerType != ProviderType.stability && 
+                         widget.providerType != ProviderType.removebg &&
+                         widget.providerType != ProviderType.serpapi;
+          
+          final isActive = isVideo 
+              ? controller.activeVideoProvider.value == widget.providerType
+              : controller.activeTextProvider.value == widget.providerType;
+          
+          if (!isVideo && !isText) return const SizedBox.shrink();
+
+          return SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: isActive ? null : () => controller.setActiveProvider(
+                widget.providerType,
+                isVideo: isVideo
+              ),
+              icon: Icon(isActive ? Icons.check_circle : Icons.power_settings_new, size: 18),
+              label: Text(
+                isActive ? "المزود النشط حالياً ✅" : "تفعيل كمزود ${isVideo ? 'فيديو' : 'نصوص'} افتراضي",
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isActive ? Colors.green.withValues(alpha: 0.1) : AppTheme.primary,
+                foregroundColor: isActive ? Colors.green : Colors.black,
+                disabledBackgroundColor: Colors.green.withValues(alpha: 0.1),
+                disabledForegroundColor: Colors.green,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: isActive ? BorderSide(color: Colors.green.withValues(alpha: 0.3)) : BorderSide.none,
+                ),
+              ),
+            ),
+          );
+        }),
+        
+        const SizedBox(height: 16),
         if (widget.providerType == ProviderType.azure) ...[
           const SizedBox(height: 12),
           _buildEndpointDisplay(controller),
+          const SizedBox(height: 16),
         ],
-        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
@@ -237,8 +299,8 @@ class _StandardProviderFormState extends State<StandardProviderForm> {
     final textController =
         TextEditingController(text: controller.getApiKey(widget.providerType));
     final secretController = TextEditingController(
-        text: widget.providerType == ProviderType.kling
-            ? controller.providerSecrets[ProviderType.kling] ?? ''
+        text: widget.providerType.requiresSecretKey
+            ? controller.providerSecrets[widget.providerType] ?? ''
             : '');
     final endpointController = TextEditingController(
         text: controller.providerEndpoints[widget.providerType] ?? '');
@@ -267,9 +329,13 @@ class _StandardProviderFormState extends State<StandardProviderForm> {
                         const TextStyle(color: Colors.white54, fontSize: 12)),
                 const SizedBox(height: 20),
                 Text(
-                    widget.providerType == ProviderType.kling
-                        ? "Access Key"
-                        : "API Key",
+                    widget.providerType == ProviderType.higgsfield
+                        ? "API Key ID"
+                        : (widget.providerType == ProviderType.kling
+                            ? "Access Key"
+                            : (widget.providerType == ProviderType.telegram
+                                ? "Bot Token"
+                                : "API Key")),
                     style: const TextStyle(
                         color: Colors.blueAccent,
                         fontSize: 13,
@@ -311,10 +377,15 @@ class _StandardProviderFormState extends State<StandardProviderForm> {
                     ),
                   ),
                 ),
-                if (widget.providerType == ProviderType.kling) ...[
+                if (widget.providerType.requiresSecretKey) ...[
                   const SizedBox(height: 20),
-                  const Text("Secret Key",
-                      style: TextStyle(
+                  Text(
+                      widget.providerType == ProviderType.higgsfield
+                          ? "Access Token (Secret)"
+                          : (widget.providerType == ProviderType.telegram
+                              ? "Chat ID / Channel ID"
+                              : "Secret Key"),
+                      style: const TextStyle(
                           color: Colors.blueAccent,
                           fontSize: 13,
                           fontWeight: FontWeight.bold)),
@@ -327,7 +398,11 @@ class _StandardProviderFormState extends State<StandardProviderForm> {
                         fontSize: 14,
                         fontFamily: 'monospace'),
                     decoration: InputDecoration(
-                      hintText: "أدخل مفتاح السر هنا...",
+                      hintText: widget.providerType == ProviderType.higgsfield
+                          ? "أدخل الـ Access Token هنا..."
+                          : (widget.providerType == ProviderType.telegram
+                              ? "أدخل معرف الشات أو القناة (مثال: @mychannel)..."
+                              : "أدخل مفتاح السر هنا..."),
                       hintStyle:
                           const TextStyle(color: Colors.white24, fontSize: 13),
                       filled: true,
@@ -392,7 +467,7 @@ class _StandardProviderFormState extends State<StandardProviderForm> {
                   height: 50,
                   child: ElevatedButton(
                     onPressed: () async {
-                      if (widget.providerType == ProviderType.kling) {
+                      if (widget.providerType.requiresSecretKey) {
                         await controller.saveSecretKey(
                             widget.providerType, secretController.text);
                       }
@@ -488,6 +563,12 @@ class _StandardProviderFormState extends State<StandardProviderForm> {
         ? "${key.substring(0, 4)}...${key.substring(key.length - 4)}"
         : key;
 
+    final label = widget.providerType == ProviderType.higgsfield
+        ? "ID"
+        : (widget.providerType == ProviderType.kling
+            ? "Key"
+            : (widget.providerType == ProviderType.telegram ? "Token" : "API"));
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -496,6 +577,8 @@ class _StandardProviderFormState extends State<StandardProviderForm> {
         children: [
           const Icon(Icons.key, color: Colors.white38, size: 18),
           const SizedBox(width: 12),
+          Text("$label: ",
+              style: const TextStyle(color: Colors.white38, fontSize: 11)),
           Expanded(
               child: Text(maskedKey,
                   style: const TextStyle(
@@ -503,6 +586,38 @@ class _StandardProviderFormState extends State<StandardProviderForm> {
                       fontFamily: 'monospace',
                       fontSize: 12))),
           const Icon(Icons.verified, color: Colors.blueAccent, size: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSecretKeyField(SettingsController controller) {
+    final key = controller.providerSecrets[widget.providerType] ?? '';
+    final maskedKey = key.length > 8
+        ? "${key.substring(0, 4)}...${key.substring(key.length - 4)}"
+        : (key.isNotEmpty ? "••••••••" : "");
+
+    final label = widget.providerType == ProviderType.higgsfield
+        ? "Token"
+        : (widget.providerType == ProviderType.telegram ? "Chat" : "Secret");
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+          color: Colors.black26, borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        children: [
+          const Icon(Icons.security, color: Colors.white38, size: 18),
+          const SizedBox(width: 12),
+          Text("$label: ",
+              style: const TextStyle(color: Colors.white38, fontSize: 11)),
+          Expanded(
+              child: Text(maskedKey,
+                  style: const TextStyle(
+                      color: Colors.white70,
+                      fontFamily: 'monospace',
+                      fontSize: 12))),
+          const Icon(Icons.lock_outline, color: Colors.amber, size: 16),
         ],
       ),
     );

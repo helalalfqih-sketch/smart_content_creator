@@ -156,4 +156,59 @@ class ProductMemoryService extends GetxService {
       if (kDebugMode) debugPrint('❌ ProductMemoryService: Error updating last used: $e');
     }
   }
+
+  // ─────────────────────────────────────────────────────────────
+  // 🧠 Platform Query Intelligence
+  // ─────────────────────────────────────────────────────────────
+
+  /// 💾 تسجيل استعلام بحث ناجح لمنتج معين على منصة معينة
+  /// يُستدعى بعد نجاح البحث وإعطاء نتائج جيدة للمستخدم
+  Future<void> recordSuccessfulQuery({
+    required String productId,
+    required String platform,
+    required String query,
+  }) async {
+    if (productId.isEmpty || platform.isEmpty || query.isEmpty) return;
+    try {
+      await _dbService.insertRecord('product_query_memory', {
+        'product_id': productId,
+        'platform': platform,
+        'query': query,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      if (kDebugMode) {
+        debugPrint('🧠 QueryMemory: Saved success → [$platform] "$query" for product: $productId');
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ QueryMemory: Error saving query: $e');
+    }
+  }
+
+  /// 📖 استرجاع الاستعلامات الناجحة لمنتج على منصة معينة (مرتبة بالأحدث)
+  Future<List<String>> getSuccessfulQueries({
+    required String productId,
+    required String platform,
+    int limit = 5,
+  }) async {
+    if (productId.isEmpty || platform.isEmpty) return [];
+    try {
+      final results = await _dbService.getRecords(
+        'product_query_memory',
+        where: 'product_id = ? AND platform = ?',
+        whereArgs: [productId, platform],
+        limit: limit,
+      );
+      final queries = results
+          .map((r) => r['query']?.toString() ?? '')
+          .where((q) => q.isNotEmpty)
+          .toList();
+      if (kDebugMode && queries.isNotEmpty) {
+        debugPrint('🧠 QueryMemory: Found ${queries.length} successful queries for [$platform] product: $productId');
+      }
+      return queries;
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ QueryMemory: Error retrieving queries: $e');
+      return [];
+    }
+  }
 }

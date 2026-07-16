@@ -658,7 +658,16 @@ class ImageGalleryWidget extends StatelessWidget {
       final imageUrl = item.originalUrl ?? item.link;
       final response = await http.get(Uri.parse(imageUrl));
       if (response.statusCode == 200) {
-        await Gal.putImageBytes(response.bodyBytes);
+        final tempDir = await getTemporaryDirectory();
+        String ext = '.jpg';
+        if (imageUrl.toLowerCase().contains('.png')) ext = '.png';
+        if (imageUrl.toLowerCase().contains('.webp')) ext = '.webp';
+        if (imageUrl.toLowerCase().contains('.gif')) ext = '.gif';
+        
+        final file = File('${tempDir.path}/save_${DateTime.now().millisecondsSinceEpoch}$ext');
+        await file.writeAsBytes(response.bodyBytes);
+
+        await Gal.putImage(file.path);
         debugPrint("✅ Image saved successfully!");
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

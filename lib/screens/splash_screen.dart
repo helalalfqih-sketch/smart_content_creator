@@ -4,6 +4,7 @@ import '../core/theme/animations/galactic_background_unified.dart';
 import '../controllers/auth_controller.dart';
 import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
+import '../theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -128,7 +129,7 @@ class SplashScreenState extends State<SplashScreen>
                         fontSize: 20,
                         fontWeight: FontWeight.w300,
                         letterSpacing: 12,
-                        color: Colors.cyanAccent.withValues(alpha: 0.8),
+                        color: AppTheme.primary.withValues(alpha: 0.8),
                       ),
                     ),
 
@@ -151,7 +152,7 @@ class SplashScreenState extends State<SplashScreen>
               child: Opacity(
                 opacity: 0.3,
                 child: Text(
-                  "SECURE VIP ACCESS ONLY",
+                  "Smart Creator © 2026",
                   style: GoogleFonts.cairo(
                     color: Colors.white,
                     fontSize: 10,
@@ -173,15 +174,15 @@ class SplashScreenState extends State<SplashScreen>
         shape: BoxShape.circle,
         gradient: LinearGradient(
           colors: [
-            Colors.cyanAccent,
-            Colors.purpleAccent.withValues(alpha: 0.2)
+            AppTheme.primary,
+            AppTheme.accent.withValues(alpha: 0.2)
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.cyanAccent.withValues(alpha: 0.4),
+            color: AppTheme.primary.withValues(alpha: 0.4),
             blurRadius: 40,
             spreadRadius: 2,
           ),
@@ -195,7 +196,7 @@ class SplashScreenState extends State<SplashScreen>
         ),
         child: ClipOval(
           child: Image.asset(
-            'assets/images/logoapp.jpg',
+            'assets/images/styles/logoapp.jpeg',
             width: 120,
             height: 120,
             fit: BoxFit.cover,
@@ -204,7 +205,7 @@ class SplashScreenState extends State<SplashScreen>
               height: 120,
               color: Colors.white10,
               child: const Icon(Icons.rocket_launch_rounded,
-                  color: Colors.cyanAccent, size: 50),
+                  color: AppTheme.primary, size: 50),
             ),
           ),
         ),
@@ -221,13 +222,13 @@ class SplashScreenState extends State<SplashScreen>
             borderRadius: BorderRadius.circular(10),
             child: const LinearProgressIndicator(
               backgroundColor: Colors.white10,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.cyanAccent),
+              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
               minHeight: 2,
             ),
           ),
           const SizedBox(height: 16),
           Text(
-            "جاري التهيِئة...",
+            "جارٍ التحميل...",
             style: GoogleFonts.cairo(
               fontSize: 12,
               color: Colors.white38,

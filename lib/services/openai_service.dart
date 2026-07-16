@@ -39,6 +39,10 @@ class OpenAIService extends AIProvider {
           headers: {
             "Authorization": "Bearer $apiKey",
             "Content-Type": "application/json",
+            if (url.contains("openrouter.ai")) ...{
+              "HTTP-Referer": "https://smartcontentcreator.com",
+              "X-Title": "Smart Content Creator",
+            }
           },
         ),
         cancelToken: cancelToken,

@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:get/get.dart';
 
@@ -9,6 +8,7 @@ import '../../core/models/api_provider.dart';
 import '../../controllers/settings_controller.dart';
 import '../gemini_service.dart';
 import '../../services/ffmpeg_service.dart';
+import '../../core/utils/json_utils.dart';
 
 class GeminiVisionService {
   
@@ -39,7 +39,7 @@ class GeminiVisionService {
     """;
     
     final result = await _geminiService.analyzeBatchImages(frames, prompt, apiKey: _apiKey);
-    return _parseJson(result.description);
+    return JsonUtils.parseSafe(result.description);
   }
 
   /// Extracts scenes by taking more frames (e.g. every 5 seconds or 5 frames total)
@@ -60,7 +60,7 @@ class GeminiVisionService {
     """;
 
     final result = await _geminiService.analyzeBatchImages(frames, prompt, apiKey: _apiKey);
-    return List<Map<String, dynamic>>.from(_parseJsonList(result.description));
+    return JsonUtils.parseListSafe(result.description).cast<Map<String, dynamic>>();
   }
 
   Future<List<Map<String, dynamic>>> suggestOverlays(File videoFile) async {
@@ -74,7 +74,7 @@ class GeminiVisionService {
     """;
     
     final result = await _geminiService.analyzeBatchImages(frames, prompt, apiKey: _apiKey);
-    return List<Map<String, dynamic>>.from(_parseJsonList(result.description));
+    return JsonUtils.parseListSafe(result.description).cast<Map<String, dynamic>>();
   }
 
   Future<List<String>> suggestMusic(File videoFile) async {
@@ -85,7 +85,7 @@ class GeminiVisionService {
     """;
     
     final result = await _geminiService.analyzeBatchImages(frames, prompt, apiKey: _apiKey);
-    return List<String>.from(_parseJsonList(result.description));
+    return JsonUtils.parseListSafe(result.description).map((e) => e.toString()).toList();
   }
 
   /// 🤖 Stage 1: Analyze Video Quality
@@ -108,7 +108,7 @@ class GeminiVisionService {
     """;
     
     final result = await _geminiService.analyzeBatchImages(frames, prompt, apiKey: _apiKey);
-    return _parseJson(result.description);
+    return JsonUtils.parseSafe(result.description);
   }
 
   /// 🖼️ NEW: Generic Image Analysis with Custom Prompt
@@ -195,39 +195,5 @@ class GeminiVisionService {
     return frames;
   }
 
-  Map<String, dynamic> _parseJson(String text) {
-    try {
-      final cleaned = _cleanJsonString(text);
-      return jsonDecode(cleaned);
-    } catch (e) {
-      return {"error": "Failed to parse JSON", "raw": text};
-    }
-  }
-
-  List<dynamic> _parseJsonList(String text) {
-    try {
-      final cleaned = _cleanJsonString(text);
-      final decoded = jsonDecode(cleaned);
-      if (decoded is List) return decoded;
-      if (decoded is Map && decoded.containsKey('items')) return decoded['items'];
-      return [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  String _cleanJsonString(String text) {
-    var cleaned = text.replaceAll('```json', '').replaceAll('```', '').trim();
-    final start = cleaned.indexOf('[');
-    final startObj = cleaned.indexOf('{');
-    
-    if (start != -1 && (startObj == -1 || start < startObj)) {
-       final end = cleaned.lastIndexOf(']');
-       if (end != -1) return cleaned.substring(start, end + 1);
-    } else if (startObj != -1) {
-       final end = cleaned.lastIndexOf('}');
-       if (end != -1) return cleaned.substring(startObj, end + 1);
-    }
-    return cleaned;
-  }
+  // Helper methods removed in favor of JsonUtils
 }

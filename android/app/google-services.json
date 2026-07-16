@@ -37,6 +37,57 @@
             {
               "client_id": "947880578188-hnd32gc8c9f3n6u22nl95bsumjq1em7e.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "947880578188-bkf4j7tk361bbc1dvlc5t4m9q9hndq0q.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.smartContentCreator"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:947880578188:android:4a74e08c9a796bb1af3fa9",
+        "android_client_info": {
+          "package_name": "com.smart.video_engine"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "947880578188-ultefodqc1ef8djpgq5iclgbpnqmq6ob.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.smart.video_engine",
+            "certificate_hash": "1b19d9101ff3e9b79a4c58b210a42f79139eabaf"
+          }
+        },
+        {
+          "client_id": "947880578188-hnd32gc8c9f3n6u22nl95bsumjq1em7e.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD595iKE4oXZmw0LEv8EG_9v20ny1wyM-c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "947880578188-hnd32gc8c9f3n6u22nl95bsumjq1em7e.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "947880578188-bkf4j7tk361bbc1dvlc5t4m9q9hndq0q.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.smartContentCreator"
+              }
             }
           ]
         }

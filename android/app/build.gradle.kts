@@ -9,7 +9,7 @@ plugins {
 android {
     namespace = "com.example.smart_content_creator"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -90,9 +90,11 @@ android {
             excludes += "/META-INF/LGPL2.1"
             excludes += "/META-INF/LICENSE*"
         }
-        // 🗜️ استبعاد ملفات debug غير ضرورية
+        // 🗜️ استبعاد ملفات debug غير ضرورية + تعطيل stripping للـ native libs الكبيرة (ffmpeg)
         jniLibs {
             excludes += "**/libVkLayer_khronos_validation.so"
+            useLegacyPackaging = true
+            keepDebugSymbols += "**/*.so"
         }
     }
 

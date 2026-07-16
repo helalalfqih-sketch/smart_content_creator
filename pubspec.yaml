@@ -1,7 +1,7 @@
 name: smart_content_creator
 description: صانع المحتوى Ai
 publish_to: "none"
-version: 1.1.0+3
+version: 1.2.1+5
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
@@ -67,6 +67,7 @@ dependencies:
   firebase_core: ^4.4.0
   firebase_auth: ^6.1.4
   cloud_firestore: ^6.1.2
+  cloud_functions: ^6.0.0
   firebase_storage: ^13.0.6
   google_sign_in: ^6.2.1
   app_links: ^6.3.2
@@ -89,6 +90,8 @@ dependencies:
   google_mlkit_selfie_segmentation: ^0.10.1
   get_storage: ^2.1.1
   logger: ^2.7.0
+  animate_do: ^5.1.0
+  excel: ^4.0.3 # For reading .xlsx catalog files
 
 dev_dependencies:
   flutter_test:
@@ -122,13 +125,16 @@ flutter:
   assets:
     - assets/fonts/
     - assets/images/background.jpg
-    - assets/images/logoapp.jpg
+    - assets/images/styles/logoapp.jpeg
     - assets/images/styles/
     - lib/services/data/mock_tiktok_trends.json
+    - shorebird.yaml
 flutter_launcher_icons:
   android: true
   ios: true
   windows:
     generate: true
     icon_size: 256
-  image_path: "assets/images/logoapp.jpg"
+  image_path: "assets/images/styles/logoapp.jpeg"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/styles/logoapp.jpeg"

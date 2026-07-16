@@ -19,13 +19,14 @@ class VipMessageEntry extends StatelessWidget {
       curve: Curves.easeOutCubic, // أهم جزء! منحنى حركة ناعم جداً
       tween: Tween<double>(begin: 0, end: 1),
       builder: (context, double value, child) {
-        return Transform.translate(
-          // الرسالة تأتي من الأسفل (50 بكسل) إلى مكانها (0)
-          // If user, maybe slide from right? For now let's stick to user request (up slide)
-          offset: Offset(0, 50 * (1 - value)),
-          child: Opacity(
-            opacity: value, // تظهر تدريجياً
-            child: child,
+        return ExcludeSemantics(
+          child: Transform.translate(
+            // الرسالة تأتي من الأسفل (50 بكسل) إلى مكانها (0)
+            offset: Offset(0, 50 * (1 - value)),
+            child: Opacity(
+              opacity: value, // تظهر تدريجياً
+              child: child,
+            ),
           ),
         );
       },

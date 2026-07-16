@@ -4,8 +4,8 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:8.9.1")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.1.0")
+        classpath("com.android.tools.build:gradle:8.11.2")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.20")
     }
 }
 
@@ -35,10 +35,9 @@ subprojects {
                 targetCompatibility = JavaVersion.VERSION_17
             }
             
-            // 🔥 Force JVM 17 for both application and library modules
             tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-                kotlinOptions {
-                    jvmTarget = "17"
+                compilerOptions {
+                    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
                 }
             }
         }
@@ -58,7 +57,13 @@ allprojects {
     repositories {
         google()
         mavenCentral()
-        maven { url = uri("https://maven.arthenica.com") }
+        maven {
+            url = uri("https://maven.arthenica.com")
+            content {
+                includeGroupAndSubgroups("com.arthenica")
+            }
+        }
+        maven { url = uri("https://storage.googleapis.com/download.flutter.io") }
         maven { url = uri("https://jitpack.io") }
     }
 }

@@ -14,6 +14,8 @@ import 'core/bindings/initial_binding.dart'; // استيراد ملف تهيئة
 // --- استيراد الشاشات (Screens) ---
 import 'screens/auth/login_screen.dart'; // شاشة تسجيل الدخول
 import 'screens/auth/signup_screen.dart'; // شاشة إنشاء حساب جديد
+import 'screens/auth/password_reset_otp_screen.dart'; // شاشة رمز إعادة التعيين
+import 'screens/auth/account_confirmation_screen.dart'; // شاشة تأكيد الحساب
 import 'screens/splash_screen.dart'; // شاشة الانطلاق (الترحيب)
 import 'screens/ai_chat_screen.dart'; // شاشة الدردشة بالذكاء الاصطناعي
 import 'screens/settings_screen.dart'; // شاشة إعدادات المفاتيح
@@ -26,6 +28,7 @@ import 'screens/privacy_policy_screen.dart'; // شاشة سياسة الخصوص
 import 'screens/terms_of_service_screen.dart'; // شاشة شروط الخدمة
 import 'screens/subscription_screen.dart'; // شاشة الاشتراكات والباقات
 import 'screens/product_photography_screen.dart'; // شاشة تصوير المنتجات بالـ AI
+import 'screens/catalog/product_catalog_screen.dart'; // شاشة كتالوج المنتجات لـ Meta
 import 'screens/main_wrapper.dart'; // الملف الرئيسي الذي يحتوي على شريط التنقل الديناميكي
 
 // --- استيراد المتحكمات والخدمات (Controllers & Services) ---
@@ -63,8 +66,25 @@ Future<void> main() async {
   }
 
   // 🔥 تهيئة خدمات Firebase (وضع آمن مع معالجة الأخطاء)
+  bool firebaseInitialized = false;
   try {
-    await Firebase.initializeApp();
+    if (kIsWeb) {
+      // 🌐 خيارات Firebase للويب (من Firebase Console > Project Settings > Web Apps)
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: 'AIzaSyAPVyg6vgYP6iJbNYMVkgD5OrpZWRGLPgU',
+          appId: '1:947880578188:web:d3143bd966646695af3fa9',
+          messagingSenderId: '947880578188',
+          projectId: 'smartcontentcreator-d49f2',
+          storageBucket: 'smartcontentcreator-d49f2.firebasestorage.app',
+          authDomain: 'smartcontentcreator-d49f2.firebaseapp.com',
+          measurementId: 'G-8S56GE79C9',
+        ),
+      );
+    } else {
+      await Firebase.initializeApp();
+    }
+    firebaseInitialized = true;
     
     // 🛡️ تفعيل وضع Offline لـ Firestore لمنع الانهيار عند فقدان الإنترنت
     FirebaseFirestore.instance.settings = const Settings(
@@ -77,9 +97,16 @@ Future<void> main() async {
     debugPrint("⚠️ فشل تهيئة Firebase (تأكد من ملفات الإعداد): $e");
   }
 
+  // 🌍 حفظ حالة Firebase لاستخدامها في InitialBinding
+  Get.put<bool>(firebaseInitialized, tag: 'firebaseInitialized', permanent: true);
+
   // 🛡️ معالج أخطاء عام لمنع انهيار التطبيق (يعرض رسالة بدل الشاشة البيضاء)
   FlutterError.onError = (details) {
     debugPrint("🚨 Flutter Error: ${details.exceptionAsString()}");
+    debugPrint("📍 Widget: ${details.context}");
+    debugPrint("📚 Library: ${details.library}");
+    // هذا يطبع الـ widget tree والملف المسبب
+    FlutterError.presentError(details);
   };
 
   // 🎯 حقن المتحكمات الأساسية فوراً لتجنب أي تأخير في الوصول للبيانات (Race Conditions)
@@ -127,10 +154,10 @@ class SmartContentCreatorApp extends StatelessWidget {
           // 🎯 تشغيل الخدمات الأساسية (Database, Auth, الخ) بمجرد فتح التطبيق
           initialBinding: InitialBinding(),
 
-          // ✅ فرض الوضع الليلي (Dark Theme) لتصميم VIP الاحترافي
-          theme: AppTheme.darkTheme,
+          // ✅ دعم الوضعين الفاتح والليلي بشكل ديناميكي
+          theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
-          themeMode: ThemeMode.dark,
+          themeMode: ThemeMode.dark, // الافتراضي عند أول تشغيل
 
           // 🔐 نقطة البداية: شاشة الـ Splash التي تقرر التوجه لشاشة الدخول أو الرئيسية
           home: const SplashScreen(),
@@ -143,6 +170,15 @@ class SmartContentCreatorApp extends StatelessWidget {
             GetPage(
                 name: '/signup',
                 page: () => const SignupScreen()), // مسار الاشتراك
+            GetPage(
+                name: '/password-reset-otp',
+                page: () {
+                  final email = (Get.parameters['email'] ?? '').trim();
+                  return PasswordResetOtpScreen(email: email);
+                }), // مسار رمز إعادة التعيين
+            GetPage(
+                name: '/account-confirmation',
+                page: () => const AccountConfirmationScreen()), // مسار تأكيد الحساب
             GetPage(
                 name: '/splash',
                 page: () => const SplashScreen()), // مسار شاشة البداية
@@ -188,6 +224,10 @@ class SmartContentCreatorApp extends StatelessWidget {
                 name: '/product-photography',
                 page: () =>
                     const ProductPhotographyScreen()), // تصوير المنتجات بالـ AI
+            GetPage(
+                name: '/catalog',
+                page: () =>
+                    const ProductCatalogScreen()), // كتالوج المنتجات لـ Meta
           ],
         );
       },

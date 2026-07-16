@@ -35,6 +35,16 @@ class ProviderSelectionList extends StatelessWidget {
 
           _buildProviderItem(
             controller,
+            label: "OpenRouter (Gemini/Video)",
+            icon: Icons.traffic_outlined,
+            providerKey: 'openrouter',
+            role: 'text',
+            activeColor: Colors.blueAccent,
+          ),
+          _divider(),
+
+          _buildProviderItem(
+            controller,
             label: "OpenAI (GPT-4)",
             icon: Icons.psychology_outlined,
             providerKey: 'openai',
@@ -73,6 +83,16 @@ class ProviderSelectionList extends StatelessWidget {
             providerKey: 'kling',
             role: 'video',
             activeColor: Colors.purpleAccent,
+          ),
+          _divider(),
+
+          _buildProviderItem(
+            controller,
+            label: "Higgsfield AI (Video)",
+            icon: Icons.video_camera_back_outlined,
+            providerKey: 'higgsfield',
+            role: 'video',
+            activeColor: Colors.deepPurpleAccent,
           ),
           _divider(),
 
@@ -187,7 +207,7 @@ class ProviderSelectionList extends StatelessWidget {
               statusText = "متصل ✅";
             } else {
               isActive = false;
-              statusText = controller.tiktokError != null
+              statusText = controller.tiktokError.value.isNotEmpty
                   ? "فشل الاتصال ❌"
                   : "غير متصل ⚠️";
             }

@@ -5,9 +5,10 @@ import '../../core/theme/animations/galactic_background_unified.dart';
 import '../../controllers/auth_controller.dart';
 import '../../core/utils/error_handler.dart';
 import '../../widgets/ui_kit/smart_loading_overlay.dart';
-import '../../core/theme/ui_kit/smart_glass_card.dart';
-import '../../core/theme/ui_kit/smart_neon_button.dart';
-import '../../core/theme/ui_kit/smart_neon_text_field.dart';
+import '../../widgets/ui_kit/custom_widgets.dart';
+import '../../core/strings/app_strings.dart';
+import '../../theme/app_theme.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -18,12 +19,11 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen>
     with SingleTickerProviderStateMixin {
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _auth = Get.find<AuthController>();
-
-  bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   late AnimationController _bgAnimation;
@@ -39,6 +39,7 @@ class _SignupScreenState extends State<SignupScreen>
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
@@ -47,118 +48,158 @@ class _SignupScreenState extends State<SignupScreen>
   }
 
   Future<void> _signup() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      Get.snackbar('تنبيه', 'الرجاء إدخال جميع البيانات',
-          backgroundColor: Colors.orangeAccent.withValues(alpha: 0.2),
-          colorText: Colors.white);
+    FocusScope.of(context).unfocus();
+    _auth.clearError();
+
+    if (!await ErrorHandler.hasInternetConnection()) {
+      _auth.authError.value = 'لا يوجد اتصال بالإنترنت';
       return;
     }
 
-    if (_passwordController.text != _confirmPasswordController.text) {
-      Get.snackbar('خطأ', 'كلمة المرور غير متطابقة',
-          backgroundColor: Colors.redAccent.withValues(alpha: 0.2),
-          colorText: Colors.white);
-      return;
-    }
-
-    if (!await ErrorHandler.hasInternetConnection()) return;
-
-    setState(() => _isLoading = true);
-    final success = await _auth.signUp(
-      _emailController.text.trim(),
+    await _auth.signUpWithValidation(
+      _emailController.text,
       _passwordController.text,
+      _confirmPasswordController.text,
+      _nameController.text,
     );
-    setState(() => _isLoading = false);
-
-    if (success) {
-      Get.snackbar('نجاح', 'تم إنشاء هويتك الرقمية بنجاح 🚀',
-          backgroundColor: Colors.cyanAccent.withValues(alpha: 0.2),
-          colorText: Colors.white);
-    } else {
-      Get.snackbar('فشل', 'خطأ في إنشاء الحساب، يرجى المحاولة لاحقاً',
-          backgroundColor: Colors.redAccent.withValues(alpha: 0.2),
-          colorText: Colors.white);
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF030303),
+      backgroundColor: AppTheme.background,
       body: Stack(
         children: [
           // 🌌 Galactic Animated Background
           GalacticBackgroundUnified(animation: _bgAnimation),
 
-          // 🪐 Glassmorphism Signup Container
+          // 🪐 Signup Container
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 450),
-                child: _buildGlassSignupCard(),
+                child: _buildSignupCard(),
               ),
             ),
           ),
 
           // 🔄 Global Loading Overlay
-          if (_isLoading) const SmartLoadingOverlay(isLoading: true),
+          Obx(() => SmartLoadingOverlay(isLoading: _auth.isLoading.value)),
         ],
       ),
     );
   }
 
-  Widget _buildGlassSignupCard() {
-    return SmartGlassCard(
+  Widget _buildSignupCard() {
+    return Container(
+      padding: EdgeInsets.all(24.w),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(AppTheme.borderRadius),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // 🚀 Header
-          _buildHeader(),
-          const SizedBox(height: 35),
+          const BrandAnchor(size: 60),
+          const SizedBox(height: 24),
+          Text(
+            AppStrings.signupTitle,
+            style: GoogleFonts.tajawal(
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            AppStrings.signupSubtitle,
+            style: GoogleFonts.tajawal(
+              color: AppTheme.textGrey,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 32),
 
           // 📝 Inputs
           AutofillGroup(
             child: Column(
               children: [
-                _buildNeonTextField(
+                SmartTextField(
+                  controller: _nameController,
+                  label: AppStrings.nameLabel,
+                  hint: "الاسم الكامل",
+                  prefixIcon: Icons.person_outline_rounded,
+                  keyboardType: TextInputType.name,
+                ),
+                const SizedBox(height: 16),
+                SmartTextField(
                   controller: _emailController,
-                  label: 'البريد الإلكتروني',
-                  icon: Icons.alternate_email_rounded,
+                  label: AppStrings.emailLabel,
+                  hint: "your@email.com",
+                  prefixIcon: Icons.alternate_email_rounded,
                   keyboardType: TextInputType.emailAddress,
-                  hints: [AutofillHints.email],
                 ),
                 const SizedBox(height: 16),
-                _buildNeonTextField(
+                SmartTextField(
                   controller: _passwordController,
-                  label: 'كلمة المرور الجديدة',
-                  icon: Icons.lock_outline_rounded,
-                  isPassword: true,
-                  isObscured: _obscurePassword,
-                  onToggleVisibility: () =>
-                      setState(() => _obscurePassword = !_obscurePassword),
-                  hints: [AutofillHints.newPassword],
+                  label: AppStrings.passwordLabel,
+                  hint: "••••••••",
+                  isPassword: _obscurePassword,
+                  prefixIcon: Icons.lock_outline_rounded,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                      color: AppTheme.textGrey,
+                      size: 20,
+                    ),
+                    onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  ),
                 ),
                 const SizedBox(height: 16),
-                _buildNeonTextField(
+                SmartTextField(
                   controller: _confirmPasswordController,
-                  label: 'تأكيد كلمة المرور',
-                  icon: Icons.verified_user_rounded,
-                  isPassword: true,
-                  isObscured: _obscureConfirmPassword,
-                  onToggleVisibility: () => setState(() =>
-                      _obscureConfirmPassword = !_obscureConfirmPassword),
+                  label: AppStrings.confirmPasswordLabel,
+                  hint: "••••••••",
+                  isPassword: _obscureConfirmPassword,
+                  prefixIcon: Icons.verified_user_rounded,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                      color: AppTheme.textGrey,
+                      size: 20,
+                    ),
+                    onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                  ),
                 ),
+                const SizedBox(height: 12),
+                Obx(() {
+                  final error = _auth.authError.value;
+                  if (error == null || error.isEmpty) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      error,
+                      style: GoogleFonts.cairo(color: Colors.redAccent, fontSize: 13),
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                }),
               ],
             ),
           ),
 
-          const SizedBox(height: 35),
+          const SizedBox(height: 32),
 
           // ⚡ Action Button
-          _buildSubmitButton(),
+          SmartButton(
+            text: AppStrings.signupButton,
+            onPressed: _signup,
+          ),
 
-          const SizedBox(height: 30),
+          const SizedBox(height: 24),
 
           // 🔗 Login Link
           _buildFooter(),
@@ -167,100 +208,22 @@ class _SignupScreenState extends State<SignupScreen>
     );
   }
 
-  Widget _buildHeader() {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(
-              colors: [
-                Colors.purpleAccent,
-                Colors.cyanAccent.withValues(alpha: 0.5)
-              ],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.purpleAccent.withValues(alpha: 0.3),
-                blurRadius: 20,
-              )
-            ],
-          ),
-          child: const Icon(Icons.person_add_alt_1_rounded,
-              size: 35, color: Colors.white),
-        ),
-        const SizedBox(height: 20),
-        Text(
-          'إصدار الهوية الرقمية',
-          style: GoogleFonts.cairo(
-            fontSize: 24,
-            fontWeight: FontWeight.w900,
-            color: Colors.white,
-          ),
-        ),
-        Text(
-          'انضم لعالم صناعة المحتوى الذكي 2026',
-          style: GoogleFonts.cairo(
-            color: Colors.white54,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNeonTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    bool isPassword = false,
-    bool isObscured = false,
-    VoidCallback? onToggleVisibility,
-    TextInputType? keyboardType,
-    Iterable<String>? hints,
-  }) {
-    return SmartNeonTextField(
-      controller: controller,
-      label: label,
-      icon: icon,
-      isPassword: isPassword,
-      isObscured: isObscured,
-      onToggleVisibility: onToggleVisibility,
-      keyboardType: keyboardType,
-      hints: hints,
-      accentColor: Colors.purpleAccent,
-    );
-  }
-
-  Widget _buildSubmitButton() {
-    return SmartNeonButton(
-      text: 'بدء الرحلة الإبداعية',
-      isLoading: _isLoading,
-      onPressed: _signup,
-      gradientColors: const [Colors.purpleAccent, Color(0xFF7C4DFF)],
-      shadowColor: Colors.purpleAccent.withValues(alpha: 0.2),
-      textColor: Colors.white,
-      borderRadius: 15.0,
-    );
-  }
-
   Widget _buildFooter() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
-          'عضو مسجل بالفعل؟',
-          style: GoogleFonts.cairo(color: Colors.white38, fontSize: 13),
+          AppStrings.alreadyHaveAccount,
+          style: GoogleFonts.tajawal(color: AppTheme.textGrey, fontSize: 14),
         ),
         TextButton(
           onPressed: () => Get.back(),
           child: Text(
-            'تسجيل الدخول',
-            style: GoogleFonts.cairo(
-              color: Colors.purpleAccent,
+            AppStrings.goToLogin,
+            style: GoogleFonts.tajawal(
+              color: AppTheme.primary,
               fontWeight: FontWeight.bold,
-              fontSize: 13,
+              fontSize: 14,
             ),
           ),
         ),
@@ -268,4 +231,5 @@ class _SignupScreenState extends State<SignupScreen>
     );
   }
 }
+
 
