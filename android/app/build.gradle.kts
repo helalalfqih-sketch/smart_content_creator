@@ -59,10 +59,7 @@ android {
             // ⚠️ غيّر هذا لمفتاح التوقيع الخاص بك للنشر
             signingConfig = signingConfigs.getByName("debug")
 
-            // 🗜️ ضغط إضافي للـ native libs
-            ndk {
-                debugSymbolLevel = "NONE"
-            }
+
         }
 
         debug {
