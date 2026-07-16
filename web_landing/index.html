@@ -441,7 +441,7 @@
     </section>
 
     <section class="download-section">
-        <h2 class="download-title">تنزيل التطبيق لجهازك (الإصدار 2.0.0)</h2>
+        <h2 class="download-title">تنزيل التطبيق لجهازك (الإصدار <span id="app-version">1.2.1</span>)</h2>
         
         <div class="download-grid">
             <!-- ARM 64 -->
@@ -455,7 +455,7 @@
                 <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/-/releases/latest/download/smart-content-creator-arm64.apk')">
                     <span>فتح أو تحديث التطبيق ⚡</span>
                 </button>
-                <div class="file-size">الحجم: 105 ميجابايت</div>
+                <div class="file-size" id="size-arm64">الحجم: جاري التحميل...</div>
             </div>
 
             <!-- ARM v7 -->
@@ -469,7 +469,7 @@
                 <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/-/releases/latest/download/smart-content-creator-arm32.apk')">
                     <span>فتح أو تحديث التطبيق ⚡</span>
                 </button>
-                <div class="file-size">الحجم: 129 ميجابايت</div>
+                <div class="file-size" id="size-arm32">الحجم: جاري التحميل...</div>
             </div>
 
             <!-- x86_64 -->
@@ -483,7 +483,7 @@
                 <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/-/releases/latest/download/smart-content-creator-x86.apk')">
                     <span>فتح أو تحديث التطبيق ⚡</span>
                 </button>
-                <div class="file-size">الحجم: 110 ميجابايت</div>
+                <div class="file-size" id="size-x86">الحجم: جاري التحميل...</div>
             </div>
         </div>
     </section>
@@ -569,14 +569,13 @@
             window.location.href = intentUrl;
         }
 
-        // 🧠 In-App Browser Auto-Detection
+        // 🧠 In-App Browser Auto-Detection & Dynamic Release Stats Fetch
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
             const isFromApp = urlParams.get('app') === 'true' || urlParams.get('installed') === 'true';
             
             if (isFromApp) {
                 // If visited from the app itself (e.g. settings screen update check)
-                // We show visual indication that the app is installed and running
                 const smartButtons = document.querySelectorAll('.btn-smart-action');
                 smartButtons.forEach(btn => {
                     btn.innerHTML = '<span>✅ مثبت بالفعل (افتح التطبيق)</span>';
@@ -584,6 +583,49 @@
                     btn.style.color = '#00FF88';
                 });
             }
+
+            // 🌐 Fetch latest version and file sizes from GitHub Releases
+            const repoUrl = "https://api.github.com/repos/helalalfqih-sketch/-/releases/latest";
+            
+            // Fallback default values
+            const defaultSizes = {
+                "smart-content-creator-arm64.apk": "105 ميجابايت",
+                "smart-content-creator-arm32.apk": "129 ميجابايت",
+                "smart-content-creator-x86.apk": "110 ميجابايت"
+            };
+            const defaultVersion = "1.2.1";
+
+            fetch(repoUrl)
+                .then(response => {
+                    if (!response.ok) throw new Error("API call failed");
+                    return response.json();
+                })
+                .then(data => {
+                    // Update version tag
+                    const version = data.tag_name ? data.tag_name.replace('v', '') : defaultVersion;
+                    document.getElementById('app-version').innerText = version;
+
+                    // Update asset file sizes
+                    const assets = data.assets || [];
+                    assets.forEach(asset => {
+                        const sizeMB = (asset.size / (1024 * 1024)).toFixed(1) + " ميجابايت";
+                        if (asset.name === "smart-content-creator-arm64.apk") {
+                            document.getElementById('size-arm64').innerText = "الحجم: " + sizeMB;
+                        } else if (asset.name === "smart-content-creator-arm32.apk") {
+                            document.getElementById('size-arm32').innerText = "الحجم: " + sizeMB;
+                        } else if (asset.name === "smart-content-creator-x86.apk") {
+                            document.getElementById('size-x86').innerText = "الحجم: " + sizeMB;
+                        }
+                    });
+                })
+                .catch(error => {
+                    console.log("Error loading latest release stats: ", error);
+                    // Load fallbacks on error (e.g. offline or API rate limits)
+                    document.getElementById('app-version').innerText = defaultVersion;
+                    document.getElementById('size-arm64').innerText = "الحجم: " + defaultSizes["smart-content-creator-arm64.apk"];
+                    document.getElementById('size-arm32').innerText = "الحجم: " + defaultSizes["smart-content-creator-arm32.apk"];
+                    document.getElementById('size-x86').innerText = "الحجم: " + defaultSizes["smart-content-creator-x86.apk"];
+                });
         });
     </script>
 </body>
