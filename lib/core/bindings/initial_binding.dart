@@ -45,6 +45,7 @@ import '../../services/telegram_service.dart'; // ✈️ Telegram Integration
 import '../../services/global_config_service.dart'; // 🌍 Global Config
 import '../../services/back4app_gateway_service.dart'; // ☁️ Back4App AI Gateway
 import '../../services/vertex_ai_service.dart';
+import '../../services/product_matching_service.dart';
 
 import '../../controllers/auth_controller.dart';
 import '../../controllers/settings_controller.dart';
@@ -125,6 +126,7 @@ class InitialBinding extends Bindings {
     Get.lazyPut(() => GeminiVisionService(), fenix: true);
     Get.lazyPut(() => VisionProductService(), fenix: true);
     Get.lazyPut(() => ProductMemoryService(), fenix: true);
+    Get.lazyPut(() => ProductMatchingService(), fenix: true);
     Get.lazyPut(() => BackgroundRemovalService(), fenix: true); // ✂️ Inject Background Service
     Get.lazyPut(() => SceneDirectorService(), fenix: true);
     Get.lazyPut(() => MediaMergeService(), fenix: true);

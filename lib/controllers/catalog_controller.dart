@@ -478,7 +478,7 @@ class CatalogController extends GetxController {
         await _db.insertRecord('catalog_products', toSave.toMap());
       }
       
-      _resetForm();
+      resetForm();
       Get.snackbar(
         '✅ تم الحفظ',
         'تم حفظ المنتج بنجاح في الكتالوج',
@@ -497,6 +497,166 @@ class CatalogController extends GetxController {
       );
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // 🔗 دمج صور إضافية مع منتج موجود مسبقاً (منع التكرار الهجين)
+  // ---------------------------------------------------------------------------
+  Future<void> mergeProductImages(CatalogProduct existingProduct, List<String> newLocalImages, List<String> newUrls) async {
+    isSyncing.value = true;
+    try {
+      final List<String> uploadedUrls = [];
+      
+      // رفع أي صور محلية جديدة لم يتم رفعها بعد
+      for (final path in newLocalImages) {
+        if (path.startsWith('http')) {
+          uploadedUrls.add(path);
+          continue;
+        }
+        final file = File(path);
+        if (await file.exists()) {
+          final url = await Get.find<FirebaseStorageService>().uploadProductMedia(
+            uid: existingProduct.creatorUid ?? _uid ?? 'guest',
+            file: file,
+            mediaType: 'image',
+          );
+          if (url != null) uploadedUrls.add(url);
+        }
+      }
+
+      // دمج الصور الجديدة
+      final mergedUrls = <String>{
+        ...existingProduct.additionalImageLinks,
+        ...uploadedUrls,
+        ...newUrls
+      }.toList();
+
+      final updatedProduct = existingProduct.copyWith(
+        additionalImageLinks: mergedUrls,
+        updatedAt: DateTime.now(),
+        isSynced: false,
+      );
+
+      final uid = _uid;
+      if (uid != null) {
+        await FirebaseFirestore.instance
+            .collection('catalog_products')
+            .doc(existingProduct.id)
+            .set(updatedProduct.toMap(), SetOptions(merge: true));
+      } else {
+        await _db.updateRecord('catalog_products', updatedProduct.toMap(), where: 'id = ?', whereArgs: [existingProduct.id]);
+      }
+
+      Get.snackbar(
+        '✅ تم دمج الصور',
+        'تم إضافة الصور الجديدة للمنتج "${existingProduct.title}" بنجاح.',
+        backgroundColor: const Color(0xFF1A3A1A),
+        colorText: const Color(0xFF4CAF50),
+        duration: const Duration(seconds: 4),
+      );
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ CatalogController: mergeProductImages error: $e');
+      Get.snackbar(
+        '❌ فشل الدمج',
+        'عفواً، تعذر دمج الصور: $e',
+        backgroundColor: const Color(0xFF3A1A1A),
+        colorText: const Color(0xFFE57373),
+        duration: const Duration(seconds: 4),
+      );
+    } finally {
+      isSyncing.value = false;
+      resetForm();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // ✏️ تحديث منتج موجود بالكامل ببيانات الذكاء الاصطناعي الجديدة
+  // ---------------------------------------------------------------------------
+  Future<void> updateProductWithAiData(CatalogProduct existingProduct, Map<String, String> aiData, List<String> newLocalImages, List<String> newUrls) async {
+    isSyncing.value = true;
+    try {
+      final List<String> uploadedUrls = [];
+      
+      // رفع أي صور محلية جديدة
+      for (final path in newLocalImages) {
+        if (path.startsWith('http')) {
+          uploadedUrls.add(path);
+          continue;
+        }
+        final file = File(path);
+        if (await file.exists()) {
+          final url = await Get.find<FirebaseStorageService>().uploadProductMedia(
+            uid: existingProduct.creatorUid ?? _uid ?? 'guest',
+            file: file,
+            mediaType: 'image',
+          );
+          if (url != null) uploadedUrls.add(url);
+        }
+      }
+
+      // دمج الصور
+      final mergedUrls = <String>{
+        ...existingProduct.additionalImageLinks,
+        ...uploadedUrls,
+        ...newUrls
+      }.toList();
+
+      final extractedTitle = aiData['TITLE']?.trim() ?? aiData['product_name']?.trim() ?? existingProduct.title;
+      final extractedBrand = aiData['BRAND']?.trim() ?? aiData['brand']?.trim() ?? existingProduct.brand;
+      final extractedModel = aiData['MODEL']?.trim() ?? aiData['model']?.trim() ?? existingProduct.itemGroupId;
+      final extractedBarcode = aiData['BARCODE']?.trim() ?? aiData['barcode']?.trim() ?? aiData['gtin']?.trim() ?? existingProduct.gtin;
+      final extractedCategoryName = aiData['CATEGORY']?.trim() ?? aiData['category']?.trim() ?? existingProduct.categoryName;
+      final extractedColor = aiData['COLOR']?.trim() ?? aiData['color']?.trim() ?? existingProduct.color;
+      final extractedSize = aiData['SIZE']?.trim() ?? aiData['size']?.trim() ?? existingProduct.size;
+      final extractedDesc = aiData['DESCRIPTION']?.trim() ?? aiData['description']?.trim() ?? existingProduct.description;
+      final double extractedPrice = double.tryParse(aiData['PRICE']?.trim() ?? '') ?? existingProduct.price;
+
+      final updatedProduct = existingProduct.copyWith(
+        title: extractedTitle,
+        description: extractedDesc,
+        price: extractedPrice,
+        brand: extractedBrand,
+        itemGroupId: extractedModel,
+        gtin: extractedBarcode,
+        color: extractedColor,
+        size: extractedSize,
+        categoryName: extractedCategoryName,
+        additionalImageLinks: mergedUrls,
+        updatedAt: DateTime.now(),
+        isSynced: false,
+      );
+
+      final uid = _uid;
+      if (uid != null) {
+        await FirebaseFirestore.instance
+            .collection('catalog_products')
+            .doc(existingProduct.id)
+            .set(updatedProduct.toMap(), SetOptions(merge: true));
+      } else {
+        await _db.updateRecord('catalog_products', updatedProduct.toMap(), where: 'id = ?', whereArgs: [existingProduct.id]);
+      }
+
+      Get.snackbar(
+        '✅ تم تحديث المنتج',
+        'تم تحديث حقول وصور منتج "${existingProduct.title}" بنجاح بالبيانات الجديدة.',
+        backgroundColor: const Color(0xFF1A3A1A),
+        colorText: const Color(0xFF4CAF50),
+        duration: const Duration(seconds: 4),
+      );
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ CatalogController: updateProductWithAiData error: $e');
+      Get.snackbar(
+        '❌ فشل التحديث',
+        'عفواً، تعذر تحديث بيانات المنتج: $e',
+        backgroundColor: const Color(0xFF3A1A1A),
+        colorText: const Color(0xFFE57373),
+        duration: const Duration(seconds: 4),
+      );
+    } finally {
+      isSyncing.value = false;
+      resetForm();
+    }
+  }
+
 
   // ---------------------------------------------------------------------------
   // 🗑️ حذف منتج
@@ -874,7 +1034,7 @@ class CatalogController extends GetxController {
   // ---------------------------------------------------------------------------
   void startEditing(CatalogProduct? product) {
     editingProduct.value = product;
-    _resetForm();
+    resetForm();
     if (product != null) {
       uploadedImageUrls.value = [product.imageLink, ...product.additionalImageLinks]
           .where((u) => u.isNotEmpty)
@@ -885,7 +1045,7 @@ class CatalogController extends GetxController {
     }
   }
 
-  void _resetForm() {
+  void resetForm() {
     pickedImages.clear();
     uploadedImageUrls.clear();
     pickedVideoPath.value = '';
