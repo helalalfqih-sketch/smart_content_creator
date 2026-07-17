@@ -48,9 +48,9 @@ android {
     */
 
     signingConfigs {
-        create("release") {
-            val propertiesFile = rootProject.file("key.properties")
-            if (propertiesFile.exists()) {
+        val propertiesFile = rootProject.file("key.properties")
+        if (propertiesFile.exists()) {
+            create("release") {
                 val properties = java.util.Properties()
                 properties.load(java.io.FileInputStream(propertiesFile))
                 storeFile = file(properties.getProperty("storeFile"))
