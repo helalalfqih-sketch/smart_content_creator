@@ -16,6 +16,7 @@ import '../widgets/provider_selection_list.dart';
 import '../widgets/standard_provider_form.dart';
 import '../widgets/tiktok_settings_form.dart';
 import '../widgets/youtube_settings_form.dart';
+import '../widgets/facebook_settings_form.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -215,6 +216,9 @@ class SettingsScreen extends StatelessWidget {
     }
     if (selected == 'youtube') {
       return const YoutubeSettingsForm();
+    }
+    if (selected == 'facebook') {
+      return const FacebookSettingsForm();
     }
 
     // الحالة الافتراضية لباقي المزودين (Gemini, Kling, etc)

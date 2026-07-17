@@ -28,6 +28,7 @@ import '../../services/profile_sync_service.dart';
 import '../../services/instagram_service.dart';
 import '../../services/tiktok_account_service.dart';
 import '../../services/media_merge_service.dart';
+import '../../services/facebook_page_service.dart';
 import '../../services/ai/model_capability_service.dart';
 import '../../services/ai/intent_classifier_service.dart';
 import '../../services/serpapi_services.dart';
@@ -110,6 +111,7 @@ class InitialBinding extends Bindings {
     Get.lazyPut(() => ProfileSyncService(), fenix: true);
     Get.lazyPut(() => InstagramService(), fenix: true);
     Get.lazyPut(() => TikTokAccountService(), fenix: true);
+    Get.lazyPut(() => FacebookPageService(), fenix: true);
     Get.lazyPut(() => TrendController(), fenix: true);
     Get.lazyPut(() => AdminController(), fenix: true);
 

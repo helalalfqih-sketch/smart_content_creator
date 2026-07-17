@@ -69,6 +69,14 @@ class SettingsController extends GetxController {
   final instagramUsername = ''.obs; 
   final instagramProfileUrl = ''.obs;
 
+  // ── Facebook Integration ──
+  final fbUserToken = ''.obs;
+  final fbPageId = ''.obs;
+  final fbPageName = ''.obs;
+  final fbPageToken = ''.obs;
+  final fbPagesList = <Map<String, dynamic>>[].obs;
+  final isFetchingFbPages = false.obs;
+
   final isTrialActive = false.obs;
   final isManagedActive = false.obs;
   final remainingCredits = 0.obs;
@@ -158,6 +166,7 @@ class SettingsController extends GetxController {
   Future<void> _initializeSettings() async {
     await _loadAllKeys();
     await _loadTikTokKeys();
+    await _loadFacebookSettings();
     await _loadActiveProvider();
     await _loadJinaSettings();
     await _loadPlanningSettings();
@@ -380,6 +389,7 @@ class SettingsController extends GetxController {
     if (type != null) return getApiKey(type).isNotEmpty;
     if (providerKey == 'tiktok') return tiktokClientKey.value.isNotEmpty;
     if (providerKey == 'youtube') return youtubeHandle.value.isNotEmpty;
+    if (providerKey == 'facebook') return fbPageId.value.isNotEmpty;
     return false;
   }
 
@@ -630,6 +640,77 @@ class SettingsController extends GetxController {
     instagramProfileUrl.value = url;
     await _storage.writeString('instagram_username', username);
     await _storage.writeString('instagram_profile_url', url);
+  }
+
+  // ── Facebook Integration Methods ──
+  Future<void> _loadFacebookSettings() async {
+    fbUserToken.value = await _secureStorage.getApiKey('facebook_user_token');
+    fbPageId.value = _storage.readString('facebook_page_id') ?? '';
+    fbPageName.value = _storage.readString('facebook_page_name') ?? '';
+    fbPageToken.value = await _secureStorage.getApiKey('facebook_page_token');
+    if (fbUserToken.value.isNotEmpty && fbPageId.value.isEmpty) {
+      await fetchFacebookPages();
+    }
+  }
+
+  Future<void> saveFacebookUserToken(String token) async {
+    fbUserToken.value = token.trim();
+    await _secureStorage.saveApiKey('facebook_user_token', token.trim());
+    await fetchFacebookPages();
+  }
+
+  Future<void> saveSelectedFacebookPage(String id, String name, String pageToken) async {
+    fbPageId.value = id;
+    fbPageName.value = name;
+    fbPageToken.value = pageToken;
+    await _storage.writeString('facebook_page_id', id);
+    await _storage.writeString('facebook_page_name', name);
+    await _secureStorage.saveApiKey('facebook_page_token', pageToken);
+    _showToast('✅ تم ربط صفحة فيسبوك: $name', isError: false);
+  }
+
+  Future<void> fetchFacebookPages() async {
+    final token = fbUserToken.value.trim();
+    if (token.isEmpty) return;
+
+    isFetchingFbPages.value = true;
+    try {
+      final response = await http.get(Uri.parse('https://graph.facebook.com/v20.0/me/accounts?access_token=$token'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['data'] != null) {
+          final List<dynamic> pages = data['data'];
+          fbPagesList.value = pages.map<Map<String, dynamic>>((p) => {
+            'id': p['id']?.toString() ?? '',
+            'name': p['name']?.toString() ?? '',
+            'access_token': p['access_token']?.toString() ?? '',
+            'category': p['category']?.toString() ?? '',
+          }).toList();
+          _showToast('✅ تم جلب ${fbPagesList.length} صفحة من فيسبوك', isError: false);
+        } else {
+          fbPagesList.clear();
+        }
+      } else {
+        _showToast('❌ فشل جلب الصفحات من فيسبوك', isError: true);
+      }
+    } catch (e) {
+      _showToast('❌ خطأ أثناء الاتصال بفيسبوك: $e', isError: true);
+    } finally {
+      isFetchingFbPages.value = false;
+    }
+  }
+
+  Future<void> disconnectFacebook() async {
+    fbUserToken.value = '';
+    fbPageId.value = '';
+    fbPageName.value = '';
+    fbPageToken.value = '';
+    fbPagesList.clear();
+    await _secureStorage.saveApiKey('facebook_user_token', '');
+    await _secureStorage.saveApiKey('facebook_page_token', '');
+    await _storage.writeString('facebook_page_id', '');
+    await _storage.writeString('facebook_page_name', '');
+    _showToast('⏸️ تم إلغاء ربط فيسبوك', isError: false);
   }
 
   Future<void> syncManagedKeysToLocal() async {

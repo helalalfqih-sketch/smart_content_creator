@@ -130,6 +130,15 @@ class ProviderSelectionList extends StatelessWidget {
             role: 'social',
             activeColor: Colors.redAccent,
           ),
+          _divider(),
+          _buildProviderItem(
+            controller,
+            label: "Facebook Page Integration",
+            icon: Icons.facebook,
+            providerKey: 'facebook',
+            role: 'social',
+            activeColor: const Color(0xFF1877F2),
+          ),
         ],
       ),
     );
@@ -272,11 +281,13 @@ class ProviderSelectionList extends StatelessWidget {
                           ? (controller.isTikTokConnected
                               ? Colors.green
                               : Colors.orange)
-                          : (controller.getConnectionStatus(ProviderType.values
-                                  .firstWhere((e) => e.name == providerKey,
-                                      orElse: () => ProviderType.custom))
+                          : (providerKey == 'facebook'
                               ? Colors.green
-                              : Colors.orange))
+                              : (controller.getConnectionStatus(ProviderType.values
+                                      .firstWhere((e) => e.name == providerKey,
+                                          orElse: () => ProviderType.custom))
+                                  ? Colors.green
+                                  : Colors.orange)))
                       : Colors.red,
                   shape: BoxShape.circle,
                   border: Border.all(color: const Color(0xFF1E1E1E), width: 2),
