@@ -50,20 +50,13 @@ android {
     signingConfigs {
         create("release") {
             val propertiesFile = rootProject.file("key.properties")
-            val properties = java.util.Properties()
             if (propertiesFile.exists()) {
+                val properties = java.util.Properties()
                 properties.load(java.io.FileInputStream(propertiesFile))
                 storeFile = file(properties.getProperty("storeFile"))
                 storePassword = properties.getProperty("storePassword")
                 keyAlias = properties.getProperty("keyAlias")
                 keyPassword = properties.getProperty("keyPassword")
-            } else {
-                // Fallback to debug configuration if key.properties doesn't exist (e.g. on GitHub Actions CI)
-                val debugConfig = signingConfigs.getByName("debug")
-                storeFile = debugConfig.storeFile
-                storePassword = debugConfig.storePassword
-                keyAlias = debugConfig.keyAlias
-                keyPassword = debugConfig.keyPassword
             }
         }
     }
@@ -77,7 +70,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("release")
+            
+            val propertiesFile = rootProject.file("key.properties")
+            if (propertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            } else {
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
 
         debug {
