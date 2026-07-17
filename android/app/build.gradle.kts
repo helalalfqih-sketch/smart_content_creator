@@ -87,11 +87,8 @@ android {
             excludes += "/META-INF/LGPL2.1"
             excludes += "/META-INF/LICENSE*"
         }
-        // 🗜️ استبعاد ملفات debug غير ضرورية + تعطيل stripping للـ native libs الكبيرة (ffmpeg)
         jniLibs {
             excludes += "**/libVkLayer_khronos_validation.so"
-            useLegacyPackaging = true
-            keepDebugSymbols += "**/*.so"
         }
     }
 
