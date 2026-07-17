@@ -11,6 +11,8 @@ jobs:
   build-android:
     name: Build AAB on Linux
     runs-on: ubuntu-latest # ← Linux = لا مشاكل مع strip أبداً!
+    permissions:
+      contents: write
 
     steps:
       # 1. تحميل الكود
