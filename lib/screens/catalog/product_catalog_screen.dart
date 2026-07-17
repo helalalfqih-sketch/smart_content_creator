@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -939,11 +940,35 @@ class ProductCatalogScreen extends StatelessWidget {
                                         ? CachedNetworkImage(
                                             imageUrl: photoUrl,
                                             fit: BoxFit.cover,
+                                            placeholder: (context, url) => const Center(
+                                              child: SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: CircularProgressIndicator(strokeWidth: 2),
+                                              ),
+                                            ),
+                                            errorWidget: (context, url, error) => Container(
+                                              color: const Color(0xFF1E1E2F),
+                                              child: const Icon(Icons.broken_image, color: Colors.white30),
+                                            ),
                                           )
-                                        : Image.file(
-                                            File(photoUrl),
-                                            fit: BoxFit.cover,
-                                          ),
+                                        : kIsWeb
+                                            ? Image.network(
+                                                photoUrl,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error, stackTrace) => Container(
+                                                  color: const Color(0xFF1E1E2F),
+                                                  child: const Icon(Icons.broken_image, color: Colors.white30),
+                                                ),
+                                              )
+                                            : Image.file(
+                                                File(photoUrl),
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error, stackTrace) => Container(
+                                                  color: const Color(0xFF1E1E2F),
+                                                  child: const Icon(Icons.broken_image, color: Colors.white30),
+                                                ),
+                                              ),
                                   ),
                                 ),
                                 Positioned(

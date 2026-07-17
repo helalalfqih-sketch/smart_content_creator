@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -664,7 +665,22 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                       ),
                                     ),
                                   )
-                                : Image.file(File(path), fit: BoxFit.cover, cacheWidth: 150),
+                                : kIsWeb
+                                    ? Image.network(
+                                        path,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => const Center(
+                                          child: Icon(Icons.broken_image, color: Colors.white30),
+                                        ),
+                                      )
+                                    : Image.file(
+                                        File(path),
+                                        fit: BoxFit.cover,
+                                        cacheWidth: 150,
+                                        errorBuilder: (_, __, ___) => const Center(
+                                          child: Icon(Icons.broken_image, color: Colors.white30),
+                                        ),
+                                      ),
                           ),
                         ),
                         if (i == 0)
@@ -1090,13 +1106,22 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                 height: 50,
                                 fit: BoxFit.cover,
                               )
-                            : Image.file(
-                                File(existingProduct.imageLink),
-                                width: 50,
-                                height: 50,
-                                fit: BoxFit.cover,
-                                cacheWidth: 100,
-                              ),
+                            : kIsWeb
+                                ? Image.network(
+                                    existingProduct.imageLink,
+                                    width: 50,
+                                    height: 50,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white30, size: 20),
+                                  )
+                                : Image.file(
+                                    File(existingProduct.imageLink),
+                                    width: 50,
+                                    height: 50,
+                                    fit: BoxFit.cover,
+                                    cacheWidth: 100,
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white30, size: 20),
+                                  ),
                       ),
                     const SizedBox(width: 12),
                     Expanded(

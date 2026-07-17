@@ -56,21 +56,24 @@ class FacebookSettingsForm extends StatelessWidget {
                   ],
                 ),
                 const Divider(height: 30, color: Colors.white10),
-                if (!isConnected) ...[
-                  const Text(
-                    "ربط حساب فيسبوك وجلب الصفحات 🔑",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1877F2), fontFamily: 'IBMPlexSansArabic'),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildTokenField(controller),
-                  const SizedBox(height: 10),
-                  const Text(
-                    "💡 أدخل رمز الوصول للمستخدم (User Access Token) المستخرج من Graph API Explorer لجلب صفحاتك.",
-                    style: TextStyle(color: Colors.white54, fontSize: 11, fontFamily: 'IBMPlexSansArabic'),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildPagesSelector(controller),
-                ] else ...[
+                
+                const Text(
+                  "ربط حساب فيسبوك وجلب الصفحات 🔑",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1877F2), fontFamily: 'IBMPlexSansArabic'),
+                ),
+                const SizedBox(height: 12),
+                _buildTokenField(controller),
+                const SizedBox(height: 10),
+                const Text(
+                  "💡 أدخل رمز الوصول للمستخدم (User Access Token) المستخرج من Graph API Explorer لجلب صفحاتك.",
+                  style: TextStyle(color: Colors.white54, fontSize: 11, fontFamily: 'IBMPlexSansArabic'),
+                ),
+                const SizedBox(height: 20),
+                
+                _buildPagesSelector(controller),
+
+                if (isConnected) ...[
+                  const Divider(height: 40, color: Colors.white10),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -152,7 +155,10 @@ class FacebookSettingsForm extends StatelessWidget {
                       height: 18,
                       child: CircularProgressIndicator(color: Color(0xFF1877F2), strokeWidth: 2),
                     )
-                  : const Text("ربط ⚡", style: TextStyle(fontFamily: 'IBMPlexSansArabic', fontWeight: FontWeight.bold)),
+                  : Text(
+                      controller.fbUserToken.value.isNotEmpty ? "تحديث 🔄" : "ربط ⚡",
+                      style: const TextStyle(fontFamily: 'IBMPlexSansArabic', fontWeight: FontWeight.bold),
+                    ),
             )),
       ],
     );
@@ -189,23 +195,64 @@ class FacebookSettingsForm extends StatelessWidget {
                 final pageName = page['name'] ?? '';
                 final pageToken = page['access_token'] ?? '';
                 final category = page['category'] ?? '';
+                final isSelected = pageId == controller.fbPageId.value;
 
                 return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(pageName, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, fontFamily: 'IBMPlexSansArabic')),
-                  subtitle: Text(category, style: const TextStyle(color: Colors.grey, fontSize: 11, fontFamily: 'IBMPlexSansArabic')),
-                  trailing: ElevatedButton(
-                    onPressed: () {
-                      controller.saveSelectedFacebookPage(pageId, pageName, pageToken);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  title: Text(
+                    pageName,
+                    style: TextStyle(
+                      color: isSelected ? const Color(0xFF1877F2) : Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'IBMPlexSansArabic',
                     ),
-                    child: const Text("تحديد", style: TextStyle(fontFamily: 'IBMPlexSansArabic', fontWeight: FontWeight.bold, fontSize: 11)),
                   ),
+                  subtitle: Text(category, style: const TextStyle(color: Colors.grey, fontSize: 11, fontFamily: 'IBMPlexSansArabic')),
+                  trailing: isSelected
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1877F2).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: const Color(0xFF1877F2)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.check, color: Color(0xFF1877F2), size: 14),
+                              SizedBox(width: 4),
+                              Text(
+                                "نشطة",
+                                style: TextStyle(
+                                  color: Color(0xFF1877F2),
+                                  fontFamily: 'IBMPlexSansArabic',
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ElevatedButton(
+                          onPressed: () {
+                            controller.saveSelectedFacebookPage(pageId, pageName, pageToken);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1877F2),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                          ),
+                          child: const Text(
+                            "تحديد ونشر عليها 🔌",
+                            style: TextStyle(
+                              fontFamily: 'IBMPlexSansArabic',
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
                 );
               },
             ),

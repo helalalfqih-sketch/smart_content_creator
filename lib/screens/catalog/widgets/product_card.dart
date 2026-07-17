@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -64,12 +65,18 @@ class ProductCard extends StatelessWidget {
                                   ),
                                   errorWidget: (context, url, error) => _placeholder(),
                                 )
-                              : Image.file(
-                                  File(product.imageLink),
-                                  fit: BoxFit.cover,
-                                  cacheWidth: 350, // 📷 تحديد حجم العرض المحلي لتخفيف استهلاك RAM
-                                  errorBuilder: (_, __, ___) => _placeholder(),
-                                ))
+                              : kIsWeb
+                                  ? Image.network(
+                                      product.imageLink,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => _placeholder(),
+                                    )
+                                  : Image.file(
+                                      File(product.imageLink),
+                                      fit: BoxFit.cover,
+                                      cacheWidth: 350, // 📷 تحديد حجم العرض المحلي لتخفيف استهلاك RAM
+                                      errorBuilder: (_, __, ___) => _placeholder(),
+                                    ))
                           : _placeholder(),
                     ),
                   ),

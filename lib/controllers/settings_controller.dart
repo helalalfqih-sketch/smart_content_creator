@@ -648,7 +648,7 @@ class SettingsController extends GetxController {
     fbPageId.value = _storage.readString('facebook_page_id') ?? '';
     fbPageName.value = _storage.readString('facebook_page_name') ?? '';
     fbPageToken.value = await _secureStorage.getApiKey('facebook_page_token');
-    if (fbUserToken.value.isNotEmpty && fbPageId.value.isEmpty) {
+    if (fbUserToken.value.isNotEmpty) {
       await fetchFacebookPages();
     }
   }
@@ -691,7 +691,14 @@ class SettingsController extends GetxController {
           fbPagesList.clear();
         }
       } else {
-        _showToast('❌ فشل جلب الصفحات من فيسبوك', isError: true);
+        String errorMsg = 'فشل جلب الصفحات من فيسبوك';
+        try {
+          final errorData = jsonDecode(response.body);
+          if (errorData['error'] != null && errorData['error']['message'] != null) {
+            errorMsg = '❌ فيسبوك: ${errorData['error']['message']}';
+          }
+        } catch (_) {}
+        _showToast(errorMsg, isError: true);
       }
     } catch (e) {
       _showToast('❌ خطأ أثناء الاتصال بفيسبوك: $e', isError: true);
