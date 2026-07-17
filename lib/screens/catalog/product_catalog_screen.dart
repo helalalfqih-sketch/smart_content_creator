@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:share_plus/share_plus.dart' as sp;
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../controllers/catalog_controller.dart';
 import '../../models/catalog_product_model.dart';
 import '../../theme/app_theme.dart';
@@ -760,59 +761,256 @@ class ProductCatalogScreen extends StatelessWidget {
       return;
     }
 
-    final hasVideo = product.videoUrl != null && product.videoUrl!.trim().isNotEmpty;
-    final hasImage = product.imageLink.isNotEmpty;
+    // تجهيز النص الأولي
+    final initialText = '🛍️ ${product.title}\n\n${product.description}\n\n💰 السعر: ${product.formattedPrice}\n\n🔗 رابط المنتج: $shareUrl';
+    final textCtrl = TextEditingController(text: initialText);
 
-    if (hasVideo && hasImage) {
-      Get.bottomSheet(
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Color(0xFF111122),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'اختر طريقة النشر على فيسبوك 📢',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontFamily: 'IBMPlexSansArabic',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+    // تجميع كل الصور المتوفرة
+    final allPhotos = <String>[];
+    if (product.imageLink.isNotEmpty) allPhotos.add(product.imageLink);
+    allPhotos.addAll(product.additionalImageLinks.where((img) => img.isNotEmpty));
+
+    // قائمة تفاعلية بالصور المختارة
+    final selectedPhotos = <String>[].obs;
+    selectedPhotos.addAll(allPhotos);
+
+    // مقطع الفيديو المختار
+    final hasVideo = product.videoUrl != null && product.videoUrl!.trim().isNotEmpty;
+    final selectedVideo = (hasVideo ? product.videoUrl!.trim() : '').obs;
+
+    Get.dialog(
+      Dialog(
+        backgroundColor: const Color(0xFF0F0F1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 500),
+          padding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // رأس النافذة
+                Row(
+                  children: [
+                    const Icon(Icons.facebook, color: Color(0xFF1877F2), size: 28),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'معاينة وتعديل المنشور 📢',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'IBMPlexSansArabic',
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Get.back(),
+                      icon: const Icon(Icons.close, color: Colors.white60),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 20),
-              ListTile(
-                leading: const Icon(Icons.videocam_rounded, color: Colors.green),
-                title: const Text('نشر كفيديو 🎬', style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic')),
-                subtitle: const Text('سيتم نشر الفيديو الخاص بالمنتج على صفحتك', style: TextStyle(color: Colors.white54, fontSize: 11, fontFamily: 'IBMPlexSansArabic')),
-                onTap: () {
-                  Get.back();
-                  _executeFacebookPublish(product, shareUrl, useVideo: true);
-                },
-              ),
-              const Divider(color: Colors.white10),
-              ListTile(
-                leading: const Icon(Icons.image_rounded, color: Colors.blue),
-                title: const Text('نشر كصورة 📸', style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic')),
-                subtitle: const Text('سيتم نشر الصورة الأساسية للمنتج على صفحتك', style: TextStyle(color: Colors.white54, fontSize: 11, fontFamily: 'IBMPlexSansArabic')),
-                onTap: () {
-                  Get.back();
-                  _executeFacebookPublish(product, shareUrl, useVideo: false);
-                },
-              ),
-            ],
+                const Divider(color: Colors.white10),
+                const SizedBox(height: 12),
+
+                // حقل تحرير النص
+                const Text(
+                  'نص المنشور (يمكنك تعديله وإضافة وسوم أو روابط):',
+                  style: TextStyle(color: Colors.white70, fontSize: 11, fontFamily: 'IBMPlexSansArabic', fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: textCtrl,
+                  maxLines: 6,
+                  style: const TextStyle(color: Colors.white, fontSize: 13, fontFamily: 'IBMPlexSansArabic'),
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: const Color(0xFF161626),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Colors.white10),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF1877F2), width: 1.5),
+                    ),
+                    contentPadding: const EdgeInsets.all(12),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // شبكة الميديا
+                if (allPhotos.isNotEmpty || hasVideo) ...[
+                  const Text(
+                    'الصور والفيديوهات المرفقة (اضغط لتضمين/إلغاء الميديا):',
+                    style: TextStyle(color: Colors.white70, fontSize: 11, fontFamily: 'IBMPlexSansArabic', fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 10),
+                  Obx(() => GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: allPhotos.length + (hasVideo ? 1 : 0),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                          childAspectRatio: 1.0,
+                        ),
+                        itemBuilder: (context, idx) {
+                          // الحالة 1: الفيديو
+                          if (hasVideo && idx == 0) {
+                            final isVideoSelected = selectedVideo.value.isNotEmpty;
+                            return GestureDetector(
+                              onTap: () {
+                                if (isVideoSelected) {
+                                  selectedVideo.value = '';
+                                } else {
+                                  selectedVideo.value = product.videoUrl!.trim();
+                                  selectedPhotos.clear(); // إلغاء الصور
+                                }
+                              },
+                              child: Stack(
+                                children: [
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1E1E2F),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: isVideoSelected ? const Color(0xFF4CAF50) : Colors.white10,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: const Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.videocam_rounded, color: Colors.green, size: 28),
+                                          SizedBox(height: 4),
+                                          Text('مقطع فيديو', style: TextStyle(color: Colors.white70, fontSize: 9, fontFamily: 'IBMPlexSansArabic')),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: 4,
+                                    right: 4,
+                                    child: Icon(
+                                      isVideoSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                                      color: isVideoSelected ? const Color(0xFF4CAF50) : Colors.white24,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          // الحالة 2: الصور
+                          final photoIdx = hasVideo ? idx - 1 : idx;
+                          final photoUrl = allPhotos[photoIdx];
+                          final isPhotoSelected = selectedPhotos.contains(photoUrl);
+
+                          return GestureDetector(
+                            onTap: () {
+                              if (isPhotoSelected) {
+                                selectedPhotos.remove(photoUrl);
+                              } else {
+                                selectedPhotos.add(photoUrl);
+                                selectedVideo.value = ''; // إلغاء الفيديو
+                              }
+                            },
+                            child: Stack(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Container(
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: isPhotoSelected ? const Color(0xFF1877F2) : Colors.white10,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: photoUrl.startsWith('http')
+                                        ? CachedNetworkImage(
+                                            imageUrl: photoUrl,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : Image.file(
+                                            File(photoUrl),
+                                            fit: BoxFit.cover,
+                                          ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: Icon(
+                                    isPhotoSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                                    color: isPhotoSelected ? const Color(0xFF1877F2) : Colors.white24,
+                                    size: 18,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      )),
+                ],
+                const SizedBox(height: 24),
+
+                // أزرار التحكم
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Get.back(),
+                      child: const Text('إلغاء 🚫', style: TextStyle(color: Colors.white30, fontFamily: 'IBMPlexSansArabic')),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1877F2),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      ),
+                      onPressed: () {
+                        final editedText = textCtrl.text.trim();
+                        if (editedText.isEmpty) {
+                          Get.snackbar('⚠️ تنبيه', 'نص المنشور لا يمكن أن يكون فارغاً');
+                          return;
+                        }
+                        Get.back(); // إغلاق نافذة المعاينة
+                        _executeFacebookCustomPublish(
+                          product: product,
+                          message: editedText,
+                          photos: selectedPhotos.toList(),
+                          video: selectedVideo.value,
+                        );
+                      },
+                      child: const Text('تأكيد ونشر 🚀', style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
-      );
-    } else {
-      _executeFacebookPublish(product, shareUrl, useVideo: hasVideo);
-    }
+      ),
+      barrierDismissible: false,
+    );
   }
 
-  Future<void> _executeFacebookPublish(CatalogProduct product, String shareUrl, {required bool useVideo}) async {
+  Future<void> _executeFacebookCustomPublish({
+    required CatalogProduct product,
+    required String message,
+    required List<String> photos,
+    required String video,
+  }) async {
     final fbService = Get.find<FacebookPageService>();
 
     Get.dialog(
@@ -839,13 +1037,10 @@ class ProductCatalogScreen extends StatelessWidget {
     );
 
     try {
-      final success = await fbService.publishProduct(
-        title: product.title,
-        description: product.description,
-        price: product.formattedPrice,
-        link: shareUrl,
-        imageUrl: useVideo ? '' : product.imageLink,
-        videoUrl: useVideo ? (product.videoUrl ?? '') : '',
+      final success = await fbService.publishCustomPost(
+        message: message,
+        selectedPhotos: photos,
+        selectedVideo: video,
       );
 
       if (Get.isDialogOpen ?? false) Get.back();

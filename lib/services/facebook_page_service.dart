@@ -32,58 +32,90 @@ class FacebookPageService extends GetxService {
 
     final postText = '🛍️ $title\n\n$description\n\n💰 السعر: $price\n\n🔗 رابط المنتج: $link';
 
+    return await publishCustomPost(
+      message: postText,
+      selectedPhotos: imageUrl.isNotEmpty ? [imageUrl] : [],
+      selectedVideo: videoUrl,
+    );
+  }
+
+  Future<bool> publishCustomPost({
+    required String message,
+    required List<String> selectedPhotos,
+    required String selectedVideo,
+  }) async {
+    final settings = Get.find<SettingsController>();
+    final pageId = settings.fbPageId.value;
+    final pageToken = settings.fbPageToken.value;
+
+    if (pageId.isEmpty || pageToken.isEmpty) {
+      return false;
+    }
+
     try {
-      if (videoUrl.isNotEmpty && videoUrl.startsWith('http')) {
-        // 1. نشر مقطع فيديو
+      // 1. إذا تم اختيار فيديو
+      if (selectedVideo.isNotEmpty && selectedVideo.startsWith('http')) {
         final response = await http.post(
           Uri.parse('https://graph.facebook.com/v20.0/$pageId/videos'),
           body: {
-            'file_url': videoUrl,
-            'description': postText,
+            'file_url': selectedVideo,
+            'description': message,
             'access_token': pageToken,
           },
         );
+        return response.statusCode == 200 || response.statusCode == 201;
+      }
 
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          final resData = json.decode(response.body);
-          if (resData['id'] != null) {
-            return true;
+      // 2. إذا تم اختيار صور متعددة (أو صورة واحدة)
+      if (selectedPhotos.isNotEmpty) {
+        final List<String> photoIds = [];
+        
+        for (final imgUrl in selectedPhotos) {
+          if (imgUrl.isEmpty || !imgUrl.startsWith('http')) continue;
+          
+          final response = await http.post(
+            Uri.parse('https://graph.facebook.com/v20.0/$pageId/photos'),
+            body: {
+              'url': imgUrl,
+              'published': 'false', // رفع بدون نشر فوري
+              'access_token': pageToken,
+            },
+          );
+          
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            final resData = json.decode(response.body);
+            if (resData['id'] != null) {
+              photoIds.add(resData['id'].toString());
+            }
           }
         }
-      } else if (imageUrl.isNotEmpty && imageUrl.startsWith('http')) {
-        // 2. نشر صورة مع النص كتعليق عليها
-        final response = await http.post(
-          Uri.parse('https://graph.facebook.com/v20.0/$pageId/photos'),
-          body: {
-            'url': imageUrl,
-            'caption': postText,
-            'access_token': pageToken,
-          },
-        );
 
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          final resData = json.decode(response.body);
-          if (resData['id'] != null) {
-            return true;
-          }
-        }
-      } else {
-        // 3. نشر منشور نصي فقط
-        final response = await http.post(
-          Uri.parse('https://graph.facebook.com/v20.0/$pageId/feed'),
-          body: {
-            'message': postText,
-            'link': link.isNotEmpty ? link : 'https://smartcontentcreator-d49f2.web.app/app',
-            'access_token': pageToken,
-          },
-        );
-
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          return true;
+        if (photoIds.isNotEmpty) {
+          // نشر منشور مجمع يحتوي على جميع معرفات الصور المرفوعة
+          final mediaList = photoIds.map((id) => {'media_fbid': id}).toList();
+          final response = await http.post(
+            Uri.parse('https://graph.facebook.com/v20.0/$pageId/feed'),
+            body: {
+              'message': message,
+              'attached_media': json.encode(mediaList),
+              'access_token': pageToken,
+            },
+          );
+          return response.statusCode == 200 || response.statusCode == 201;
         }
       }
+
+      // 3. نشر منشور نصي فقط
+      final response = await http.post(
+        Uri.parse('https://graph.facebook.com/v20.0/$pageId/feed'),
+        body: {
+          'message': message,
+          'access_token': pageToken,
+        },
+      );
+      return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
-      if (kDebugMode) print('Facebook publish error: $e');
+      if (kDebugMode) print('Facebook custom publish error: $e');
     }
     return false;
   }
