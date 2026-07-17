@@ -44,6 +44,15 @@ jobs:
       - name: 📦 Get Flutter Dependencies
         run: flutter pub get
 
+      # 5.5. إعداد ملفات التوقيع تلقائياً
+      - name: 🔑 Configure Android Keystore & key.properties
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+          echo "storeFile=upload-keystore.jks" >> android/key.properties
+
       # 6. بناء الـ APKs فقط بشكل منفصل وبصيغة تفصيلية
       - name: 🏗️ Build Release APKs (Split per ABI)
         run: flutter build apk --release --split-per-abi --no-tree-shake-icons --verbose
