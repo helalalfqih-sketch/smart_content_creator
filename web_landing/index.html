@@ -451,8 +451,8 @@
                 <p style="margin-bottom: 25px; font-size: 0.9rem; color: var(--text-dim);">
                     تعمل على جميع هواتف أندرويد الحديثة (S20+, Pixel 5+, etc.)
                 </p>
-                <a href="https://github.com/helalalfqih-sketch/-/releases/latest/download/smart-content-creator-arm64.apk" class="btn-download" download>تنزيل APK</a>
-                <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/-/releases/latest/download/smart-content-creator-arm64.apk')">
+                <a href="https://github.com/helalalfqih-sketch/-/releases/latest/download/app-arm64-v8a-release.apk" class="btn-download" download>تنزيل APK</a>
+                <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/-/releases/latest/download/app-arm64-v8a-release.apk')">
                     <span>فتح أو تحديث التطبيق ⚡</span>
                 </button>
                 <div class="file-size" id="size-arm64">الحجم: جاري التحميل...</div>
@@ -465,8 +465,8 @@
                 <p style="margin-bottom: 25px; font-size: 0.9rem; color: var(--text-dim);">
                     للإصدارات الأقدم من الهواتف التي لا تدعم 64-bit.
                 </p>
-                <a href="https://github.com/helalalfqih-sketch/-/releases/latest/download/smart-content-creator-arm32.apk" class="btn-download" download>تنزيل APK</a>
-                <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/-/releases/latest/download/smart-content-creator-arm32.apk')">
+                <a href="https://github.com/helalalfqih-sketch/-/releases/latest/download/app-armeabi-v7a-release.apk" class="btn-download" download>تنزيل APK</a>
+                <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/-/releases/latest/download/app-armeabi-v7a-release.apk')">
                     <span>فتح أو تحديث التطبيق ⚡</span>
                 </button>
                 <div class="file-size" id="size-arm32">الحجم: جاري التحميل...</div>
@@ -479,8 +479,8 @@
                 <p style="margin-bottom: 25px; font-size: 0.9rem; color: var(--text-dim);">
                     مخصصة لأجهزة الكمبيوتر والمحاكيات (BlueStacks, Windows).
                 </p>
-                <a href="https://github.com/helalalfqih-sketch/-/releases/latest/download/smart-content-creator-x86.apk" class="btn-download" download>تنزيل APK</a>
-                <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/-/releases/latest/download/smart-content-creator-x86.apk')">
+                <a href="https://github.com/helalalfqih-sketch/-/releases/latest/download/app-x86_64-release.apk" class="btn-download" download>تنزيل APK</a>
+                <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/-/releases/latest/download/app-x86_64-release.apk')">
                     <span>فتح أو تحديث التطبيق ⚡</span>
                 </button>
                 <div class="file-size" id="size-x86">الحجم: جاري التحميل...</div>
@@ -605,15 +605,16 @@
                     const version = data.tag_name ? data.tag_name.replace('v', '') : defaultVersion;
                     document.getElementById('app-version').innerText = version;
 
-                    // Update asset file sizes
+                    // تحديث حجم الملفات بنمط مرن (ARM64 / ARM32 / x86)
                     const assets = data.assets || [];
                     assets.forEach(asset => {
                         const sizeMB = (asset.size / (1024 * 1024)).toFixed(1) + " ميجابايت";
-                        if (asset.name === "smart-content-creator-arm64.apk") {
+                        const name = asset.name.toLowerCase();
+                        if (name.includes('arm64') || name.includes('arm64-v8a')) {
                             document.getElementById('size-arm64').innerText = "الحجم: " + sizeMB;
-                        } else if (asset.name === "smart-content-creator-arm32.apk") {
+                        } else if (name.includes('armeabi-v7a') || name.includes('arm32') || name.includes('armv7')) {
                             document.getElementById('size-arm32').innerText = "الحجم: " + sizeMB;
-                        } else if (asset.name === "smart-content-creator-x86.apk") {
+                        } else if (name.includes('x86_64') || name.includes('x86')) {
                             document.getElementById('size-x86').innerText = "الحجم: " + sizeMB;
                         }
                     });

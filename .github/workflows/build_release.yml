@@ -54,21 +54,21 @@ jobs:
         env:
           GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.jvmargs=-Xmx3g -Duser.language=en -Duser.country=US"
 
-      # 8. إعادة تسمية ملفات الـ APK لتسهيل تنزيلها بأسماء واضحة
-      - name: 🏷️ Rename APK Assets
+      # 8. قراءة رقم الإصدار من pubspec.yaml تلقائياً
+      - name: 🔖 Get App Version
+        id: get_version
         run: |
-          mv build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/smart-content-creator-arm64.apk
-          mv build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk build/app/outputs/flutter-apk/smart-content-creator-arm32.apk
-          mv build/app/outputs/flutter-apk/app-x86_64-release.apk build/app/outputs/flutter-apk/smart-content-creator-x86.apk
-          mv build/app/outputs/bundle/release/app-release.aab build/app/outputs/bundle/release/smart-content-creator.aab
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //;s/+.*//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
 
-      # 8. إنشاء/تحديث الإصدار (Release) على GitHub ورفع الملفات
+      # 9. إنشاء/تحديث الإصدار (Release) على GitHub ورفع الملفات بأسماءها الأصلية
       - name: 🚀 Publish Latest Release to GitHub
         uses: ncipollo/release-action@v1
         with:
           artifacts: "build/app/outputs/flutter-apk/*.apk,build/app/outputs/bundle/release/*.aab"
-          tag: "v1.2.1" # يمكنك تغيير هذا التاج عند تحديث إصدار التطبيق
-          name: "Smart Content Creator v1.2.1"
+          tag: ${{ steps.get_version.outputs.tag }}
+          name: "Smart Content Creator ${{ steps.get_version.outputs.tag }}"
           body: "التحديث الأخير لتطبيق صانع المحتوى الذكي. يشمل تحسينات الأداء وتكامل Meta APIs."
           allowUpdates: true
           makeLatest: true
