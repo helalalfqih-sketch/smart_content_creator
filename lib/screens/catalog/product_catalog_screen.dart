@@ -734,81 +734,7 @@ class ProductCatalogScreen extends StatelessWidget {
     }
 
     if (toFacebook) {
-      final fbService = Get.find<FacebookPageService>();
-      final settings = Get.find<SettingsController>();
-      if (settings.fbPageId.value.isEmpty || settings.fbPageToken.value.isEmpty) {
-        Get.snackbar(
-          '⚠️ فيسبوك غير مرتبط',
-          'يرجى الذهاب للإعدادات وربط صفحة فيسبوك أولاً.',
-          backgroundColor: const Color(0xFF3A3A1A),
-          colorText: const Color(0xFFFFC107),
-          duration: const Duration(seconds: 4),
-        );
-        return;
-      }
-      
-      Get.dialog(
-        const Center(
-          child: Card(
-            color: Color(0xFF111122),
-            child: Padding(
-              padding: EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(color: Color(0xFF1877F2)),
-                  SizedBox(height: 16),
-                  Text(
-                    'جاري نشر المنتج على صفحة فيسبوك...',
-                    style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontSize: 13),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        barrierDismissible: false,
-      );
-
-      try {
-        final success = await fbService.publishProduct(
-          title: product.title,
-          description: product.description,
-          price: product.formattedPrice,
-          link: shareUrl,
-          imageUrl: product.imageLink,
-          videoUrl: product.videoUrl ?? '',
-        );
-
-        if (Get.isDialogOpen ?? false) Get.back();
-
-        if (success) {
-          Get.snackbar(
-            '✅ تم النشر بنجاح',
-            'تم نشر المنتج "${product.title}" على صفحة فيسبوك الخاصة بك.',
-            backgroundColor: const Color(0xFF1A3A1A),
-            colorText: const Color(0xFF4CAF50),
-            duration: const Duration(seconds: 4),
-          );
-        } else {
-          Get.snackbar(
-            '❌ فشل النشر',
-            'تعذر نشر المنتج على صفحة فيسبوك. يرجى التحقق من الاتصال أو صلاحيات الرمز.',
-            backgroundColor: const Color(0xFF3A1A1A),
-            colorText: const Color(0xFFE57373),
-            duration: const Duration(seconds: 4),
-          );
-        }
-      } catch (e) {
-        if (Get.isDialogOpen ?? false) Get.back();
-        Get.snackbar(
-          '❌ خطأ في النشر',
-          e.toString(),
-          backgroundColor: const Color(0xFF3A1A1A),
-          colorText: const Color(0xFFE57373),
-          duration: const Duration(seconds: 4),
-        );
-      }
+      _startFacebookPublishFlow(product, shareUrl);
       return;
     }
 
@@ -819,6 +745,138 @@ class ProductCatalogScreen extends StatelessWidget {
       shareUrl: shareUrl,
       images: [product.imageLink, ...product.additionalImageLinks],
     );
+  }
+
+  Future<void> _startFacebookPublishFlow(CatalogProduct product, String shareUrl) async {
+    final settings = Get.find<SettingsController>();
+    if (settings.fbPageId.value.isEmpty || settings.fbPageToken.value.isEmpty) {
+      Get.snackbar(
+        '⚠️ فيسبوك غير مرتبط',
+        'يرجى الذهاب للإعدادات وربط صفحة فيسبوك أولاً.',
+        backgroundColor: const Color(0xFF3A3A1A),
+        colorText: const Color(0xFFFFC107),
+        duration: const Duration(seconds: 4),
+      );
+      return;
+    }
+
+    final hasVideo = product.videoUrl != null && product.videoUrl!.trim().isNotEmpty;
+    final hasImage = product.imageLink.isNotEmpty;
+
+    if (hasVideo && hasImage) {
+      Get.bottomSheet(
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: Color(0xFF111122),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'اختر طريقة النشر على فيسبوك 📢',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontFamily: 'IBMPlexSansArabic',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const Icon(Icons.videocam_rounded, color: Colors.green),
+                title: const Text('نشر كفيديو 🎬', style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic')),
+                subtitle: const Text('سيتم نشر الفيديو الخاص بالمنتج على صفحتك', style: TextStyle(color: Colors.white54, fontSize: 11, fontFamily: 'IBMPlexSansArabic')),
+                onTap: () {
+                  Get.back();
+                  _executeFacebookPublish(product, shareUrl, useVideo: true);
+                },
+              ),
+              const Divider(color: Colors.white10),
+              ListTile(
+                leading: const Icon(Icons.image_rounded, color: Colors.blue),
+                title: const Text('نشر كصورة 📸', style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic')),
+                subtitle: const Text('سيتم نشر الصورة الأساسية للمنتج على صفحتك', style: TextStyle(color: Colors.white54, fontSize: 11, fontFamily: 'IBMPlexSansArabic')),
+                onTap: () {
+                  Get.back();
+                  _executeFacebookPublish(product, shareUrl, useVideo: false);
+                },
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      _executeFacebookPublish(product, shareUrl, useVideo: hasVideo);
+    }
+  }
+
+  Future<void> _executeFacebookPublish(CatalogProduct product, String shareUrl, {required bool useVideo}) async {
+    final fbService = Get.find<FacebookPageService>();
+
+    Get.dialog(
+      const Center(
+        child: Card(
+          color: Color(0xFF111122),
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Color(0xFF1877F2)),
+                SizedBox(height: 16),
+                Text(
+                  'جاري نشر المنتج على صفحة فيسبوك...',
+                  style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
+
+    try {
+      final success = await fbService.publishProduct(
+        title: product.title,
+        description: product.description,
+        price: product.formattedPrice,
+        link: shareUrl,
+        imageUrl: useVideo ? '' : product.imageLink,
+        videoUrl: useVideo ? (product.videoUrl ?? '') : '',
+      );
+
+      if (Get.isDialogOpen ?? false) Get.back();
+
+      if (success) {
+        Get.snackbar(
+          '✅ تم النشر بنجاح',
+          'تم نشر المنتج "${product.title}" على صفحة فيسبوك الخاصة بك.',
+          backgroundColor: const Color(0xFF1A3A1A),
+          colorText: const Color(0xFF4CAF50),
+          duration: const Duration(seconds: 4),
+        );
+      } else {
+        Get.snackbar(
+          '❌ فشل النشر',
+          'تعذر نشر المنتج على صفحة فيسبوك. يرجى التحقق من الاتصال أو صلاحيات الرمز.',
+          backgroundColor: const Color(0xFF3A1A1A),
+          colorText: const Color(0xFFE57373),
+          duration: const Duration(seconds: 4),
+        );
+      }
+    } catch (e) {
+      if (Get.isDialogOpen ?? false) Get.back();
+      Get.snackbar(
+        '❌ خطأ في النشر',
+        e.toString(),
+        backgroundColor: const Color(0xFF3A1A1A),
+        colorText: const Color(0xFFE57373),
+        duration: const Duration(seconds: 4),
+      );
+    }
   }
 }
 
