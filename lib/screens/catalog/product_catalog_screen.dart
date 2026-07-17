@@ -850,141 +850,134 @@ class ProductCatalogScreen extends StatelessWidget {
                     style: TextStyle(color: Colors.white70, fontSize: 11, fontFamily: 'IBMPlexSansArabic', fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
-                  Obx(() => GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: allPhotos.length + (hasVideo ? 1 : 0),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 8,
-                          mainAxisSpacing: 8,
-                          childAspectRatio: 1.0,
-                        ),
-                        itemBuilder: (context, idx) {
-                          // الحالة 1: الفيديو
-                          if (hasVideo && idx == 0) {
-                            final isVideoSelected = selectedVideo.value.isNotEmpty;
-                            return GestureDetector(
-                              onTap: () {
-                                if (isVideoSelected) {
-                                  selectedVideo.value = '';
-                                } else {
-                                  selectedVideo.value = product.videoUrl!.trim();
-                                  selectedPhotos.clear(); // إلغاء الصور
-                                }
-                              },
-                              child: Stack(
+                  Obx(() {
+                    final items = <Widget>[];
+
+                    // 1. مقطع الفيديو
+                    if (hasVideo) {
+                      final isVideoSelected = selectedVideo.value.isNotEmpty;
+                      items.add(
+                        GestureDetector(
+                          onTap: () {
+                            if (isVideoSelected) {
+                              selectedVideo.value = '';
+                            } else {
+                              selectedVideo.value = product.videoUrl!.trim();
+                              selectedPhotos.clear(); // إلغاء الصور
+                            }
+                          },
+                          child: Container(
+                            width: 90,
+                            height: 90,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E1E2F),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isVideoSelected ? const Color(0xFF4CAF50) : Colors.white10,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: const Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF1E1E2F),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: isVideoSelected ? const Color(0xFF4CAF50) : Colors.white10,
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    child: const Center(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(Icons.videocam_rounded, color: Colors.green, size: 28),
-                                          SizedBox(height: 4),
-                                          Text('مقطع فيديو', style: TextStyle(color: Colors.white70, fontSize: 9, fontFamily: 'IBMPlexSansArabic')),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  Positioned(
-                                    top: 4,
-                                    right: 4,
-                                    child: Icon(
-                                      isVideoSelected ? Icons.check_circle : Icons.radio_button_unchecked,
-                                      color: isVideoSelected ? const Color(0xFF4CAF50) : Colors.white24,
-                                      size: 18,
-                                    ),
+                                  Icon(Icons.videocam_rounded, color: Colors.green, size: 28),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'مقطع فيديو',
+                                    style: TextStyle(color: Colors.white70, fontSize: 9, fontFamily: 'IBMPlexSansArabic'),
                                   ),
                                 ],
                               ),
-                            );
-                          }
-
-                          // الحالة 2: الصور
-                          final photoIdx = hasVideo ? idx - 1 : idx;
-                          final photoUrl = allPhotos[photoIdx];
-                          final isPhotoSelected = selectedPhotos.contains(photoUrl);
-
-                          return GestureDetector(
-                            onTap: () {
-                              if (isPhotoSelected) {
-                                selectedPhotos.remove(photoUrl);
-                              } else {
-                                selectedPhotos.add(photoUrl);
-                                selectedVideo.value = ''; // إلغاء الفيديو
-                              }
-                            },
-                            child: Stack(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Container(
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    decoration: BoxDecoration(
-                                      border: Border.all(
-                                        color: isPhotoSelected ? const Color(0xFF1877F2) : Colors.white10,
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                    child: photoUrl.startsWith('http')
-                                        ? CachedNetworkImage(
-                                            imageUrl: photoUrl,
-                                            fit: BoxFit.cover,
-                                            placeholder: (context, url) => const Center(
-                                              child: SizedBox(
-                                                width: 20,
-                                                height: 20,
-                                                child: CircularProgressIndicator(strokeWidth: 2),
-                                              ),
-                                            ),
-                                            errorWidget: (context, url, error) => Container(
-                                              color: const Color(0xFF1E1E2F),
-                                              child: const Icon(Icons.broken_image, color: Colors.white30),
-                                            ),
-                                          )
-                                        : kIsWeb
-                                            ? Image.network(
-                                                photoUrl,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (context, error, stackTrace) => Container(
-                                                  color: const Color(0xFF1E1E2F),
-                                                  child: const Icon(Icons.broken_image, color: Colors.white30),
-                                                ),
-                                              )
-                                            : Image.file(
-                                                File(photoUrl),
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (context, error, stackTrace) => Container(
-                                                  color: const Color(0xFF1E1E2F),
-                                                  child: const Icon(Icons.broken_image, color: Colors.white30),
-                                                ),
-                                              ),
-                                  ),
-                                ),
-                                Positioned(
-                                  top: 4,
-                                  right: 4,
-                                  child: Icon(
-                                    isPhotoSelected ? Icons.check_circle : Icons.radio_button_unchecked,
-                                    color: isPhotoSelected ? const Color(0xFF1877F2) : Colors.white24,
-                                    size: 18,
-                                  ),
-                                ),
-                              ],
                             ),
-                          );
-                        },
-                      )),
+                          ),
+                        ),
+                      );
+                    }
+
+                    // 2. الصور
+                    for (final photoUrl in allPhotos) {
+                      final isPhotoSelected = selectedPhotos.contains(photoUrl);
+                      items.add(
+                        GestureDetector(
+                          onTap: () {
+                            if (isPhotoSelected) {
+                              selectedPhotos.remove(photoUrl);
+                            } else {
+                              selectedPhotos.add(photoUrl);
+                              selectedVideo.value = ''; // إلغاء الفيديو
+                            }
+                          },
+                          child: Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  width: 90,
+                                  height: 90,
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: isPhotoSelected ? const Color(0xFF1877F2) : Colors.white10,
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: photoUrl.startsWith('http')
+                                      ? CachedNetworkImage(
+                                          imageUrl: photoUrl,
+                                          fit: BoxFit.cover,
+                                          placeholder: (context, url) => const Center(
+                                            child: SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(strokeWidth: 2),
+                                            ),
+                                          ),
+                                          errorWidget: (context, url, error) => Container(
+                                            color: const Color(0xFF1E1E2F),
+                                            child: const Icon(Icons.broken_image, color: Colors.white30),
+                                          ),
+                                        )
+                                      : kIsWeb
+                                          ? Image.network(
+                                              photoUrl,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) => Container(
+                                                color: const Color(0xFF1E1E2F),
+                                                child: const Icon(Icons.broken_image, color: Colors.white30),
+                                              ),
+                                            )
+                                          : Image.file(
+                                              File(photoUrl),
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) => Container(
+                                                color: const Color(0xFF1E1E2F),
+                                                child: const Icon(Icons.broken_image, color: Colors.white30),
+                                              ),
+                                            ),
+                                ),
+                              ),
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: Icon(
+                                  isPhotoSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                                  color: isPhotoSelected ? const Color(0xFF1877F2) : Colors.white24,
+                                  size: 18,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.start,
+                      children: items,
+                    );
+                  })
                 ],
                 const SizedBox(height: 24),
 
