@@ -14,6 +14,7 @@ class FacebookPageService extends GetxService {
     required String price,
     required String link,
     required String imageUrl,
+    String videoUrl = '',
   }) async {
     final settings = Get.find<SettingsController>();
     final pageId = settings.fbPageId.value;
@@ -32,8 +33,25 @@ class FacebookPageService extends GetxService {
     final postText = '🛍️ $title\n\n$description\n\n💰 السعر: $price\n\n🔗 رابط المنتج: $link';
 
     try {
-      if (imageUrl.isNotEmpty && imageUrl.startsWith('http')) {
-        // نشر صورة مع النص كتعليق عليها
+      if (videoUrl.isNotEmpty && videoUrl.startsWith('http')) {
+        // 1. نشر مقطع فيديو
+        final response = await http.post(
+          Uri.parse('https://graph.facebook.com/v20.0/$pageId/videos'),
+          body: {
+            'file_url': videoUrl,
+            'description': postText,
+            'access_token': pageToken,
+          },
+        );
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          final resData = json.decode(response.body);
+          if (resData['id'] != null) {
+            return true;
+          }
+        }
+      } else if (imageUrl.isNotEmpty && imageUrl.startsWith('http')) {
+        // 2. نشر صورة مع النص كتعليق عليها
         final response = await http.post(
           Uri.parse('https://graph.facebook.com/v20.0/$pageId/photos'),
           body: {
@@ -50,7 +68,7 @@ class FacebookPageService extends GetxService {
           }
         }
       } else {
-        // نشر منشور نصي فقط
+        // 3. نشر منشور نصي فقط
         final response = await http.post(
           Uri.parse('https://graph.facebook.com/v20.0/$pageId/feed'),
           body: {

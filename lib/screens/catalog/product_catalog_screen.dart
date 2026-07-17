@@ -777,6 +777,7 @@ class ProductCatalogScreen extends StatelessWidget {
           price: product.formattedPrice,
           link: shareUrl,
           imageUrl: product.imageLink,
+          videoUrl: product.videoUrl ?? '',
         );
 
         if (Get.isDialogOpen ?? false) Get.back();
