@@ -870,11 +870,9 @@ class _ChatBubbleState extends State<ChatBubble> {
           "payload": resolvedProductContext
         },
         {
-          "label": "🎨 تصميم إعلان احترافي",
-          "action":
-              "generate_branded_ad", // ✨ Use the new, more powerful action
-          "payload":
-              resolvedProductContext // Payload might not be needed if it uses the last image
+          "label": "📋 حزمة تسويقية متكاملة 🚀",
+          "action": "full_platform_description",
+          "payload": resolvedProductContext
         },
         {
           "label": "🖼️ عدسة google",
