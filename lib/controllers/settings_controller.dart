@@ -15,7 +15,6 @@ import 'package:smart_content_creator/controllers/permissions_controller.dart';
 import '../core/utils/snackbar_utils.dart';
 import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/serpapi_master_service.dart';
@@ -25,7 +24,6 @@ import '../services/back4app_gateway_service.dart';
 import 'package:dio/dio.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:io' as io_file;
 
 class SettingsController extends GetxController {
   static const String currentVersion = "1.2.0";
@@ -552,7 +550,7 @@ class SettingsController extends GetxController {
               const SizedBox(height: 8),
               Text(
                 downloadTaskMsg.value,
-                style: TextStyle(color: Colors.white.withOpacity(0.5), fontFamily: 'IBMPlexSansArabic', fontSize: 11),
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontFamily: 'IBMPlexSansArabic', fontSize: 11),
                 textAlign: TextAlign.center,
               ),
             ],
