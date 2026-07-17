@@ -30,6 +30,7 @@ class ProductFormScreen extends StatefulWidget {
 class _ProductFormScreenState extends State<ProductFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final ctrl = Get.find<CatalogController>();
+  bool _isSaving = false;
 
   late final TextEditingController _titleCtrl;
   late final TextEditingController _descCtrl;
@@ -1503,6 +1504,7 @@ $cleanedText
   }
 
   Future<void> _saveProduct() async {
+    if (_isSaving) return;
     if (!_formKey.currentState!.validate()) return;
 
     if (ctrl.pickedImages.isEmpty) {
@@ -1516,34 +1518,83 @@ $cleanedText
       return;
     }
 
-    final product = CatalogProduct(
-      id: widget.editProduct?.id,
-      title: _titleCtrl.text.trim(),
-      description: _descCtrl.text.trim(),
-      availability: _availability,
-      condition: _condition,
-      price: double.tryParse(_priceCtrl.text.trim()) ?? 0.0,
-      currency: _currency,
-      link: _linkCtrl.text.trim(),
-      brand: _brandCtrl.text.trim().isNotEmpty ? _brandCtrl.text.trim() : null,
-      googleProductCategory: _gCategoryCtrl.text.trim().isNotEmpty
-          ? _cleanCategory(_gCategoryCtrl.text.trim())
-          : null,
-      fbProductCategory: _fbCategoryCtrl.text.trim().isNotEmpty
-          ? _cleanCategory(_fbCategoryCtrl.text.trim())
-          : null,
-      categoryId: _categoryId,
-      categoryName: predefinedCategories.firstWhereOrNull((e) => e.id == _categoryId)?.name,
-      metaProductType: predefinedCategories.firstWhereOrNull((e) => e.id == _categoryId)?.fbCategory,
-      quantity: int.tryParse(_quantityCtrl.text.trim()) ?? 1,
-      color: _colorCtrl.text.trim().isNotEmpty ? _colorCtrl.text.trim() : null,
-      size: _sizeCtrl.text.trim().isNotEmpty ? _sizeCtrl.text.trim() : null,
-      creatorUid: widget.editProduct?.creatorUid,
-      status: Get.find<AuthController>().isAdmin ? _status : 'approved',
+    setState(() => _isSaving = true);
+
+    Get.dialog(
+      const Center(
+        child: Card(
+          color: Color(0xFF111122),
+          child: Padding(
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Color(0xFF1877F2)),
+                SizedBox(height: 16),
+                Text(
+                  'جاري حفظ المنتج...',
+                  style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      barrierDismissible: false,
     );
 
-    await ctrl.saveProduct(product);
-    Get.back();
+    try {
+      final product = CatalogProduct(
+        id: widget.editProduct?.id,
+        title: _titleCtrl.text.trim(),
+        description: _descCtrl.text.trim(),
+        availability: _availability,
+        condition: _condition,
+        price: double.tryParse(_priceCtrl.text.trim()) ?? 0.0,
+        currency: _currency,
+        link: _linkCtrl.text.trim(),
+        brand: _brandCtrl.text.trim().isNotEmpty ? _brandCtrl.text.trim() : null,
+        googleProductCategory: _gCategoryCtrl.text.trim().isNotEmpty
+            ? _cleanCategory(_gCategoryCtrl.text.trim())
+            : null,
+        fbProductCategory: _fbCategoryCtrl.text.trim().isNotEmpty
+            ? _cleanCategory(_fbCategoryCtrl.text.trim())
+            : null,
+        categoryId: _categoryId,
+        categoryName: predefinedCategories.firstWhereOrNull((e) => e.id == _categoryId)?.name,
+        metaProductType: predefinedCategories.firstWhereOrNull((e) => e.id == _categoryId)?.fbCategory,
+        quantity: int.tryParse(_quantityCtrl.text.trim()) ?? 1,
+        color: _colorCtrl.text.trim().isNotEmpty ? _colorCtrl.text.trim() : null,
+        size: _sizeCtrl.text.trim().isNotEmpty ? _sizeCtrl.text.trim() : null,
+        creatorUid: widget.editProduct?.creatorUid,
+        status: Get.find<AuthController>().isAdmin ? _status : 'approved',
+      );
+
+      await ctrl.saveProduct(product);
+
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+      Get.snackbar(
+        '❌ خطأ في الحفظ',
+        e.toString(),
+        backgroundColor: const Color(0xFF3A1A1A),
+        colorText: const Color(0xFFE57373),
+        duration: const Duration(seconds: 4),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   Widget _buildField({
