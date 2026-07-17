@@ -560,7 +560,7 @@
         function launchOrDownload(apkUrl) {
             const packageName = "com.example.smart_content_creator";
             // Get full URL for fallback
-            const absoluteApkUrl = window.location.origin + "/" + apkUrl;
+            const absoluteApkUrl = apkUrl.startsWith('http') ? apkUrl : (window.location.origin + "/" + apkUrl);
             
             // Android Intent URL: attempts to open package, redirects to S.browser_fallback_url if not installed
             const intentUrl = `intent://open#Intent;scheme=https;package=${packageName};S.browser_fallback_url=${encodeURIComponent(absoluteApkUrl)};end`;
