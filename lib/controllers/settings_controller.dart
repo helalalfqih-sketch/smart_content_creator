@@ -22,6 +22,10 @@ import '../services/serpapi_master_service.dart';
 import '../services/tiktok_service.dart';
 import '../services/ai_image_generation_service.dart';
 import '../services/back4app_gateway_service.dart';
+import 'package:dio/dio.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io' as io_file;
 
 class SettingsController extends GetxController {
   static const String currentVersion = "1.2.0";
@@ -46,6 +50,11 @@ class SettingsController extends GetxController {
   final activeVideoProvider = ProviderType.kling.obs;
   final Rx<ProviderType?> savingProvider = Rx<ProviderType?>(null);
   final selectedProvider = ''.obs;
+
+  // 📥 متغيرات تحميل التحديث الخلفي
+  final isDownloadingUpdate = false.obs;
+  final downloadProgress = 0.0.obs;
+  final downloadTaskMsg = ''.obs;
 
   final tiktokClientKey = ''.obs;
   final tiktokClientSecret = ''.obs;
@@ -144,6 +153,8 @@ class SettingsController extends GetxController {
   void onReady() {
     super.onReady();
     _testAllConnections();
+    // 🚀 التحقق التلقائي من وجود تحديث عند تشغيل التطبيق
+    checkForUpdate(manual: false);
   }
 
   Future<void> _initializeSettings() async {
@@ -468,24 +479,139 @@ class SettingsController extends GetxController {
   void _showUpdateDialog({required String version, required int build, required String apkUrl}) {
     final context = Get.context;
     if (context == null) return;
-    showDialog(context: context, builder: (ctx) => AlertDialog(
-      title: const Text('تحديث جديد 🚀'),
-      content: Text('إصدار $version متوفر الآن.'),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('لاحقاً')),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pop(ctx);
-            launchUrl(
-              Uri.parse(apkUrl),
-              mode: LaunchMode.externalApplication,
-            );
-          },
-          child: const Text('تحديث'),
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF111122),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          '🚀 تحديث جديد متوفر',
+          style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
         ),
-      ],
-    ));
+        content: Text(
+          'الإصدار الجديد $version متوفر الآن للتحميل. يحتوي هذا الإصدار على تحسينات في الأداء وإصلاحات هامة.',
+          style: const TextStyle(color: Colors.white70, fontFamily: 'IBMPlexSansArabic', fontSize: 13),
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('لاحقاً', style: TextStyle(color: Colors.white38, fontFamily: 'IBMPlexSansArabic')),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1877F2),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              downloadAndInstallUpdate(apkUrl, version);
+            },
+            child: const Text('تحديث الآن ⚡', style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
+
+  /// 📥 تحميل التحديث في الخلفية وتثبيته تلقائياً
+  Future<void> downloadAndInstallUpdate(String apkUrl, String version) async {
+    if (isDownloadingUpdate.value) return;
+    isDownloadingUpdate.value = true;
+    downloadProgress.value = 0.0;
+    downloadTaskMsg.value = 'جاري بدء تحميل التحديث...';
+
+    // إظهار نافذة تقدم التحميل
+    Get.dialog(
+      Obx(() => PopScope(
+        canPop: false, // منع الإغلاق التلقائي أثناء التحميل
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF111122),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            '⏳ جاري تحميل التحديث',
+            style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontSize: 16, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              LinearProgressIndicator(
+                value: downloadProgress.value,
+                backgroundColor: Colors.white12,
+                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF1877F2)),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '${(downloadProgress.value * 100).toStringAsFixed(0)}% مكتمل',
+                style: const TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontSize: 14, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                downloadTaskMsg.value,
+                style: TextStyle(color: Colors.white.withOpacity(0.5), fontFamily: 'IBMPlexSansArabic', fontSize: 11),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      )),
+      barrierDismissible: false,
+    );
+
+    try {
+      final dio = Dio();
+      final tempDir = await getTemporaryDirectory();
+      final savePath = '${tempDir.path}/smart_content_creator_v$version.apk';
+
+      await dio.download(
+        apkUrl,
+        savePath,
+        onReceiveProgress: (received, total) {
+          if (total != -1) {
+            downloadProgress.value = received / total;
+            downloadTaskMsg.value = 'جاري تنزيل ملف APK (${(received / 1024 / 1024).toStringAsFixed(1)}MB / ${(total / 1024 / 1024).toStringAsFixed(1)}MB)';
+          }
+        },
+      );
+
+      // إغلاق نافذة التقدم
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+
+      downloadTaskMsg.value = 'تم التحميل بنجاح. جاري تشغيل التثبيت...';
+      isDownloadingUpdate.value = false;
+
+      // تشغيل مثبت النظام تلقائياً
+      final result = await OpenFilex.open(savePath);
+      if (result.type != ResultType.done) {
+        Get.snackbar(
+          '❌ تعذر تثبيت التحديث تلقائياً',
+          'الرجاء تثبيت التحديث يدوياً من المجلد: $savePath',
+          backgroundColor: const Color(0xFF3A1A1A),
+          colorText: const Color(0xFFE57373),
+          duration: const Duration(seconds: 6),
+        );
+      }
+    } catch (e) {
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+      isDownloadingUpdate.value = false;
+      Get.snackbar(
+        '❌ فشل تنزيل التحديث',
+        'حدث خطأ غير متوقع: $e',
+        backgroundColor: const Color(0xFF3A1A1A),
+        colorText: const Color(0xFFE57373),
+        duration: const Duration(seconds: 4),
+      );
+    }
+  }
+
 
   Future<void> updateTikTokAccount(String username, String url) async {
     tiktokUsername.value = username;
