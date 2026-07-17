@@ -473,24 +473,63 @@ class SettingsController extends GetxController {
   }
 
   Future<void> checkForUpdate({bool manual = false}) async {
+    if (manual) {
+      Get.dialog(
+        const Center(
+          child: Card(
+            color: Color(0xFF111122),
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: Color(0xFF1877F2)),
+                  SizedBox(height: 16),
+                  Text(
+                    'جاري التحقق من التحديثات...',
+                    style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        barrierDismissible: false,
+      );
+    }
+
     try {
-      final response = await http.get(Uri.parse('${Config.baseUrl}/version.json'));
+      final response = await http.get(Uri.parse('${Config.baseUrl}/version.json')).timeout(const Duration(seconds: 10));
+      
+      if (manual && (Get.isDialogOpen ?? false)) {
+        Get.back();
+      }
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if ((data['build'] ?? 0) > currentBuild) {
           _showUpdateDialog(version: data['version'], build: data['build'], apkUrl: data['apk_url']);
-        } else if (manual) { _showToast('أنت على أحدث نسخة ✅', isError: false); }
+        } else if (manual) {
+          _showToast('أنت على أحدث نسخة بالفعل ✅ (v$currentVersion)', isError: false);
+        }
+      } else {
+        if (manual) {
+          _showToast('❌ فشل التحقق من التحديثات: رمز الاستجابة ${response.statusCode}', isError: true);
+        }
       }
-    } catch (_) {}
+    } catch (e) {
+      if (manual && (Get.isDialogOpen ?? false)) {
+        Get.back();
+      }
+      if (manual) {
+        _showToast('❌ فشل الاتصال بخادم التحديثات: $e', isError: true);
+      }
+    }
   }
 
   void _showUpdateDialog({required String version, required int build, required String apkUrl}) {
-    final context = Get.context;
-    if (context == null) return;
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
+    Get.dialog(
+      AlertDialog(
         backgroundColor: const Color(0xFF111122),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
@@ -505,7 +544,7 @@ class SettingsController extends GetxController {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(ctx),
+            onPressed: () => Get.back(),
             child: const Text('لاحقاً', style: TextStyle(color: Colors.white38, fontFamily: 'IBMPlexSansArabic')),
           ),
           ElevatedButton(
@@ -514,13 +553,14 @@ class SettingsController extends GetxController {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () {
-              Navigator.pop(ctx);
+              Get.back();
               downloadAndInstallUpdate(apkUrl, version);
             },
             child: const Text('تحديث الآن ⚡', style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontWeight: FontWeight.bold)),
           ),
         ],
       ),
+      barrierDismissible: false,
     );
   }
 
