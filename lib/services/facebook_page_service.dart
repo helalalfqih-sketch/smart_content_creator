@@ -213,7 +213,9 @@ class FacebookPageService extends GetxService {
 
       // 2. فحص تفاصيل ومالك المنشور في حال توفر postId
       if (postId != null && postId.isNotEmpty) {
-        final postCheckUrl = 'https://graph.facebook.com/v20.0/$postId?fields=id,from&access_token=$token';
+        // لتجنب خطأ deprecation لبعض المنشورات، نضمن استعلامها بصيغة المعرف المدمج {page-id}_{post-id}
+        final finalPostId = postId.contains('_') ? postId : '${pageId}_$postId';
+        final postCheckUrl = 'https://graph.facebook.com/v20.0/$finalPostId?fields=id,from&access_token=$token';
         final checkResponse = await http.get(Uri.parse(postCheckUrl));
         if (checkResponse.statusCode == 200) {
           final checkData = json.decode(checkResponse.body);
