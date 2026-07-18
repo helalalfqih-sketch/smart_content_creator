@@ -213,21 +213,17 @@ class FacebookPageService extends GetxService {
 
       // 2. فحص تفاصيل ومالك المنشور في حال توفر postId
       if (postId != null && postId.isNotEmpty) {
-        final postCheckUrl = 'https://graph.facebook.com/v20.0/$postId?fields=id,from,is_published,permalink_url&access_token=$token';
+        final postCheckUrl = 'https://graph.facebook.com/v20.0/$postId?fields=id,from&access_token=$token';
         final checkResponse = await http.get(Uri.parse(postCheckUrl));
         if (checkResponse.statusCode == 200) {
           final checkData = json.decode(checkResponse.body);
           final fromData = checkData['from'];
           final fromId = fromData != null ? fromData['id']?.toString() : '';
           final fromName = fromData != null ? fromData['name']?.toString() : '';
-          final isPublished = checkData['is_published'] ?? false;
-          final permalinkUrl = checkData['permalink_url'] ?? '';
 
           debugPrint('📊 [Facebook Diagnostics] Post Check Details:');
           debugPrint('  - ID: $postId');
           debugPrint('  - Publisher (from): $fromName (ID: $fromId)');
-          debugPrint('  - Is Published: $isPublished');
-          debugPrint('  - Link: $permalinkUrl');
 
           if (fromId != pageId) {
             debugPrint('🚨 [Facebook Diagnostics] CRITICAL: Post was made by User ($fromId) and not the Page ($pageId)!');
