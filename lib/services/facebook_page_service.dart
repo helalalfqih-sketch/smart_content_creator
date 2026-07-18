@@ -133,7 +133,7 @@ class FacebookPageService extends GetxService {
             body: {
               'message': message,
               'attached_media': json.encode(mediaList),
-              'published': 'true', // ← تأكيد صريح بالنشر العام
+              // ملاحظة: /feed ينشر علناً بالافتراضي، published=true يسبب خطأ #200 مع attached_media
               'access_token': pageToken,
             },
           );
