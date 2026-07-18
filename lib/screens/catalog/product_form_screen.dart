@@ -162,7 +162,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   DropdownButtonFormField<String>(
-                    value: initialVal,
+                    key: ValueKey(initialVal),
+                    initialValue: initialVal,
                     dropdownColor: const Color(0xFF1A1A2E),
                     style: const TextStyle(
                         color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontSize: 13),
