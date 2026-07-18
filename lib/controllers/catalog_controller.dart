@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
@@ -50,6 +51,7 @@ class CatalogController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    loadCustomCategories();
     feedUrl.value = _appStorage.readString('catalog_feed_url') ?? '';
     
     // بدء الاستماع للمستودع العالمي مباشرة عند التشغيل
@@ -367,6 +369,55 @@ class CatalogController extends GetxController {
         if (kDebugMode) debugPrint('❌ CatalogController: فشل مسح روابط واتساب: $e');
       }
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 🗂️ إدارة الفئات المخصصة (Custom Categories Management)
+  // ---------------------------------------------------------------------------
+  final customCategories = <ProductCategoryInfo>[].obs;
+
+  List<ProductCategoryInfo> get allCategories => [...predefinedCategories, ...customCategories];
+
+  void loadCustomCategories() {
+    try {
+      final jsonStr = _appStorage.readString('custom_categories');
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final List<dynamic> list = json.decode(jsonStr);
+        customCategories.value = list
+            .map((item) => ProductCategoryInfo.fromMap(Map<String, dynamic>.from(item)))
+            .toList();
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ CatalogController: loadCustomCategories error: $e');
+    }
+  }
+
+  Future<void> saveCustomCategories() async {
+    try {
+      final list = customCategories.map((c) => c.toMap()).toList();
+      await _appStorage.writeString('custom_categories', json.encode(list));
+      products.refresh(); // تنشيط التحديث التفاعلي للمنتجات والترتيب
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ CatalogController: saveCustomCategories error: $e');
+    }
+  }
+
+  void addCustomCategory(ProductCategoryInfo cat) {
+    customCategories.add(cat);
+    saveCustomCategories();
+  }
+
+  void updateCustomCategory(String id, ProductCategoryInfo newCat) {
+    final idx = customCategories.indexWhere((c) => c.id == id);
+    if (idx != -1) {
+      customCategories[idx] = newCat;
+      saveCustomCategories();
+    }
+  }
+
+  void deleteCustomCategory(String id) {
+    customCategories.removeWhere((c) => c.id == id);
+    saveCustomCategories();
   }
 
   final selectedCategory = 'الكل'.obs;

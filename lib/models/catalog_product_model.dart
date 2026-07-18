@@ -1,3 +1,6 @@
+import 'package:get/get.dart';
+import '../controllers/catalog_controller.dart';
+
 /// 🛍️ CatalogProduct Model
 /// نموذج بيانات المنتج للكتالوج - متوافق 100% مع متطلبات Meta Commerce Manager
 class CatalogProduct {
@@ -95,7 +98,7 @@ class CatalogProduct {
     final gCatLower = googleProductCategory?.trim().toLowerCase() ?? '';
     final fbCatLower = fbProductCategory?.trim().toLowerCase() ?? '';
     
-    for (final c in predefinedCategories) {
+    for (final c in allProductCategories) {
       final targetG = c.googleCategory.trim().toLowerCase();
       final targetFb = c.fbCategory.trim().toLowerCase();
       
@@ -537,6 +540,32 @@ class ProductCategoryInfo {
     required this.googleCategory,
     required this.fbCategory,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'googleCategory': googleCategory,
+      'fbCategory': fbCategory,
+    };
+  }
+
+  factory ProductCategoryInfo.fromMap(Map<String, dynamic> map) {
+    return ProductCategoryInfo(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      googleCategory: map['googleCategory'] ?? '',
+      fbCategory: map['fbCategory'] ?? '',
+    );
+  }
+}
+
+/// ✅ جلب كافة الفئات (الافتراضية والمخصصة بواسطة المستخدم)
+List<ProductCategoryInfo> get allProductCategories {
+  if (Get.isRegistered<CatalogController>()) {
+    return Get.find<CatalogController>().allCategories;
+  }
+  return predefinedCategories;
 }
 
 const List<ProductCategoryInfo> predefinedCategories = [

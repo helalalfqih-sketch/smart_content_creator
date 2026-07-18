@@ -153,39 +153,71 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             // ── فئة المنتج ──
             const _SectionTitle(title: '🗂️ فئة المنتج'),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _categoryId ?? 'other',
-              dropdownColor: const Color(0xFF1A1A2E),
-              style: const TextStyle(
-                  color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontSize: 13),
-              decoration: InputDecoration(
-                labelText: 'الفئة الرئيسية *',
-                labelStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.5),
-                  fontFamily: 'IBMPlexSansArabic',
-                  fontSize: 12,
-                ),
-                filled: true,
-                fillColor: const Color(0xFF1A1A2E),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              ),
-              items: predefinedCategories
-                  .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
-                  .toList(),
-              onChanged: (val) {
-                setState(() {
-                  _categoryId = val;
-                  final catInfo = predefinedCategories.firstWhere((e) => e.id == val);
-                  _gCategoryCtrl.text = catInfo.googleCategory;
-                  _fbCategoryCtrl.text = catInfo.fbCategory;
-                });
-              },
-            ),
-            const SizedBox(height: 20),
+            Obx(() {
+              final cats = ctrl.allCategories;
+              final valueExists = cats.any((c) => c.id == _categoryId);
+              final initialVal = valueExists ? _categoryId : 'other';
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: initialVal,
+                    dropdownColor: const Color(0xFF1A1A2E),
+                    style: const TextStyle(
+                        color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontSize: 13),
+                    decoration: InputDecoration(
+                      labelText: 'الفئة الرئيسية *',
+                      labelStyle: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontFamily: 'IBMPlexSansArabic',
+                        fontSize: 12,
+                      ),
+                      filled: true,
+                      fillColor: const Color(0xFF1A1A2E),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    items: cats
+                        .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          _categoryId = val;
+                          final catInfo = cats.firstWhere((e) => e.id == val);
+                          _gCategoryCtrl.text = catInfo.googleCategory;
+                          _fbCategoryCtrl.text = catInfo.fbCategory;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton.icon(
+                        onPressed: _showManageCategoriesDialog,
+                        icon: const Icon(Icons.settings_suggest_rounded, size: 16, color: Color(0xFFe94560)),
+                        label: const Text(
+                          'إدارة الفئات وإضافة فئة مخصصة',
+                          style: TextStyle(
+                            fontFamily: 'IBMPlexSansArabic',
+                            fontSize: 12,
+                            color: Color(0xFFe94560),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            }),
+            const SizedBox(height: 12),
 
             // ── العنوان ──
             const _SectionTitle(title: '📌 معلومات المنتج'),
@@ -994,7 +1026,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
       final aiCat = parsed['CATEGORY'] ?? '';
       if (aiCat.isNotEmpty) {
-        final matched = predefinedCategories.firstWhereOrNull(
+        final matched = allProductCategories.firstWhereOrNull(
           (c) => c.name.trim() == aiCat.trim() || c.id == aiCat.trim()
         );
         if (matched != null) {
@@ -1006,7 +1038,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       if (gCat.isNotEmpty) {
         _gCategoryCtrl.text = gCat;
       } else if (_categoryId != null) {
-        final matched = predefinedCategories.firstWhereOrNull((c) => c.id == _categoryId);
+        final matched = allProductCategories.firstWhereOrNull((c) => c.id == _categoryId);
         if (matched != null && _gCategoryCtrl.text.isEmpty) {
           _gCategoryCtrl.text = matched.googleCategory;
         }
@@ -1016,7 +1048,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       if (fbCat.isNotEmpty) {
         _fbCategoryCtrl.text = fbCat;
       } else if (_categoryId != null) {
-        final matched = predefinedCategories.firstWhereOrNull((c) => c.id == _categoryId);
+        final matched = allProductCategories.firstWhereOrNull((c) => c.id == _categoryId);
         if (matched != null && _fbCategoryCtrl.text.isEmpty) {
           _fbCategoryCtrl.text = matched.fbCategory;
         }
@@ -1586,8 +1618,8 @@ $cleanedText
             ? _cleanCategory(_fbCategoryCtrl.text.trim())
             : null,
         categoryId: _categoryId,
-        categoryName: predefinedCategories.firstWhereOrNull((e) => e.id == _categoryId)?.name,
-        metaProductType: predefinedCategories.firstWhereOrNull((e) => e.id == _categoryId)?.fbCategory,
+        categoryName: allProductCategories.firstWhereOrNull((e) => e.id == _categoryId)?.name,
+        metaProductType: allProductCategories.firstWhereOrNull((e) => e.id == _categoryId)?.fbCategory,
         quantity: int.tryParse(_quantityCtrl.text.trim()) ?? 1,
         color: _colorCtrl.text.trim().isNotEmpty ? _colorCtrl.text.trim() : null,
         size: _sizeCtrl.text.trim().isNotEmpty ? _sizeCtrl.text.trim() : null,
@@ -1696,6 +1728,287 @@ $cleanedText
       items: items
           .map((v) => DropdownMenuItem(value: v, child: Text(v)))
           .toList(),
+    );
+  }
+
+  // ── إدارة الفئات المخصصة ──
+
+  void _showManageCategoriesDialog() {
+    Get.dialog(
+      Dialog(
+        backgroundColor: const Color(0xFF0D0D1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          width: double.maxFinite,
+          constraints: const BoxConstraints(maxHeight: 500),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    '🗂️ إدارة فئات المنتجات',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontFamily: 'IBMPlexSansArabic',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Get.back(),
+                    icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                  ),
+                ],
+              ),
+              const Divider(color: Colors.white24),
+              const SizedBox(height: 8),
+              ElevatedButton.icon(
+                onPressed: () => _showAddEditCategoryDialog(null),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFe94560),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: const Icon(Icons.add_rounded, color: Colors.white, size: 18),
+                label: const Text(
+                  'إضافة فئة جديدة',
+                  style: TextStyle(
+                    fontFamily: 'IBMPlexSansArabic',
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: Obx(() {
+                  final allCats = ctrl.allCategories;
+                  return ListView.builder(
+                    itemCount: allCats.length,
+                    itemBuilder: (context, index) {
+                      final c = allCats[index];
+                      final isPredefined = predefinedCategories.any((p) => p.id == c.id);
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF16213E),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white12),
+                        ),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          title: Text(
+                            c.name,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontFamily: 'IBMPlexSansArabic',
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'جوجل: ${c.googleCategory.split(" > ").last}\nفيسبوك: ${c.fbCategory.split(" > ").last}',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.5),
+                              fontFamily: 'IBMPlexSansArabic',
+                              fontSize: 11,
+                            ),
+                          ),
+                          trailing: isPredefined
+                              ? const Tooltip(
+                                  message: 'فئة نظام افتراضية (غير قابلة للحذف)',
+                                  child: Icon(Icons.lock_outline_rounded, color: Colors.white30, size: 18),
+                                )
+                              : Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.edit_rounded, color: Colors.blueAccent, size: 18),
+                                      onPressed: () => _showAddEditCategoryDialog(c),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_rounded, color: Colors.redAccent, size: 18),
+                                      onPressed: () => _confirmDeleteCategory(c),
+                                    ),
+                                  ],
+                                ),
+                        ),
+                      );
+                    },
+                  );
+                }),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddEditCategoryDialog(ProductCategoryInfo? existingCat) {
+    final nameCtrl = TextEditingController(text: existingCat?.name ?? '');
+    final googleCtrl = TextEditingController(
+      text: existingCat?.googleCategory ?? 'Home & Garden',
+    );
+    final fbCtrl = TextEditingController(
+      text: existingCat?.fbCategory ?? 'Home & Garden',
+    );
+    final isEdit = existingCat != null;
+
+    Get.dialog(
+      Dialog(
+        backgroundColor: const Color(0xFF16213E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isEdit ? '✏️ تعديل الفئة المخصصة' : '➕ إضافة فئة مخصصة جديدة',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontFamily: 'IBMPlexSansArabic',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+              const Divider(color: Colors.white24),
+              const SizedBox(height: 12),
+              _buildDialogField(ctrl: nameCtrl, label: 'اسم الفئة (مثال: 👕 ملابس)', hint: 'أدخل الاسم مع رمز تعبيري إن أردت'),
+              const SizedBox(height: 12),
+              _buildDialogField(ctrl: googleCtrl, label: 'مسار فئة جوجل للتسوق', hint: 'Home & Garden > ...'),
+              const SizedBox(height: 12),
+              _buildDialogField(ctrl: fbCtrl, label: 'مسار فئة فيسبوك للتسوق', hint: 'Home & Garden > ...'),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Get.back(),
+                    child: const Text('إلغاء', style: TextStyle(color: Colors.white54, fontFamily: 'IBMPlexSansArabic')),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFe94560),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    onPressed: () {
+                      final name = nameCtrl.text.trim();
+                      final gCat = googleCtrl.text.trim();
+                      final fbCat = fbCtrl.text.trim();
+
+                      if (name.isEmpty) {
+                        Get.snackbar('⚠️ تنبيه', 'الاسم مطلوب لإنشاء الفئة',
+                            backgroundColor: const Color(0xFF3D2E1F), colorText: const Color(0xFFFFE0B2));
+                        return;
+                      }
+
+                      final catId = isEdit ? existingCat.id : 'cat_${DateTime.now().millisecondsSinceEpoch}';
+                      final newCat = ProductCategoryInfo(
+                        id: catId,
+                        name: name,
+                        googleCategory: gCat.isNotEmpty ? gCat : 'Home & Garden',
+                        fbCategory: fbCat.isNotEmpty ? fbCat : 'Home & Garden',
+                      );
+
+                      if (isEdit) {
+                        ctrl.updateCustomCategory(catId, newCat);
+                      } else {
+                        ctrl.addCustomCategory(newCat);
+                      }
+                      Get.back(); // إغلاق نافذة الإضافة/التعديل
+                    },
+                    child: Text(
+                      isEdit ? 'حفظ التعديل' : 'إضافة',
+                      style: const TextStyle(
+                        fontFamily: 'IBMPlexSansArabic',
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDialogField({
+    required TextEditingController ctrl,
+    required String label,
+    required String hint,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontFamily: 'IBMPlexSansArabic',
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: ctrl,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: const TextStyle(color: Colors.white30, fontSize: 12),
+            filled: true,
+            fillColor: const Color(0xFF0D0D1A),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _confirmDeleteCategory(ProductCategoryInfo cat) {
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: const Color(0xFF16213E),
+        title: const Text('⚠️ حذف الفئة المخصصة', style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic')),
+        content: Text(
+          'هل أنت متأكد من رغبتك في حذف فئة "${cat.name}"؟ سيتم إعادة تعيين المنتجات المرتبطة بها للفئة الافتراضية.',
+          style: const TextStyle(color: Colors.white70, fontFamily: 'IBMPlexSansArabic', fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('إلغاء', style: TextStyle(color: Colors.white54, fontFamily: 'IBMPlexSansArabic')),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () {
+              ctrl.deleteCustomCategory(cat.id);
+              if (_categoryId == cat.id) {
+                setState(() {
+                  _categoryId = 'other';
+                });
+              }
+              Get.back();
+            },
+            child: const Text('حذف', style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
   }
 }
