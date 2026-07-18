@@ -493,7 +493,7 @@ class CatalogController extends GetxController {
   // ---------------------------------------------------------------------------
   // ➕ إضافة منتج جديد
   // ---------------------------------------------------------------------------
-  Future<void> saveProduct(CatalogProduct product) async {
+  Future<bool> saveProduct(CatalogProduct product) async {
     try {
       final now = DateTime.now();
       final id = product.id?.isNotEmpty == true
@@ -537,6 +537,7 @@ class CatalogController extends GetxController {
         colorText: const Color(0xFF4CAF50),
         duration: const Duration(seconds: 3),
       );
+      return true;
     } catch (e) {
       if (kDebugMode) debugPrint('❌ CatalogController: saveProduct error: $e');
       Get.snackbar(
@@ -546,6 +547,7 @@ class CatalogController extends GetxController {
         colorText: const Color(0xFFE57373),
         duration: const Duration(seconds: 4),
       );
+      return false;
     }
   }
 

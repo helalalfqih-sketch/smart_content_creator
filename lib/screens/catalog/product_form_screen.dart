@@ -85,6 +85,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     ]) {
       c.dispose();
     }
+    // تفريغ وإعادة تهيئة حالة الكنترولر لمنع بقاء الصور ممتلئة في الإضافات اللاحقة
+    ctrl.resetForm();
     super.dispose();
   }
 
@@ -102,24 +104,35 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           ),
         ),
         actions: [
-          TextButton.icon(
-            onPressed: _saveProduct,
-            icon: const Icon(Icons.check_rounded, color: Colors.green),
-            label: const Text(
-              'حفظ',
-              style: TextStyle(
-                color: Colors.green,
-                fontFamily: 'IBMPlexSansArabic',
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+          _isSaving
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(color: Colors.green, strokeWidth: 2),
+                  ),
+                )
+              : TextButton.icon(
+                  onPressed: _saveProduct,
+                  icon: const Icon(Icons.check_rounded, color: Colors.green),
+                  label: const Text(
+                    'حفظ',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontFamily: 'IBMPlexSansArabic',
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
         ],
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+      body: Stack(
+        children: [
+          Form(
+            key: _formKey,
+            child: ListView(
+              padding: const EdgeInsets.all(16),
           children: [
             // ── الصور ──
             const _SectionTitle(title: '📷 صور المنتج'),
@@ -386,7 +399,32 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             ],
             const SizedBox(height: 80),
           ],
-        ),
+            ),
+          ),
+          if (_isSaving)
+            Container(
+              color: Colors.black54,
+              child: const Center(
+                child: Card(
+                  color: Color(0xFF111122),
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(color: Color(0xFF1877F2)),
+                        SizedBox(height: 16),
+                        Text(
+                          'جاري حفظ المنتج...',
+                          style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1578,37 +1616,18 @@ $cleanedText
 
     setState(() => _isSaving = true);
 
-    Get.dialog(
-      const Center(
-        child: Card(
-          color: Color(0xFF111122),
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(color: Color(0xFF1877F2)),
-                SizedBox(height: 16),
-                Text(
-                  'جاري حفظ المنتج...',
-                  style: TextStyle(color: Colors.white, fontFamily: 'IBMPlexSansArabic', fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-      barrierDismissible: false,
-    );
-
     try {
+      // تنظيف وتجهيز السعر المدخل (حذف الفواصل والمسافات الزائدة)
+      final rawPriceStr = _priceCtrl.text.trim().replaceAll(',', '').replaceAll(' ', '');
+      final parsedPrice = double.tryParse(rawPriceStr) ?? 0.0;
+
       final product = CatalogProduct(
         id: widget.editProduct?.id,
         title: _titleCtrl.text.trim(),
         description: _descCtrl.text.trim(),
         availability: _availability,
         condition: _condition,
-        price: double.tryParse(_priceCtrl.text.trim()) ?? 0.0,
+        price: parsedPrice,
         currency: _currency,
         link: _linkCtrl.text.trim(),
         brand: _brandCtrl.text.trim().isNotEmpty ? _brandCtrl.text.trim() : null,
@@ -1628,19 +1647,14 @@ $cleanedText
         status: Get.find<AuthController>().isAdmin ? _status : 'approved',
       );
 
-      await ctrl.saveProduct(product);
+      final success = await ctrl.saveProduct(product);
 
-      if (Get.isDialogOpen ?? false) {
-        Get.back();
-      }
-
-      if (mounted) {
+      if (success && mounted) {
         Navigator.of(context).pop();
+      } else {
+        if (mounted) setState(() => _isSaving = false);
       }
     } catch (e) {
-      if (Get.isDialogOpen ?? false) {
-        Get.back();
-      }
       Get.snackbar(
         '❌ خطأ في الحفظ',
         e.toString(),
@@ -1648,10 +1662,7 @@ $cleanedText
         colorText: const Color(0xFFE57373),
         duration: const Duration(seconds: 4),
       );
-    } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
