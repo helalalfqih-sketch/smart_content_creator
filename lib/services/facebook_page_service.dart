@@ -52,10 +52,13 @@ class FacebookPageService extends GetxService {
       return false;
     }
 
+    // ⚡ تشخيص أولي لنوع الرمز المستعمل قبل البدء بالنشر
+    await _debugTokenAndPost(pageToken, pageId, null);
+
     try {
       // 1. إذا تم اختيار فيديو
       if (selectedVideo.isNotEmpty && selectedVideo.startsWith('http')) {
-        if (kDebugMode) print('Facebook: Uploading video from url...');
+        if (kDebugMode) debugPrint('Facebook: Uploading video from url...');
         final response = await http.post(
           Uri.parse('https://graph.facebook.com/v20.0/$pageId/videos'),
           body: {
@@ -66,12 +69,20 @@ class FacebookPageService extends GetxService {
         );
         
         if (kDebugMode) {
-          print('Facebook Video Response Status: ${response.statusCode}');
-          print('Facebook Video Response Body: ${response.body}');
+          debugPrint('Facebook Video Response Status: ${response.statusCode}');
+          debugPrint('Facebook Video Response Body: ${response.body}');
         }
 
         final success = response.statusCode == 200 || response.statusCode == 201;
-        if (!success) {
+        if (success) {
+          String? postId;
+          try {
+            final resData = json.decode(response.body);
+            postId = resData['id']?.toString() ?? resData['post_id']?.toString();
+          } catch (_) {}
+          // ⚡ فحص ما بعد النشر للتحقق من المالك والناشر
+          await _debugTokenAndPost(pageToken, pageId, postId);
+        } else {
           _showDetailedError('فشل نشر الفيديو على فيسبوك', response.body);
         }
         return success;
@@ -84,7 +95,7 @@ class FacebookPageService extends GetxService {
         for (final imgUrl in selectedPhotos) {
           if (imgUrl.isEmpty || !imgUrl.startsWith('http')) continue;
           
-          if (kDebugMode) print('Facebook: Uploading photo: $imgUrl...');
+          if (kDebugMode) debugPrint('Facebook: Uploading photo: $imgUrl...');
           final response = await http.post(
             Uri.parse('https://graph.facebook.com/v20.0/$pageId/photos'),
             body: {
@@ -95,8 +106,8 @@ class FacebookPageService extends GetxService {
           );
           
           if (kDebugMode) {
-            print('Facebook Photo Upload Response Status: ${response.statusCode}');
-            print('Facebook Photo Upload Response Body: ${response.body}');
+            debugPrint('Facebook Photo Upload Response Status: ${response.statusCode}');
+            debugPrint('Facebook Photo Upload Response Body: ${response.body}');
           }
 
           if (response.statusCode == 200 || response.statusCode == 201) {
@@ -110,7 +121,7 @@ class FacebookPageService extends GetxService {
         }
 
         if (photoIds.isNotEmpty) {
-          if (kDebugMode) print('Facebook: Creating feed post with attached photos...');
+          if (kDebugMode) debugPrint('Facebook: Creating feed post with attached photos...');
           final mediaList = photoIds.map((id) => {'media_fbid': id}).toList();
           final response = await http.post(
             Uri.parse('https://graph.facebook.com/v20.0/$pageId/feed'),
@@ -122,12 +133,19 @@ class FacebookPageService extends GetxService {
           );
           
           if (kDebugMode) {
-            print('Facebook Multi-Photo Feed Response Status: ${response.statusCode}');
-            print('Facebook Multi-Photo Feed Response Body: ${response.body}');
+            debugPrint('Facebook Multi-Photo Feed Response Status: ${response.statusCode}');
+            debugPrint('Facebook Multi-Photo Feed Response Body: ${response.body}');
           }
 
           final success = response.statusCode == 200 || response.statusCode == 201;
-          if (!success) {
+          if (success) {
+            String? postId;
+            try {
+              final resData = json.decode(response.body);
+              postId = resData['id']?.toString() ?? resData['post_id']?.toString();
+            } catch (_) {}
+            await _debugTokenAndPost(pageToken, pageId, postId);
+          } else {
             _showDetailedError('فشل نشر المنشور مع الصور', response.body);
           }
           return success;
@@ -135,7 +153,7 @@ class FacebookPageService extends GetxService {
       }
 
       // 3. نشر منشور نصي فقط
-      if (kDebugMode) print('Facebook: Creating text-only feed post...');
+      if (kDebugMode) debugPrint('Facebook: Creating text-only feed post...');
       final response = await http.post(
         Uri.parse('https://graph.facebook.com/v20.0/$pageId/feed'),
         body: {
@@ -145,19 +163,91 @@ class FacebookPageService extends GetxService {
       );
       
       if (kDebugMode) {
-        print('Facebook Text Feed Response Status: ${response.statusCode}');
-        print('Facebook Text Feed Response Body: ${response.body}');
+        debugPrint('Facebook Text Feed Response Status: ${response.statusCode}');
+        debugPrint('Facebook Text Feed Response Body: ${response.body}');
       }
 
       final success = response.statusCode == 200 || response.statusCode == 201;
-      if (!success) {
+      if (success) {
+        String? postId;
+        try {
+          final resData = json.decode(response.body);
+          postId = resData['id']?.toString() ?? resData['post_id']?.toString();
+        } catch (_) {}
+        await _debugTokenAndPost(pageToken, pageId, postId);
+      } else {
         _showDetailedError('فشل نشر المنشور النصي', response.body);
       }
       return success;
     } catch (e) {
-      if (kDebugMode) print('Facebook custom publish error: $e');
+      if (kDebugMode) debugPrint('Facebook custom publish error: $e');
     }
     return false;
+  }
+
+  /// 🧠 تشخيص ونوع التوكن المستعمل ومالك المنشور بعد النشر
+  Future<void> _debugTokenAndPost(String token, String pageId, String? postId) async {
+    try {
+      // 1. فحص نوع التوكن عبر الاستعلام عن الهوية المستعارة
+      final meResponse = await http.get(Uri.parse('https://graph.facebook.com/v20.0/me?access_token=$token'));
+      if (meResponse.statusCode == 200) {
+        final meData = json.decode(meResponse.body);
+        final meId = meData['id']?.toString() ?? '';
+        final meName = meData['name']?.toString() ?? '';
+        
+        if (meId == pageId) {
+          debugPrint('ℹ️ [Facebook Diagnostics] Token Type Check: PAGE ACCESS TOKEN (Page: $meName, ID: $meId)');
+        } else {
+          debugPrint('⚠️ [Facebook Diagnostics] Token Type Check: USER ACCESS TOKEN (User: $meName, ID: $meId). This token will post as User instead of the Page!');
+          Get.snackbar(
+            '⚠️ تنبيه رمز الوصول',
+            'الرمز المستخدم حالياً هو رمز مستخدم (User Token) وليس رمز صفحة. قد تظهر المنشورات باسمك الشخصي بدلاً من صفحة العمل.',
+            backgroundColor: const Color(0xFF3D2E1F),
+            colorText: const Color(0xFFFFE0B2),
+            duration: const Duration(seconds: 6),
+          );
+        }
+      } else {
+        debugPrint('⚠️ [Facebook Diagnostics] Failed to query /me endpoint: ${meResponse.body}');
+      }
+
+      // 2. فحص تفاصيل ومالك المنشور في حال توفر postId
+      if (postId != null && postId.isNotEmpty) {
+        final postCheckUrl = 'https://graph.facebook.com/v20.0/$postId?fields=id,from,is_published,permalink_url&access_token=$token';
+        final checkResponse = await http.get(Uri.parse(postCheckUrl));
+        if (checkResponse.statusCode == 200) {
+          final checkData = json.decode(checkResponse.body);
+          final fromData = checkData['from'];
+          final fromId = fromData != null ? fromData['id']?.toString() : '';
+          final fromName = fromData != null ? fromData['name']?.toString() : '';
+          final isPublished = checkData['is_published'] ?? false;
+          final permalinkUrl = checkData['permalink_url'] ?? '';
+
+          debugPrint('📊 [Facebook Diagnostics] Post Check Details:');
+          debugPrint('  - ID: $postId');
+          debugPrint('  - Publisher (from): $fromName (ID: $fromId)');
+          debugPrint('  - Is Published: $isPublished');
+          debugPrint('  - Link: $permalinkUrl');
+
+          if (fromId != pageId) {
+            debugPrint('🚨 [Facebook Diagnostics] CRITICAL: Post was made by User ($fromId) and not the Page ($pageId)!');
+            Get.snackbar(
+              '🚨 خطأ في ملكية المنشور',
+              'تم النشر ولكن باسم حسابك الشخصي وليس باسم الصفحة التجارية. يرجى تعديل الربط في الإعدادات واستخدام رمز الصفحة.',
+              backgroundColor: const Color(0xFF3D1F1F),
+              colorText: const Color(0xFFFFD3D3),
+              duration: const Duration(seconds: 8),
+            );
+          } else {
+            debugPrint('🎉 [Facebook Diagnostics] SUCCESS: Post is successfully owned by the Page ($fromName).');
+          }
+        } else {
+          debugPrint('⚠️ [Facebook Diagnostics] Failed to verify post ownership details: ${checkResponse.body}');
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ [Facebook Diagnostics] Exception in diagnostic checker: $e');
+    }
   }
 
   void _showDetailedError(String title, String responseBody) {
