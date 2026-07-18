@@ -762,8 +762,9 @@ class ProductCatalogScreen extends StatelessWidget {
       return;
     }
 
-    // تجهيز النص الأولي
-    final initialText = '🛍️ ${product.title}\n\n${product.description}\n\n💰 السعر: ${product.formattedPrice}\n\n🔗 رابط المنتج: $shareUrl';
+    // تجهيز النص الأولي بدون روابط مع إضافة هاشتاقات ذكية للمنتج واليمن
+    final categoryTags = _getCategoryHashtags(product);
+    final initialText = '🛍️ ${product.title}\n\n${product.description}\n\n💰 السعر: ${product.formattedPrice}\n\n$categoryTags';
     final textCtrl = TextEditingController(text: initialText);
 
     // تجميع كل الصور المتوفرة
@@ -1090,6 +1091,31 @@ class ProductCatalogScreen extends StatelessWidget {
         duration: const Duration(seconds: 4),
       );
     }
+  }
+
+  String _getCategoryHashtags(CatalogProduct product) {
+    final title = product.title.toLowerCase();
+    final category = (product.categoryName ?? '').toLowerCase();
+    final List<String> tags = ['#اندكس_ستور', '#صنعاء', '#اليمن'];
+    
+    // تصنيف ذكي للمنتج بناءً على العنوان أو الفئة لإدراج هاشتاقات ملائمة
+    if (category.contains('ملابس') || category.contains('أزياء') || title.contains('قميص') || title.contains('فستان') || title.contains('بنطلون') || title.contains('جاكيت')) {
+      tags.addAll(['#ملابس', '#موضة', '#أزياء_اليمن']);
+    } else if (category.contains('إلكترونيات') || category.contains('طاقة') || title.contains('شاحن') || title.contains('سماعة') || title.contains('هاتف') || title.contains('تلفون')) {
+      tags.addAll(['#إلكترونيات', '#تقنية', '#اكسسوارات_جوال']);
+    } else if (category.contains('مطبخ') || category.contains('منزل') || category.contains('تخزين') || title.contains('مطبخ') || title.contains('ديكور') || title.contains('منظم')) {
+      tags.addAll(['#أدوات_منزلية', '#منزل_جميل', '#مطبخ_عصري']);
+    } else if (category.contains('جمال') || category.contains('عناية') || category.contains('صحة') || title.contains('عطر') || title.contains('كريم') || title.contains('بشرة') || title.contains('مساج')) {
+      tags.addAll(['#جمال_وعناية', '#عناية_بالبشرة', '#صحة_وجمال']);
+    } else if (category.contains('سيارات') || title.contains('سيارة') || title.contains('منظف سيارة')) {
+      tags.addAll(['#سيارات', '#اكسسوارات_سيارات', '#اليمن_سيارات']);
+    } else if (category.contains('رياضة') || title.contains('رياضي') || title.contains('تنحيف') || title.contains('تمارين')) {
+      tags.addAll(['#رياضة', '#لياقة', '#صحة_ورشاقة']);
+    } else {
+      tags.addAll(['#تسوق_اونلاين', '#عروض_تخفيضات', '#توصيل_سريع']);
+    }
+    
+    return tags.join(' ');
   }
 }
 
