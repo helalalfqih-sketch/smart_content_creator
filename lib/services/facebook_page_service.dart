@@ -60,7 +60,7 @@ class FacebookPageService extends GetxService {
       if (selectedVideo.isNotEmpty && selectedVideo.startsWith('http')) {
         if (kDebugMode) debugPrint('Facebook: Uploading video from url...');
         final response = await http.post(
-          Uri.parse('https://graph.facebook.com/v20.0/$pageId/videos'),
+          Uri.parse('https://graph.facebook.com/v25.0/$pageId/videos'),
           body: {
             'file_url': selectedVideo,
             'description': message,
@@ -88,19 +88,54 @@ class FacebookPageService extends GetxService {
         return success;
       }
 
-      // 2. إذا تم اختيار صور متعددة (أو صورة واحدة)
+      // 2. إذا تم اختيار صور (صورة واحدة أو متعددة)
       if (selectedPhotos.isNotEmpty) {
+        // ✅ صورة واحدة: ننشر مباشرة عبر /{pageId}/photos مع caption لضمان أن المنشور عام
+        if (selectedPhotos.length == 1) {
+          final imgUrl = selectedPhotos.first;
+          if (imgUrl.isNotEmpty && imgUrl.startsWith('http')) {
+            if (kDebugMode) debugPrint('Facebook: Posting single photo directly...');
+            final response = await http.post(
+              Uri.parse('https://graph.facebook.com/v25.0/$pageId/photos'),
+              body: {
+                'url': imgUrl,
+                'caption': message, // ← caption يضمن النشر العام مع النص
+                'access_token': pageToken,
+              },
+            );
+            
+            if (kDebugMode) {
+              debugPrint('Facebook Single-Photo Response Status: ${response.statusCode}');
+              debugPrint('Facebook Single-Photo Response Body: ${response.body}');
+            }
+
+            final success = response.statusCode == 200 || response.statusCode == 201;
+            if (success) {
+              String? postId;
+              try {
+                final resData = json.decode(response.body);
+                postId = resData['post_id']?.toString() ?? resData['id']?.toString();
+              } catch (_) {}
+              await _debugTokenAndPost(pageToken, pageId, postId);
+            } else {
+              _showDetailedError('فشل نشر الصورة على فيسبوك', response.body);
+            }
+            return success;
+          }
+        }
+
+        // ✅ صور متعددة: نرفعها أولاً بدون نشر ثم نجمعها في منشور feed واحد
         final List<String> photoIds = [];
         
         for (final imgUrl in selectedPhotos) {
           if (imgUrl.isEmpty || !imgUrl.startsWith('http')) continue;
           
-          if (kDebugMode) debugPrint('Facebook: Uploading photo: $imgUrl...');
+          if (kDebugMode) debugPrint('Facebook: Uploading photo (unpublished): $imgUrl...');
           final response = await http.post(
-            Uri.parse('https://graph.facebook.com/v20.0/$pageId/photos'),
+            Uri.parse('https://graph.facebook.com/v25.0/$pageId/photos'),
             body: {
               'url': imgUrl,
-              'published': 'false', // رفع بدون نشر فوري
+              'published': 'false', // رفع بدون نشر فوري لتجميعها لاحقاً
               'access_token': pageToken,
             },
           );
@@ -121,10 +156,10 @@ class FacebookPageService extends GetxService {
         }
 
         if (photoIds.isNotEmpty) {
-          if (kDebugMode) debugPrint('Facebook: Creating feed post with attached photos...');
+          if (kDebugMode) debugPrint('Facebook: Creating feed post with ${photoIds.length} attached photos...');
           final mediaList = photoIds.map((id) => {'media_fbid': id}).toList();
           final response = await http.post(
-            Uri.parse('https://graph.facebook.com/v20.0/$pageId/feed'),
+            Uri.parse('https://graph.facebook.com/v25.0/$pageId/feed'),
             body: {
               'message': message,
               'attached_media': json.encode(mediaList),
@@ -146,7 +181,7 @@ class FacebookPageService extends GetxService {
             } catch (_) {}
             await _debugTokenAndPost(pageToken, pageId, postId);
           } else {
-            _showDetailedError('فشل نشر المنشور مع الصور', response.body);
+            _showDetailedError('فشل نشر المنشور مع الصور المتعددة', response.body);
           }
           return success;
         }
@@ -155,7 +190,7 @@ class FacebookPageService extends GetxService {
       // 3. نشر منشور نصي فقط
       if (kDebugMode) debugPrint('Facebook: Creating text-only feed post...');
       final response = await http.post(
-        Uri.parse('https://graph.facebook.com/v20.0/$pageId/feed'),
+        Uri.parse('https://graph.facebook.com/v25.0/$pageId/feed'),
         body: {
           'message': message,
           'access_token': pageToken,
@@ -189,7 +224,7 @@ class FacebookPageService extends GetxService {
   Future<void> _debugTokenAndPost(String token, String pageId, String? postId) async {
     try {
       // 1. فحص نوع التوكن عبر الاستعلام عن الهوية المستعارة
-      final meResponse = await http.get(Uri.parse('https://graph.facebook.com/v20.0/me?access_token=$token'));
+      final meResponse = await http.get(Uri.parse('https://graph.facebook.com/v25.0/me?access_token=$token'));
       if (meResponse.statusCode == 200) {
         final meData = json.decode(meResponse.body);
         final meId = meData['id']?.toString() ?? '';
@@ -215,7 +250,8 @@ class FacebookPageService extends GetxService {
       if (postId != null && postId.isNotEmpty) {
         // لتجنب خطأ deprecation لبعض المنشورات، نضمن استعلامها بصيغة المعرف المدمج {page-id}_{post-id}
         final finalPostId = postId.contains('_') ? postId : '${pageId}_$postId';
-        final postCheckUrl = 'https://graph.facebook.com/v20.0/$finalPostId?fields=id,from&access_token=$token';
+        // نضيف حقل privacy لمعرفة ما إذا كان المنشور عاماً أو خاصاً
+        final postCheckUrl = 'https://graph.facebook.com/v25.0/$finalPostId?fields=id,from,privacy&access_token=$token';
         final checkResponse = await http.get(Uri.parse(postCheckUrl));
         if (checkResponse.statusCode == 200) {
           final checkData = json.decode(checkResponse.body);
@@ -223,9 +259,13 @@ class FacebookPageService extends GetxService {
           final fromId = fromData != null ? fromData['id']?.toString() : '';
           final fromName = fromData != null ? fromData['name']?.toString() : '';
 
+          final privacyData = checkData['privacy'];
+          final privacyValue = privacyData != null ? privacyData['value']?.toString() : 'UNKNOWN';
+
           debugPrint('📊 [Facebook Diagnostics] Post Check Details:');
-          debugPrint('  - ID: $postId');
+          debugPrint('  - ID: $finalPostId');
           debugPrint('  - Publisher (from): $fromName (ID: $fromId)');
+          debugPrint('  - Privacy: $privacyValue');
 
           if (fromId != pageId) {
             debugPrint('🚨 [Facebook Diagnostics] CRITICAL: Post was made by User ($fromId) and not the Page ($pageId)!');
@@ -236,8 +276,17 @@ class FacebookPageService extends GetxService {
               colorText: const Color(0xFFFFD3D3),
               duration: const Duration(seconds: 8),
             );
+          } else if (privacyValue != 'EVERYONE') {
+            debugPrint('⚠️ [Facebook Diagnostics] WARNING: Post privacy is "$privacyValue" (not EVERYONE). Post may not be visible to public!');
+            Get.snackbar(
+              '⚠️ تحذير خصوصية المنشور',
+              'المنشور ليس عاماً (الخصوصية: $privacyValue). قد لا يظهر للزوار.',
+              backgroundColor: const Color(0xFF3D2E1F),
+              colorText: const Color(0xFFFFE0B2),
+              duration: const Duration(seconds: 6),
+            );
           } else {
-            debugPrint('🎉 [Facebook Diagnostics] SUCCESS: Post is successfully owned by the Page ($fromName).');
+            debugPrint('🎉 [Facebook Diagnostics] SUCCESS: Post owned by Page ($fromName) and visible to EVERYONE.');
           }
         } else {
           debugPrint('⚠️ [Facebook Diagnostics] Failed to verify post ownership details: ${checkResponse.body}');
