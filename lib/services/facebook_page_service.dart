@@ -55,6 +55,7 @@ class FacebookPageService extends GetxService {
     try {
       // 1. إذا تم اختيار فيديو
       if (selectedVideo.isNotEmpty && selectedVideo.startsWith('http')) {
+        if (kDebugMode) print('Facebook: Uploading video from url...');
         final response = await http.post(
           Uri.parse('https://graph.facebook.com/v20.0/$pageId/videos'),
           body: {
@@ -63,7 +64,17 @@ class FacebookPageService extends GetxService {
             'access_token': pageToken,
           },
         );
-        return response.statusCode == 200 || response.statusCode == 201;
+        
+        if (kDebugMode) {
+          print('Facebook Video Response Status: ${response.statusCode}');
+          print('Facebook Video Response Body: ${response.body}');
+        }
+
+        final success = response.statusCode == 200 || response.statusCode == 201;
+        if (!success) {
+          _showDetailedError('فشل نشر الفيديو على فيسبوك', response.body);
+        }
+        return success;
       }
 
       // 2. إذا تم اختيار صور متعددة (أو صورة واحدة)
@@ -73,6 +84,7 @@ class FacebookPageService extends GetxService {
         for (final imgUrl in selectedPhotos) {
           if (imgUrl.isEmpty || !imgUrl.startsWith('http')) continue;
           
+          if (kDebugMode) print('Facebook: Uploading photo: $imgUrl...');
           final response = await http.post(
             Uri.parse('https://graph.facebook.com/v20.0/$pageId/photos'),
             body: {
@@ -82,16 +94,23 @@ class FacebookPageService extends GetxService {
             },
           );
           
+          if (kDebugMode) {
+            print('Facebook Photo Upload Response Status: ${response.statusCode}');
+            print('Facebook Photo Upload Response Body: ${response.body}');
+          }
+
           if (response.statusCode == 200 || response.statusCode == 201) {
             final resData = json.decode(response.body);
             if (resData['id'] != null) {
               photoIds.add(resData['id'].toString());
             }
+          } else {
+            _showDetailedError('فشل رفع الصورة على فيسبوك', response.body);
           }
         }
 
         if (photoIds.isNotEmpty) {
-          // نشر منشور مجمع يحتوي على جميع معرفات الصور المرفوعة
+          if (kDebugMode) print('Facebook: Creating feed post with attached photos...');
           final mediaList = photoIds.map((id) => {'media_fbid': id}).toList();
           final response = await http.post(
             Uri.parse('https://graph.facebook.com/v20.0/$pageId/feed'),
@@ -101,11 +120,22 @@ class FacebookPageService extends GetxService {
               'access_token': pageToken,
             },
           );
-          return response.statusCode == 200 || response.statusCode == 201;
+          
+          if (kDebugMode) {
+            print('Facebook Multi-Photo Feed Response Status: ${response.statusCode}');
+            print('Facebook Multi-Photo Feed Response Body: ${response.body}');
+          }
+
+          final success = response.statusCode == 200 || response.statusCode == 201;
+          if (!success) {
+            _showDetailedError('فشل نشر المنشور مع الصور', response.body);
+          }
+          return success;
         }
       }
 
       // 3. نشر منشور نصي فقط
+      if (kDebugMode) print('Facebook: Creating text-only feed post...');
       final response = await http.post(
         Uri.parse('https://graph.facebook.com/v20.0/$pageId/feed'),
         body: {
@@ -113,10 +143,35 @@ class FacebookPageService extends GetxService {
           'access_token': pageToken,
         },
       );
-      return response.statusCode == 200 || response.statusCode == 201;
+      
+      if (kDebugMode) {
+        print('Facebook Text Feed Response Status: ${response.statusCode}');
+        print('Facebook Text Feed Response Body: ${response.body}');
+      }
+
+      final success = response.statusCode == 200 || response.statusCode == 201;
+      if (!success) {
+        _showDetailedError('فشل نشر المنشور النصي', response.body);
+      }
+      return success;
     } catch (e) {
       if (kDebugMode) print('Facebook custom publish error: $e');
     }
     return false;
+  }
+
+  void _showDetailedError(String title, String responseBody) {
+    try {
+      final errorData = json.decode(responseBody);
+      if (errorData['error'] != null && errorData['error']['message'] != null) {
+        Get.snackbar(
+          '❌ $title',
+          'فيسبوك: ${errorData['error']['message']}',
+          backgroundColor: const Color(0xFF3D1F1F),
+          colorText: const Color(0xFFFFD3D3),
+          duration: const Duration(seconds: 5),
+        );
+      }
+    } catch (_) {}
   }
 }
