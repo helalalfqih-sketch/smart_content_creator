@@ -52,4 +52,16 @@ app.*.map.json
 
 # Large Binaries (Hosting on Releases)
 *.apk
+*.zip
+*.xlsx
+*.lnk
+*.log
+local.properties
 web_landing/downloads/
+tmp/
+scratch/
+.agent/
+.claude/
+.zencoder/
+.firebase/
+
