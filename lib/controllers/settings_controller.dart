@@ -26,9 +26,9 @@ import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
 class SettingsController extends GetxController {
-  static const String currentVersion = "1.2.0";
-  static const int currentBuild = 4;
-  static const String latestApkUrl = "https://www.mediafire.com/file/erl25nent8bfsxl/app-arm64-v8a-release.apk/file";
+  static const String currentVersion = "1.3.0";
+  static const int currentBuild = 6;
+  static const String latestApkUrl = "https://github.com/helalalfqih-sketch/smart_content_creator/releases/latest/download/app-arm64-v8a-release.apk";
 
   ApiController get apiController => Get.find<ApiController>();
   late DBService _dbService;
