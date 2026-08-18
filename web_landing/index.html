@@ -441,7 +441,7 @@
     </section>
 
     <section class="download-section">
-        <h2 class="download-title">تنزيل التطبيق لجهازك (الإصدار <span id="app-version">1.2.1</span>)</h2>
+        <h2 class="download-title">تنزيل التطبيق لجهازك (الإصدار <span id="app-version">1.3.0</span>)</h2>
         
         <div class="download-grid">
             <!-- ARM 64 -->
@@ -451,11 +451,11 @@
                 <p style="margin-bottom: 25px; font-size: 0.9rem; color: var(--text-dim);">
                     تعمل على جميع هواتف أندرويد الحديثة (S20+, Pixel 5+, etc.)
                 </p>
-                <a href="https://github.com/helalalfqih-sketch/-/releases/latest/download/app-arm64-v8a-release.apk" class="btn-download" download>تنزيل APK</a>
-                <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/-/releases/latest/download/app-arm64-v8a-release.apk')">
+                <a href="https://github.com/helalalfqih-sketch/smart_content_creator/releases/latest/download/app-arm64-v8a-release.apk" class="btn-download" download>تنزيل APK</a>
+                <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/smart_content_creator/releases/latest/download/app-arm64-v8a-release.apk')">
                     <span>فتح أو تحديث التطبيق ⚡</span>
                 </button>
-                <div class="file-size" id="size-arm64">الحجم: جاري التحميل...</div>
+                <div class="file-size" id="size-arm64">الحجم: 101.9 ميجابايت</div>
             </div>
 
             <!-- ARM v7 -->
@@ -465,11 +465,11 @@
                 <p style="margin-bottom: 25px; font-size: 0.9rem; color: var(--text-dim);">
                     للإصدارات الأقدم من الهواتف التي لا تدعم 64-bit.
                 </p>
-                <a href="https://github.com/helalalfqih-sketch/-/releases/latest/download/app-armeabi-v7a-release.apk" class="btn-download" download>تنزيل APK</a>
-                <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/-/releases/latest/download/app-armeabi-v7a-release.apk')">
+                <a href="https://github.com/helalalfqih-sketch/smart_content_creator/releases/latest/download/app-armeabi-v7a-release.apk" class="btn-download" download>تنزيل APK</a>
+                <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/smart_content_creator/releases/latest/download/app-armeabi-v7a-release.apk')">
                     <span>فتح أو تحديث التطبيق ⚡</span>
                 </button>
-                <div class="file-size" id="size-arm32">الحجم: جاري التحميل...</div>
+                <div class="file-size" id="size-arm32">الحجم: 130.6 ميجابايت</div>
             </div>
 
             <!-- x86_64 -->
@@ -479,11 +479,11 @@
                 <p style="margin-bottom: 25px; font-size: 0.9rem; color: var(--text-dim);">
                     مخصصة لأجهزة الكمبيوتر والمحاكيات (BlueStacks, Windows).
                 </p>
-                <a href="https://github.com/helalalfqih-sketch/-/releases/latest/download/app-x86_64-release.apk" class="btn-download" download>تنزيل APK</a>
-                <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/-/releases/latest/download/app-x86_64-release.apk')">
+                <a href="https://github.com/helalalfqih-sketch/smart_content_creator/releases/latest/download/app-x86_64-release.apk" class="btn-download" download>تنزيل APK</a>
+                <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/smart_content_creator/releases/latest/download/app-x86_64-release.apk')">
                     <span>فتح أو تحديث التطبيق ⚡</span>
                 </button>
-                <div class="file-size" id="size-x86">الحجم: جاري التحميل...</div>
+                <div class="file-size" id="size-x86">الحجم: 112.5 ميجابايت</div>
             </div>
         </div>
     </section>
@@ -534,7 +534,7 @@
         <div class="footer-links">
             <a href="privacy.html">سياسة الخصوصية</a>
             <a href="terms.html">شروط الخدمة</a>
-            <a href="https://github.com/Yemeni-Open-Source/smart_content_creator_showcase" target="_blank" rel="noopener noreferrer">كود المصدر (GitHub)</a>
+            <a href="https://github.com/helalalfqih-sketch/smart_content_creator" target="_blank" rel="noopener noreferrer">كود المصدر (GitHub)</a>
         </div>
         <div class="copyright">
             © 2026 Smart Content Creator AI. جميع الحقوق محفوظة.
@@ -549,33 +549,38 @@
             questionButton.addEventListener('click', () => {
                 // Close other open items
                 faqItems.forEach(otherItem => {
-                    if (otherItem !== item) otherItem.classList.remove('active');
+                    if (otherItem !== item && otherItem.classList.contains('active')) {
+                        otherItem.classList.remove('active');
+                    }
                 });
-                // Toggle the clicked item
+                // Toggle current item
                 item.classList.toggle('active');
             });
         });
 
-        // 🚀 Smart Launch & Deep Link Fallback
-        function launchOrDownload(apkUrl) {
-            const packageName = "com.example.smart_content_creator";
-            // Get full URL for fallback
-            const absoluteApkUrl = apkUrl.startsWith('http') ? apkUrl : (window.location.origin + "/" + apkUrl);
+        // 🚀 Deep Linking & Smart App Launch Logic
+        function launchOrDownload(downloadUrl) {
+            const customScheme = "smartcreator://open";
+            const appStoreUrl = downloadUrl;
             
-            // Android Intent URL: attempts to open package, redirects to S.browser_fallback_url if not installed
-            const intentUrl = `intent://open#Intent;scheme=https;package=${packageName};S.browser_fallback_url=${encodeURIComponent(absoluteApkUrl)};end`;
-            
-            // Redirect browser to Intent
-            window.location.href = intentUrl;
+            // محاولة فتح التطبيق عبر الـ Custom Scheme
+            const now = Date.now();
+            window.location.href = customScheme;
+
+            // إذا لم يفتح التطبيق خلال 2 ثانية، يوجهه للتحميل
+            setTimeout(() => {
+                if (Date.now() - now < 2500) {
+                    window.location.href = appStoreUrl;
+                }
+            }, 2000);
         }
 
-        // 🧠 In-App Browser Auto-Detection & Dynamic Release Stats Fetch
+        // Check if page loaded from inside App (Webview/AppLink)
         window.addEventListener('DOMContentLoaded', () => {
             const urlParams = new URLSearchParams(window.location.search);
-            const isFromApp = urlParams.get('app') === 'true' || urlParams.get('installed') === 'true';
-            
-            if (isFromApp) {
-                // If visited from the app itself (e.g. settings screen update check)
+            const isInstalled = urlParams.get('installed') === 'true' || navigator.userAgent.includes('SmartCreatorApp');
+
+            if (isInstalled) {
                 const smartButtons = document.querySelectorAll('.btn-smart-action');
                 smartButtons.forEach(btn => {
                     btn.innerHTML = '<span>✅ مثبت بالفعل (افتح التطبيق)</span>';
@@ -585,15 +590,15 @@
             }
 
             // 🌐 Fetch latest version and file sizes from GitHub Releases
-            const repoUrl = "https://api.github.com/repos/helalalfqih-sketch/-/releases/latest";
+            const repoUrl = "https://api.github.com/repos/helalalfqih-sketch/smart_content_creator/releases/latest";
             
             // Fallback default values
             const defaultSizes = {
-                "smart-content-creator-arm64.apk": "105 ميجابايت",
-                "smart-content-creator-arm32.apk": "129 ميجابايت",
-                "smart-content-creator-x86.apk": "110 ميجابايت"
+                "smart-content-creator-arm64.apk": "101.9 ميجابايت",
+                "smart-content-creator-arm32.apk": "130.6 ميجابايت",
+                "smart-content-creator-x86.apk": "112.5 ميجابايت"
             };
-            const defaultVersion = "1.2.1";
+            const defaultVersion = "1.3.0";
 
             fetch(repoUrl)
                 .then(response => {
