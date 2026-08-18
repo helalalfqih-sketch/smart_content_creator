@@ -859,16 +859,25 @@ class CatalogController extends GetxController {
       for (final sheetName in excel.tables.keys) {
         final sheet = excel.tables[sheetName]!;
         final rows = sheet.rows;
-        if (rows.length < 3) continue;
+        if (rows.isEmpty) continue;
 
-        for (int i = 2; i < rows.length; i++) {
+        // تحديد سطر البداية (تخطي العناوين إن وجدت)
+        int startRow = 0;
+        if (rows.isNotEmpty) {
+          final firstRowText = rows[0].map((c) => c?.value?.toString().toLowerCase() ?? '').toList();
+          if (firstRowText.any((t) => t.contains('id') || t.contains('title') || t.contains('price') || t.contains('name'))) {
+            startRow = 1;
+          }
+        }
+
+        for (int i = startRow; i < rows.length; i++) {
           final row = rows[i];
           final cells = row.map((c) => c?.value).toList();
           if (cells.isEmpty) continue;
 
           // تخطي الصفوف الفارغة
           final firstCell = cells[0]?.toString().trim() ?? '';
-          if (firstCell.isEmpty) {
+          if (firstCell.isEmpty && (cells.length < 2 || (cells[1]?.toString().trim() ?? '').isEmpty)) {
             skipped++;
             continue;
           }

@@ -263,12 +263,39 @@ class CatalogProduct {
   // 📑 تحويل صف Excel إلى نموذج
   // ---------------------------------------------------------------------------
   factory CatalogProduct.fromExcelRow(List<dynamic> row, int rowIndex) {
-    String safe(int i) => i < row.length ? (row[i]?.toString().trim() ?? '') : '';
+    String safe(int i) {
+      if (i >= row.length || row[i] == null) return '';
+      final val = row[i];
+      return val.toString().trim();
+    }
+
     double? safePrice(int i) {
       final s = safe(i);
-      // استخراج الرقم فقط (مثل "١٠٫٠٠ USD" -> 10.00)
       final clean = s.replaceAll(RegExp(r'[^\d\.]'), '');
       return double.tryParse(clean);
+    }
+
+    String priceRaw = safe(5);
+    String detectedCurrency = 'YER';
+    if (priceRaw.toUpperCase().contains('YER')) {
+      detectedCurrency = 'YER';
+    } else if (priceRaw.toUpperCase().contains('USD')) {
+      detectedCurrency = 'USD';
+    } else if (priceRaw.toUpperCase().contains('SAR')) {
+      detectedCurrency = 'SAR';
+    }
+
+    // Check if column 8 contains additional image links (comma-separated or url)
+    List<String> additionalImages = [];
+    String? brandVal;
+    if (safe(8).startsWith('http') || safe(8).contains(',')) {
+      additionalImages = safe(8)
+          .split(',')
+          .map((u) => u.trim())
+          .where((u) => u.startsWith('http'))
+          .toList();
+    } else if (safe(8).isNotEmpty) {
+      brandVal = safe(8);
     }
 
     return CatalogProduct(
@@ -278,10 +305,11 @@ class CatalogProduct {
       availability: safe(3).isNotEmpty ? safe(3) : 'in stock',
       condition: safe(4).isNotEmpty ? safe(4) : 'new',
       price: safePrice(5) ?? 0.0,
-      currency: 'YER',
+      currency: detectedCurrency,
       link: safe(6),
       imageLink: safe(7),
-      brand: safe(8).isNotEmpty ? safe(8) : null,
+      additionalImageLinks: additionalImages,
+      brand: brandVal,
       googleProductCategory: safe(9).isNotEmpty ? safe(9) : null,
       fbProductCategory: safe(10).isNotEmpty ? safe(10) : null,
       quantity: int.tryParse(safe(11)) ?? 1,
@@ -300,7 +328,7 @@ class CatalogProduct {
       productTags: [safe(28), safe(29)].where((e) => e.isNotEmpty).toList(),
       style: safe(30).isNotEmpty ? safe(30) : null,
       creatorUid: null,
-      status: 'pending',
+      status: 'approved',
     );
   }
 
