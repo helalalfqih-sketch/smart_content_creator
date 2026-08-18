@@ -9,10 +9,74 @@ import 'package:get/get.dart';
 // 2. Uncomment the GoogleSignIn initialization and methods
 // 3. Make sure you're building for Android/iOS (not Windows)
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as supa;
 
 class AuthService extends GetxService {
   FirebaseAuth get _auth => FirebaseAuth.instance;
   FirebaseFunctions get _functions => FirebaseFunctions.instance;
+  supa.SupabaseClient get _supabase => supa.Supabase.instance.client;
+
+  // ⚡ Supabase Auth Getters
+  supa.User? get currentSupabaseUser => _supabase.auth.currentUser;
+  supa.Session? get currentSupabaseSession => _supabase.auth.currentSession;
+  Stream<supa.AuthState> get supabaseAuthStateChanges => _supabase.auth.onAuthStateChange;
+
+  /// ⚡ تسجيل الدخول عبر Supabase Auth (البريد وكلمة المرور)
+  Future<supa.AuthResponse> signInWithSupabase({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      if (kDebugMode) debugPrint("🔐 SupabaseAuth: محاولة تسجيل الدخول لـ $email");
+      return await _supabase.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+    } catch (e) {
+      if (kDebugMode) debugPrint("❌ SupabaseAuth: Sign-In Error: $e");
+      rethrow;
+    }
+  }
+
+  /// ⚡ إنشاء حساب جديد عبر Supabase Auth
+  Future<supa.AuthResponse> signUpWithSupabase({
+    required String email,
+    required String password,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      if (kDebugMode) debugPrint("🆕 SupabaseAuth: محاولة إنشاء حساب لـ $email");
+      return await _supabase.auth.signUp(
+        email: email,
+        password: password,
+        data: data,
+      );
+    } catch (e) {
+      if (kDebugMode) debugPrint("❌ SupabaseAuth: SignUp Error: $e");
+      rethrow;
+    }
+  }
+
+  /// ⚡ إرسال بريد إعادة تعيين كلمة المرور عبر Supabase
+  Future<void> sendSupabasePasswordReset(String email) async {
+    try {
+      await _supabase.auth.resetPasswordForEmail(email);
+      if (kDebugMode) debugPrint("✅ SupabaseAuth: تم إرسال بريد إعادة التعيين لـ $email");
+    } catch (e) {
+      if (kDebugMode) debugPrint("❌ SupabaseAuth: Reset Password Error: $e");
+      rethrow;
+    }
+  }
+
+  /// ⚡ تسجيل الخروج من Supabase
+  Future<void> signOutSupabase() async {
+    try {
+      await _supabase.auth.signOut();
+      if (kDebugMode) debugPrint("👋 SupabaseAuth: تم تسجيل الخروج");
+    } catch (e) {
+      if (kDebugMode) debugPrint("❌ SupabaseAuth: SignOut Error: $e");
+    }
+  }
 
   // 🌐 Web Client ID من google-services.json (type=3)
   static const _webClientId =

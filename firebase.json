@@ -4,7 +4,7 @@
     "indexes": "firestore.indexes.json"
   },
   "hosting": {
-    "site": "smartcontentcreator-d49f2",
+    "site": "smartcontentcreator2",
     "public": "web_landing",
     "ignore": [
       "firebase.json",

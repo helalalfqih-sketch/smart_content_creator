@@ -270,49 +270,95 @@ class ProductCatalogScreen extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            GestureDetector(
-              onTap: () => _showSortBottomSheet(ctrl),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A1A2E),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.sort_rounded, color: Color(0xFF1877F2), size: 16),
-                    const SizedBox(width: 6),
-                    Text(
-                      'ترتيب: $currentSort',
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        fontFamily: 'IBMPlexSansArabic',
-                      ),
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: () => _showSortBottomSheet(ctrl),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1A1A2E),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
                     ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.arrow_drop_down_rounded, color: Colors.white70, size: 16),
-                  ],
-                ),
-              ),
-            ),
-            if (ctrl.selectedCategory.value != 'الكل' || ctrl.selectedSortOption.value != 'الأحدث')
-              GestureDetector(
-                onTap: () {
-                  ctrl.selectedCategory.value = 'الكل';
-                  ctrl.selectedSortOption.value = 'الأحدث';
-                },
-                child: const Text(
-                  'إعادة تعيين 🔄',
-                  style: TextStyle(
-                    color: Colors.redAccent,
-                    fontSize: 12,
-                    fontFamily: 'IBMPlexSansArabic',
-                    fontWeight: FontWeight.bold,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.sort_rounded, color: Color(0xFF1877F2), size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          'ترتيب: $currentSort',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontFamily: 'IBMPlexSansArabic',
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.arrow_drop_down_rounded, color: Colors.white70, size: 16),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+                if (ctrl.selectedCategory.value != 'الكل' || ctrl.selectedSortOption.value != 'الأحدث') ...[
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      ctrl.selectedCategory.value = 'الكل';
+                      ctrl.selectedSortOption.value = 'الأحدث';
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.refresh_rounded, color: Colors.redAccent, size: 16),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            
+            // محدد تقسيم الشبكة
+            Row(
+              children: [
+                const Icon(Icons.grid_view_rounded, color: Colors.white30, size: 16),
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1A1A2E),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  ),
+                  child: Row(
+                    children: [2, 3, 4, 5].map((cols) {
+                      final isSelected = ctrl.gridColumns.value == cols;
+                      return GestureDetector(
+                        onTap: () => ctrl.updateGridColumns(cols),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: isSelected ? const Color(0xFF1877F2) : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '$cols',
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : Colors.white60,
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontFamily: 'IBMPlexSansArabic',
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       );
@@ -535,14 +581,21 @@ class ProductCatalogScreen extends StatelessWidget {
               onDelete: () => _confirmDelete(ctrl, items[i]),
               onShare: () => _shareProduct(items[i], toFacebook: false),
               onShareFacebook: () => _shareProduct(items[i], toFacebook: true),
+              columns: ctrl.gridColumns.value,
             ),
             childCount: items.length,
           ),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.72,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: ctrl.gridColumns.value,
+            childAspectRatio: ctrl.gridColumns.value == 2
+                ? 0.72
+                : ctrl.gridColumns.value == 3
+                    ? 0.68
+                    : ctrl.gridColumns.value == 4
+                        ? 0.62
+                        : 0.58,
+            crossAxisSpacing: ctrl.gridColumns.value >= 4 ? 8 : 12,
+            mainAxisSpacing: ctrl.gridColumns.value >= 4 ? 8 : 12,
           ),
         ),
       );

@@ -3,7 +3,6 @@ import 'package:get/get.dart'; // استيراد حزمة GetX لإدارة ال
 import 'package:flutter/foundation.dart'
     show kIsWeb; // استيراد ثوابت للتحقق من المنصة ووضع التشغيل
 import 'dart:io' show Platform; // استيراد مكتبة التعامل مع نظام التشغيل
-import 'package:sqflite_common_ffi/sqflite_ffi.dart'; // استيراد مكتبة قواعد البيانات للديسكتوب
 import 'package:firebase_core/firebase_core.dart'; // استيراد المكتبة الأساسية لخدمات Firebase
 import 'package:cloud_firestore/cloud_firestore.dart'; // استيراد مكتبة Cloud Firestore للتعامل مع قواعد البيانات السحابية
 import 'package:media_kit/media_kit.dart'; // استيراد مكتبة تشغيل الوسائط المتعددة (فيديو وصوت)
@@ -37,6 +36,7 @@ import 'services/ai_image_generation_service.dart'; // خدمة توليد ال�
 
 import 'package:flutter_screenutil/flutter_screenutil.dart'; // حزمة لجعل التصميم متجاوباً مع أحجام الشاشات
 import 'package:responsive_framework/responsive_framework.dart';
+import 'core/config/supabase_config.dart'; // إعدادات Supabase
 import 'core/storage/app_storage_service.dart'; // خدمة التخزين الموحدة
 import 'services/secure_storage_service.dart';
 import 'theme/app_theme.dart'; // استيراد نظام الألوان والتصميم (الثيم) الخاص بالتطبيق
@@ -46,19 +46,15 @@ Future<void> main() async {
   // التأكد من تهيئة روابط Flutter قبل البدء بأي عمليات
   WidgetsFlutterBinding.ensureInitialized();
   
+  // ⚡ تهيئة Supabase للمصادقة وقواعد البيانات
+  await SupabaseConfig.initialize();
+  
   // 🎬 تهيئة مكتبة الميديا لتشغيل الفيديوهات والتريندات (Media Kit)
   MediaKit.ensureInitialized();
 
   // 📂 تهيئة خدمة التخزين الموحدة (AppStorageService)
   Get.put(SecureStorageService(), permanent: true);
   await Get.putAsync(() => AppStorageService().init(), permanent: true);
-
-  // 📂 تهيئة قاعدة بيانات SQLite للعمل على أنظمة الديسكتوب (Windows/Linux)
-  if (!kIsWeb && (Platform.isWindows || Platform.isLinux)) {
-    sqfliteFfiInit(); // تهيئة المكتبة
-    databaseFactory =
-        databaseFactoryFfi; // تعيين المصنع الخاص بقواعد بيانات الديسكتوب
-  }
 
   // 🩹 رقعة استقرار لنظام ويندوز للتعامل مع معالجة الفيديو
   if (!kIsWeb && Platform.isWindows) {
@@ -69,16 +65,15 @@ Future<void> main() async {
   bool firebaseInitialized = false;
   try {
     if (kIsWeb) {
-      // 🌐 خيارات Firebase للويب (من Firebase Console > Project Settings > Web Apps)
+      // 🌐 خيارات Firebase للويب
       await Firebase.initializeApp(
         options: const FirebaseOptions(
-          apiKey: 'AIzaSyAPVyg6vgYP6iJbNYMVkgD5OrpZWRGLPgU',
-          appId: '1:947880578188:web:d3143bd966646695af3fa9',
-          messagingSenderId: '947880578188',
-          projectId: 'smartcontentcreator-d49f2',
-          storageBucket: 'smartcontentcreator-d49f2.firebasestorage.app',
-          authDomain: 'smartcontentcreator-d49f2.firebaseapp.com',
-          measurementId: 'G-8S56GE79C9',
+          apiKey: 'AIzaSyBQlnuayzx7XICG2fMrUnSLrxq0D1kocfc',
+          appId: '1:663916675240:web:6afa3dc19dcb77e26a829d',
+          messagingSenderId: '663916675240',
+          projectId: 'smartcontentcreator2',
+          storageBucket: 'smartcontentcreator2.firebasestorage.app',
+          authDomain: 'smartcontentcreator2.firebaseapp.com',
         ),
       );
     } else {

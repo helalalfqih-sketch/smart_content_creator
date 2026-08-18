@@ -7,13 +7,14 @@ import 'package:shimmer/shimmer.dart';
 import '../../../models/catalog_product_model.dart';
 import '../../../controllers/auth_controller.dart';
 
-/// 📇 كارت عرض المنتج في شبكة الكتالوج مع تحسينات الأداء والذاكرة
+/// 📇 كارت عرض المنتج في شبكة الكتالوج
 class ProductCard extends StatelessWidget {
   final CatalogProduct product;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onShare;
   final VoidCallback onShareFacebook;
+  final int columns;
 
   const ProductCard({
     super.key,
@@ -22,6 +23,7 @@ class ProductCard extends StatelessWidget {
     required this.onDelete,
     required this.onShare,
     required this.onShareFacebook,
+    this.columns = 2,
   });
 
   @override
@@ -82,66 +84,106 @@ class ProductCard extends StatelessWidget {
                   ),
                   // شارة المزامنة والحالة
                   Positioned(
-                    top: 8,
-                    left: 8,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // شارة الحالة (pending, approved, rejected)
-                        Container(
-                          margin: const EdgeInsets.only(bottom: 4),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: product.status == 'approved'
-                                ? Colors.green.withValues(alpha: 0.85)
-                                : product.status == 'rejected'
-                                    ? Colors.red.withValues(alpha: 0.85)
-                                    : Colors.amber.withValues(alpha: 0.85),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            product.status == 'approved'
-                                ? '✓ مقبول'
-                                : product.status == 'rejected'
-                                    ? '🚫 مرفوض'
-                                    : '⏳ معلق',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontFamily: 'IBMPlexSansArabic',
-                              fontWeight: FontWeight.bold,
+                    top: columns >= 4 ? 6 : 8,
+                    left: columns >= 4 ? 6 : 8,
+                    child: columns >= 4
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(4),
                             ),
-                          ),
-                        ),
-                        // شارة المزامنة
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: product.isSynced
-                                ? Colors.blue.withValues(alpha: 0.85)
-                                : Colors.grey.withValues(alpha: 0.85),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            product.isSynced ? '✓ متزامن Meta' : '⏳ غير متزامن',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontFamily: 'IBMPlexSansArabic',
-                              fontWeight: FontWeight.bold,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // نقطة الحالة
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: product.status == 'approved'
+                                        ? Colors.green
+                                        : product.status == 'rejected'
+                                            ? Colors.red
+                                            : Colors.amber,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 3),
+                                // نقطة المزامنة
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: BoxDecoration(
+                                    color: product.isSynced ? Colors.blue : Colors.grey,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ],
                             ),
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // شارة الحالة (pending, approved, rejected)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: product.status == 'approved'
+                                      ? Colors.green.withValues(alpha: 0.85)
+                                      : product.status == 'rejected'
+                                          ? Colors.red.withValues(alpha: 0.85)
+                                          : Colors.amber.withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  product.status == 'approved'
+                                      ? '✓ مقبول'
+                                      : product.status == 'rejected'
+                                          ? '🚫 مرفوض'
+                                          : '⏳ معلق',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontFamily: 'IBMPlexSansArabic',
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              // شارة المزامنة
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: product.isSynced
+                                      ? Colors.blue.withValues(alpha: 0.85)
+                                      : Colors.grey.withValues(alpha: 0.85),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  product.isSynced
+                                      ? (columns == 3 ? '✓ متزامن' : '✓ متزامن Meta')
+                                      : (columns == 3 ? '⏳ معلق' : '⏳ غير متزامن'),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontFamily: 'IBMPlexSansArabic',
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                   // قائمة الإجراءات السريعة
                   Positioned(
-                    top: 4,
-                    right: 4,
+                    top: columns >= 4 ? 2 : 4,
+                    right: columns >= 4 ? 2 : 4,
                     child: PopupMenuButton<String>(
                       icon: Icon(Icons.more_vert,
-                          color: Colors.white.withValues(alpha: 0.7), size: 18),
+                          color: Colors.white.withValues(alpha: 0.7), size: columns >= 4 ? 14 : 18),
+                      padding: columns >= 4 ? EdgeInsets.zero : const EdgeInsets.all(8),
+                      constraints: columns >= 4 ? const BoxConstraints(minWidth: 80) : null,
                       color: const Color(0xFF1A1A2E),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       itemBuilder: (_) {
@@ -217,32 +259,32 @@ class ProductCard extends StatelessWidget {
             ),
             // معلومات المنتج
             Padding(
-              padding: const EdgeInsets.all(10),
+              padding: EdgeInsets.all(columns >= 4 ? 6 : 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     product.title,
-                    maxLines: 2,
+                    maxLines: columns >= 4 ? 1 : 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
                       fontFamily: 'IBMPlexSansArabic',
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      fontSize: columns >= 4 ? 10 : 12,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     product.formattedPrice,
-                    style: const TextStyle(
-                      color: Color(0xFF1877F2),
+                    style: TextStyle(
+                      color: const Color(0xFF1877F2),
                       fontFamily: 'IBMPlexSansArabic',
                       fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                      fontSize: columns >= 4 ? 11 : 13,
                     ),
                   ),
-                  if (product.brand != null && product.brand!.isNotEmpty) ...[
+                  if (columns < 4 && product.brand != null && product.brand!.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(
                       product.brand!,

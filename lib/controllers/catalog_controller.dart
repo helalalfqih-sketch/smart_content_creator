@@ -34,6 +34,7 @@ class CatalogController extends GetxController {
   final searchQuery = ''.obs;
   final feedUrl = ''.obs; // رابط الكتالوج لـ Meta
   final isMigrating = false.obs; // تتبع حالة الترحيل السحابي
+  final gridColumns = 2.obs; // تفضيل عدد الأعمدة في شبكة المنتجات
 
   // ---------------------------------------------------------------------------
   // 🖊️ حالة نموذج إضافة/تعديل المنتج
@@ -53,6 +54,7 @@ class CatalogController extends GetxController {
     super.onInit();
     loadCustomCategories();
     feedUrl.value = _appStorage.readString('catalog_feed_url') ?? '';
+    gridColumns.value = _appStorage.readInt('catalog_grid_columns', defaultValue: 2) ?? 2;
     
     // بدء الاستماع للمستودع العالمي مباشرة عند التشغيل
     setupProductsListener();
@@ -69,6 +71,13 @@ class CatalogController extends GetxController {
         runMigrationIfNeeded();
       }
     }
+  }
+
+  /// تحديث عدد الأعمدة في شبكة المنتجات وحفظ التفضيل محلياً
+  Future<void> updateGridColumns(int count) async {
+    if (count < 1 || count > 8) return;
+    gridColumns.value = count;
+    await _appStorage.writeInt('catalog_grid_columns', count);
   }
 
   void _cancelSubscription() {

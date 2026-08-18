@@ -35,12 +35,14 @@ dependencies:
   google_generative_ai: ^0.4.4
   shared_preferences: ^2.2.3
 
+  # Supabase (Backend & Auth)
+  supabase_flutter: ^2.8.0
+
   # إدارة الحالة
   get: ^4.6.6
 
   # قاعدة البيانات
   sqflite: ^2.3.0
-  sqflite_common_ffi: ^2.3.0
   path: ^1.8.3
   path_provider: ^2.1.5
 

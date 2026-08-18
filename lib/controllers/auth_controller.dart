@@ -435,69 +435,119 @@ class AuthController extends GetxController {
 
   // _checkSavedSession removed (unused)
 
-  /// تسجيل الدخول عبر البريد وكلمة المرور
+  /// تسجيل الدخول عبر Firebase Auth
   Future<bool> login(String email, String password) async {
-    if (!await ErrorHandler.hasInternetConnection()) return false;
+    if (!await ErrorHandler.hasInternetConnection()) {
+      authError.value = 'لا يوجد اتصال بالإنترنت';
+      return false;
+    }
     isLoading.value = true;
+    clearError();
     try {
-      // 1. تسجيل الدخول عبر Firebase (أو الربط إذا كان مجهولاً)
-      final credential = firebase_auth.EmailAuthProvider.credential(
-          email: email, password: password);     
-      // نستخدم linkWithCredential لضمان انتقال البيانات من الحساب المجهول إن وجد
-      final userCred = await _authService.linkWithCredential(credential);
+      final cleanEmail = email.trim();
+      final cleanPassword = password.trim();
+
+      if (kDebugMode) {
+        debugPrint("🔐 AuthController: محاولة تسجيل الدخول لـ $cleanEmail");
+      }
+
+      // 1. تسجيل الدخول المباشر عبر Firebase Auth
+      final userCred = await _authService.signInWithEmail(
+        cleanEmail,
+        cleanPassword,
+      );
+
       if (userCred != null && userCred.user != null) {
-        final user = userCred.user!;   
-        // 🛡️ التحقق الإلزامي: هل البريد مفعل؟
-        if (!user.emailVerified) {
-          Get.snackbar(
-            'تفعيل البريد مطلوب', 
-            'يرجى فتح بريدك الإلكتروني والضغط على رابط التفعيل للموافقة على دخولك.',
-            backgroundColor: Colors.orangeAccent.withValues(alpha: 0.2),
-            colorText: Colors.white,
-            mainButton: TextButton(
-              onPressed: () => resendVerificationEmail(),
-              child: const Text('إعادة إرسال', style: TextStyle(color: Colors.cyanAccent)),
-            ),
-            duration: const Duration(seconds: 8),
-          );
-          // في مرحلة التطوير قد تسمح بالدخول، ولكن للأمان سنرفض الدخول
-          return false; 
+        final user = userCred.user!;
+
+        if (kDebugMode) {
+          debugPrint("✅ AuthController: تم تسجيل الدخول بنجاح للمستخدم: ${user.uid}");
         }
 
-        // 2. المزامنة والتحويل
+        // 2. التحقق من تفعيل البريد بدون حظر الدخول
+        if (!user.emailVerified) {
+          unawaited(_authService.sendEmailVerification());
+          Get.snackbar(
+            'تنبيه التفعيل',
+            'تم تسجيل دخولك بنجاح. نوصي بالضغط على رابط تفعيل البريد لحماية حسابك.',
+            backgroundColor: Colors.orangeAccent.withValues(alpha: 0.2),
+            colorText: Colors.white,
+            duration: const Duration(seconds: 5),
+            snackPosition: SnackPosition.TOP,
+          );
+        }
+
+        // 3. المزامنة والتحويل للشاشة الرئيسية
         await _handleLoginSuccess(
           user.uid.hashCode.toString(),
           firebaseUid: user.uid,
-          email: email,
+          email: user.email ?? cleanEmail,
         );
         return true;
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint("Login Error Details: $e");
-      
-      String message = "فشل تسجيل الدخول";
-      
-      // معالجة الأخطاء الشائعة لتسجيل الدخول
-      if (e.toString().contains('user-not-found')) {
-        message = "هذا البريد الإلكتروني غير مسجل.";
-      } else if (e.toString().contains('wrong-password') || 
-                 e.toString().contains('invalid-credential')) {
-        message = "كلمة المرور غير صحيحة أو البيانات غير مطابقة.";
-      } else if (e.toString().contains('user-disabled')) {
-        message = "تم إيقاف هذا الحساب من قبل الإدارة.";
-      } else if (e.toString().contains('too-many-requests')) {
-        message = "تم حظر الدخول مؤقتاً بسبب محاولات كثيرة خاطئة. جرب لاحقاً.";
-      } else if (e.toString().contains('invalid-email')) {
-        message = "صيغة البريد الإلكتروني غير صحيحة.";
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      if (kDebugMode) {
+        debugPrint("❌ FirebaseAuthException on Login [code=${e.code}]: ${e.message}");
       }
 
+      String message = "فشل تسجيل الدخول";
+      switch (e.code) {
+        case 'user-not-found':
+          message = "هذا البريد الإلكتروني غير مسجل، يرجى إنشاء حساب جديد.";
+          break;
+        case 'wrong-password':
+          message = "كلمة المرور غير صحيحة.";
+          break;
+        case 'invalid-credential':
+        case 'INVALID_LOGIN_CREDENTIALS':
+          message = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
+          break;
+        case 'user-disabled':
+          message = "تم إيقاف هذا الحساب من قِبل الإدارة.";
+          break;
+        case 'too-many-requests':
+          message = "تم حظر الدخول مؤقتاً بسبب كثرة المحاولات. يرجى الانتظار دقيقة والمحاولة مجدداً.";
+          break;
+        case 'invalid-email':
+          message = "صيغة البريد الإلكتروني غير صالحة.";
+          break;
+        case 'operation-not-allowed':
+          message = "تسجيل الدخول بالبريد وكلمة المرور غير مفعّل في لوحة Firebase Console. تأكد من تفعيله في Sign-in method.";
+          break;
+        case 'network-request-failed':
+          message = "تعذر الاتصال بخادم Firebase، تحقق من اتصال الإنترنت.";
+          break;
+        default:
+          message = e.message ?? "حدث خطأ أثناء المصادقة (${e.code}).";
+      }
+
+      authError.value = message;
       Get.snackbar(
-        'خطأ في الدخول', 
+        'خطأ في الدخول',
         message,
-        backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
+        backgroundColor: Colors.redAccent.withValues(alpha: 0.2),
         colorText: Colors.white,
         snackPosition: SnackPosition.TOP,
         icon: const Icon(Icons.lock_person_rounded, color: Colors.orangeAccent),
+        duration: const Duration(seconds: 5),
+      );
+    } catch (e) {
+      if (kDebugMode) debugPrint("❌ Generic Login Error: $e");
+      String message = "فشل تسجيل الدخول: $e";
+      if (e.toString().contains('user-not-found')) {
+        message = "هذا البريد الإلكتروني غير مسجل.";
+      } else if (e.toString().contains('wrong-password') || e.toString().contains('invalid-credential')) {
+        message = "البريد الإلكتروني أو كلمة المرور غير صحيحة.";
+      }
+
+      authError.value = message;
+      Get.snackbar(
+        'خطأ في الدخول',
+        message,
+        backgroundColor: Colors.redAccent.withValues(alpha: 0.2),
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+        icon: const Icon(Icons.error_outline_rounded, color: Colors.redAccent),
       );
     } finally {
       isLoading.value = false;
@@ -507,8 +557,8 @@ class AuthController extends GetxController {
 
   Future<bool> loginWithValidation(String email, String password) async {
     clearError();
-    final error = AuthValidation.validateEmail(email) ?? 
-                  AuthValidation.validatePassword(password);
+    final error = AuthValidation.validateEmail(email) ??
+        AuthValidation.validatePassword(password);
     if (error != null) {
       authError.value = error;
       return false;
@@ -516,61 +566,93 @@ class AuthController extends GetxController {
     return await login(email, password);
   }
 
-  /// 🟢 إنشاء حساب جديد أو ترقية الحساب المجهول (Registration/Upgrade)
+  /// 🟢 إنشاء حساب جديد في Firebase Auth (Registration)
   Future<bool> signUp(String email, String password) async {
-    if (!await ErrorHandler.hasInternetConnection()) return false;
+    if (!await ErrorHandler.hasInternetConnection()) {
+      authError.value = 'لا يوجد اتصال بالإنترنت';
+      return false;
+    }
     isLoading.value = true;
+    clearError();
     try {
-      // 1. استدعاء خدمة التسجيل (التي تتعامل مع الترقية تلقائياً)
-      final userCred = await _authService.registerWithEmail(email, password);
+      final cleanEmail = email.trim();
+      final cleanPassword = password.trim();
+
+      final userCred = await _authService.registerWithEmail(cleanEmail, cleanPassword);
 
       if (userCred != null && userCred.user != null) {
-        
-        // 📧 إرسال بريد التحقق فور التسجيل
-        await _authService.sendEmailVerification();
-        
-        // تسجيل الخروج فوراً لفرض التفعيل قبل أول دخول (أمان عالي)
-        await _authService.signOut();
-        
+        final user = userCred.user!;
+
+        // محاولة إرسال بريد تفعيل بدون إيقاف تسجيل الدخول
+        try {
+          await user.sendEmailVerification();
+        } catch (_) {}
+
         Get.snackbar(
-          'خطوة أخيرة هامة', 
-          'تم إنشاء الحساب بنجاح. يرجى تفعيل بريدك الإلكتروني عبر الرابط المرسل إليك لتتمكن من الدخول.',
-          backgroundColor: Colors.blueAccent.withValues(alpha: 0.2),
+          'أهلاً بك',
+          'تم إنشاء حسابك بنجاح وتسجيل الدخول.',
+          backgroundColor: Colors.green.withValues(alpha: 0.2),
           colorText: Colors.white,
-          duration: const Duration(seconds: 10),
+          duration: const Duration(seconds: 4),
           snackPosition: SnackPosition.TOP,
-          icon: const Icon(Icons.mark_email_unread_rounded, color: Colors.cyanAccent),
+          icon: const Icon(Icons.check_circle_rounded, color: Colors.greenAccent),
         );
-        
-        // لا نقوم باستدعاء _handleLoginSuccess هنا لكي لا يدخل المستخدم
-        // بل نوجهه لشاشة تسجيل الدخول
-        Get.offAllNamed('/login');
+
+        // 2. المزامنة والتحويل للشاشة الرئيسية
+        await _handleLoginSuccess(
+          user.uid.hashCode.toString(),
+          firebaseUid: user.uid,
+          email: user.email ?? cleanEmail,
+        );
+        Get.offAllNamed('/main');
         return true;
       }
-    } catch (e) {
-      if (kDebugMode) debugPrint("SignUp Error Details: $e");
-      
-      String message = "فشل إنشاء الهوية الرقمية";
-      
-      // معالجة الأكواد البرمجية لـ Firebase بشكل احترافي
-      if (e.toString().contains('email-already-in-use') || 
-          e.toString().contains('credential-already-in-use')) {
-        message = "هذا البريد الإلكتروني مسجل مسبقاً. جرب تسجيل الدخول بدلاً من ذلك.";
-      } else if (e.toString().contains('weak-password')) {
-        message = "كلمة المرور ضعيفة جداً. استخدم 6 أحرف على الأقل.";
-      } else if (e.toString().contains('invalid-email')) {
-        message = "صيغة البريد الإلكتروني غير صحيحة.";
-      } else if (e.toString().contains('network-request-failed')) {
-        message = "فشل الاتصال بالخادم، تأكد من جودة الإنترنت.";
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      if (kDebugMode) {
+        debugPrint("❌ FirebaseAuthException on SignUp [code=${e.code}]: ${e.message}");
       }
-      
+
+      String message = "فشل إنشاء الحساب";
+      switch (e.code) {
+        case 'email-already-in-use':
+        case 'credential-already-in-use':
+          message = "هذا البريد الإلكتروني مسجل مسبقاً. يمكنك تسجيل الدخول مباشرة.";
+          break;
+        case 'weak-password':
+          message = "كلمة المرور ضعيفة جداً. استخدم 6 خانات على الأقل.";
+          break;
+        case 'invalid-email':
+          message = "صيغة البريد الإلكتروني غير صالحة.";
+          break;
+        case 'operation-not-allowed':
+          message = "إنشاء الحسابات بالبريد غير مفعّل في إعدادات Firebase Console. تأكد من تفعيله في Sign-in method.";
+          break;
+        case 'network-request-failed':
+          message = "تعذر الاتصال بالخادم، تحقق من جودة الإنترنت.";
+          break;
+        default:
+          message = e.message ?? "حدث خطأ أثناء إنشاء الحساب (${e.code}).";
+      }
+
+      authError.value = message;
       Get.snackbar(
-        'تنبيه المصادقة', 
-        message, 
-        backgroundColor: Colors.redAccent.withValues(alpha: 0.1),
+        'تنبيه التسجيل',
+        message,
+        backgroundColor: Colors.redAccent.withValues(alpha: 0.2),
         colorText: Colors.white,
         snackPosition: SnackPosition.TOP,
         icon: const Icon(Icons.error_outline_rounded, color: Colors.redAccent),
+      );
+    } catch (e) {
+      if (kDebugMode) debugPrint("❌ SignUp Error Details: $e");
+      String message = "فشل إنشاء الحساب: $e";
+      authError.value = message;
+      Get.snackbar(
+        'تنبيه التسجيل',
+        message,
+        backgroundColor: Colors.redAccent.withValues(alpha: 0.2),
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
       );
     } finally {
       isLoading.value = false;
@@ -924,8 +1006,9 @@ class AuthController extends GetxController {
       _currentUser.value = null;
       await _storage.remove(StorageKeys.loggedUserId);
 
-      // Sign out from social providers too
+      // Sign out from social providers and Supabase
       await _authService.signOut();
+      await _authService.signOutSupabase();
 
       _userSubscription?.cancel();
       Get.offAllNamed('/login');
@@ -1229,7 +1312,7 @@ class AuthController extends GetxController {
     if (!await ErrorHandler.hasInternetConnection()) return false;
     isLoading.value = true;
     try {
-      await _authService.requestPasswordResetOtp(email);
+      await _authService.sendSupabasePasswordReset(email.trim());
       
       Get.snackbar(
         'تم إرسال الرابط',
