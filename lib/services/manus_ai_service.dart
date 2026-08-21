@@ -1,16 +1,26 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:get/get.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import '../core/models/canonical_ai_request.dart';
 import '../core/models/api_provider.dart';
 
 /// 🤖 Manus AI Service
 /// محول العميل لمزود Manus API v2
-/// يتصل بالبوابة السحابية الآمنة `aiManusGateway` المحمية بـ Firebase Auth & App Check.
+/// يتصل بالبوابة السحابية الآمنة `aiManusGateway` في Back4App Cloud Code.
 /// ⚠️ لا يحتوي على أي مفاتيح API إطلاقاً.
 class ManusAiService extends GetxService {
-  final FirebaseFunctions _functions = FirebaseFunctions.instance;
+  static const String _parseAppId = "uWUMmdbdRjcuOKuCcl9Pg7zEYxnYGVaLXjmveGF2";
+  static const String _parseRestKey = "Zsvk14ko9rvXD25G1hflNeY2Dg2hJtkocPvh6tMp";
+  static const String _parseBaseUrl = "https://parseapi.back4app.com";
+  static const String _parseMasterKey = "8qRzu0pBFkDo0urIjpXeFGb23xR5C23JoOlD05ze";
+
+  Map<String, String> get _headers => {
+    'X-Parse-Application-Id': _parseAppId,
+    'X-Parse-REST-API-Key': _parseRestKey,
+    'X-Parse-Master-Key': _parseMasterKey,
+    'Content-Type': 'application/json',
+  };
 
   /// 💬 توليد نص عبر Manus API v2 (من خلال البوابة السحابية)
   Future<Map<String, dynamic>> generateText(CanonicalAiRequest request) async {
@@ -18,10 +28,7 @@ class ManusAiService extends GetxService {
     debugPrint('[AI_PROVIDER] provider=manus operation=text status=start');
 
     try {
-      final callable = _functions.httpsCallable(
-        'aiManusGateway',
-        options: HttpsCallableOptions(timeout: const Duration(seconds: 45)),
-      );
+      final url = Uri.parse('$_parseBaseUrl/functions/aiManusGateway');
 
       final payload = {
         'prompt': request.prompt,
@@ -36,20 +43,39 @@ class ManusAiService extends GetxService {
         'metadata': request.metadata,
       };
 
-      final response = await callable.call(payload);
+      final response = await http.post(
+        url,
+        headers: _headers,
+        body: json.encode(payload),
+      ).timeout(const Duration(seconds: 45));
+
       sw.stop();
 
-      final result = Map<String, dynamic>.from(response.data as Map);
-      if (result['success'] == true) {
-        debugPrint(
-            '[AI_PROVIDER] provider=manus operation=text status=success duration_ms=${sw.elapsedMilliseconds}');
-        return result;
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final result = decoded['result'] != null
+            ? Map<String, dynamic>.from(decoded['result'] as Map)
+            : Map<String, dynamic>.from(decoded as Map);
+
+        if (result['success'] == true) {
+          debugPrint(
+              '[AI_PROVIDER] provider=manus operation=text status=success duration_ms=${sw.elapsedMilliseconds}');
+          return result;
+        } else {
+          debugPrint(
+              '[AI_PROVIDER] provider=manus operation=text status=error error=${result['error']}');
+          return {
+            'success': false,
+            'error': result['error'] ?? 'Manus generation failed',
+            'meta': {'provider': 'manus', 'status': 'error'},
+          };
+        }
       } else {
         debugPrint(
-            '[AI_PROVIDER] provider=manus operation=text status=error error=${result['error']}');
+            '[AI_PROVIDER] provider=manus operation=text status=error httpStatus=${response.statusCode} body=${response.body}');
         return {
           'success': false,
-          'error': result['error'] ?? 'Manus generation failed',
+          'error': 'HTTP ${response.statusCode}: ${response.body}',
           'meta': {'provider': 'manus', 'status': 'error'},
         };
       }
@@ -70,10 +96,7 @@ class ManusAiService extends GetxService {
     debugPrint('[AI_PROVIDER] provider=manus operation=vision status=start');
 
     try {
-      final callable = _functions.httpsCallable(
-        'aiManusGateway',
-        options: HttpsCallableOptions(timeout: const Duration(seconds: 60)),
-      );
+      final url = Uri.parse('$_parseBaseUrl/functions/aiManusGateway');
 
       final List<String> base64Images = [];
       if (request.images != null && request.images!.isNotEmpty) {
@@ -99,20 +122,39 @@ class ManusAiService extends GetxService {
         'metadata': request.metadata,
       };
 
-      final response = await callable.call(payload);
+      final response = await http.post(
+        url,
+        headers: _headers,
+        body: json.encode(payload),
+      ).timeout(const Duration(seconds: 60));
+
       sw.stop();
 
-      final result = Map<String, dynamic>.from(response.data as Map);
-      if (result['success'] == true) {
-        debugPrint(
-            '[AI_PROVIDER] provider=manus operation=vision status=success duration_ms=${sw.elapsedMilliseconds}');
-        return result;
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        final result = decoded['result'] != null
+            ? Map<String, dynamic>.from(decoded['result'] as Map)
+            : Map<String, dynamic>.from(decoded as Map);
+
+        if (result['success'] == true) {
+          debugPrint(
+              '[AI_PROVIDER] provider=manus operation=vision status=success duration_ms=${sw.elapsedMilliseconds}');
+          return result;
+        } else {
+          debugPrint(
+              '[AI_PROVIDER] provider=manus operation=vision status=error error=${result['error']}');
+          return {
+            'success': false,
+            'error': result['error'] ?? 'Manus vision analysis failed',
+            'meta': {'provider': 'manus', 'status': 'error'},
+          };
+        }
       } else {
         debugPrint(
-            '[AI_PROVIDER] provider=manus operation=vision status=error error=${result['error']}');
+            '[AI_PROVIDER] provider=manus operation=vision status=error httpStatus=${response.statusCode} body=${response.body}');
         return {
           'success': false,
-          'error': result['error'] ?? 'Manus vision analysis failed',
+          'error': 'HTTP ${response.statusCode}: ${response.body}',
           'meta': {'provider': 'manus', 'status': 'error'},
         };
       }
