@@ -51,7 +51,8 @@ CRITICAL: Distinguish between a commercial product (for sale) and a personal ite
 
 Return ONLY JSON:
 {
-  "name": "Specific product name OR visual description (e.g., 'Person wearing grey shawl')",
+  "name": "Specific product name OR visual description (e.g., 'Rechargeable Electric Scalp Massager Brush')",
+  "chinese_name": "Accurate, concise Chinese search keyword for Chinese platforms e.g. 1688, Douyin, RedNote, JD (2-6 Chinese characters without filler words, e.g. '电动头皮按摩爪' or '宠物喷雾梳')",
   "category": "Category (Electronics, Fashion, Person, Home, Selfie, Food)",
   "brand": "Brand or 'Unknown'",
   "is_commercial": true/false,

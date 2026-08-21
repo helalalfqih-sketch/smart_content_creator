@@ -97,58 +97,33 @@ class PlatformQueryBuilder {
   // ─────────────────────────────────────────────────────────────
   static List<String> _buildDouyin(ProductSearchContext ctx) {
     final zh = ctx.bestChineseQuery;
-    final en = ctx.displayName;
 
-    // إذا لديه اسم صيني، استخدمه مع كلمات التجارة
-    if (ctx.chineseName.isNotEmpty) {
-      return [
-        zh,
-        '$zh 带货',     // Livestream selling
-        '$zh 种草',     // Product recommendation
-        '$zh 测评',     // Review
-        '$zh 实拍',     // Real shot/demo
-        '$zh 好物推荐', // Good product recommendation
-        en,             // Fallback إنجليزي
-      ];
-    }
-
-    // إذا ليس لديه اسم صيني، ابحث بالإنجليزي مع كلمات التجارة
     return [
-      en,
-      '$en 带货',
-      '$en 测评',
-      '$en 种草',
-      ctx.shortQuery,
+      zh,
+      '$zh 带货',     // Livestream selling
+      '$zh 种草',     // Product recommendation
+      '$zh 测评',     // Review
+      '$zh 实拍',     // Real shot/demo
+      '$zh 好物推荐', // Good product recommendation
     ].where((q) => q.trim().isNotEmpty).toList();
   }
 
   // ─────────────────────────────────────────────────────────────
-  // 📕 Rednote (小红书) — تجربة المنتج والمراجعات
+  // 📕 Rednote (小红书) — تجربة المنتج والمراجعات بالصيني
   // ─────────────────────────────────────────────────────────────
   static List<String> _buildRednote(ProductSearchContext ctx) {
     final zh = ctx.bestChineseQuery;
-    final en = ctx.displayName;
-
-    if (ctx.chineseName.isNotEmpty) {
-      return [
-        '$zh 使用体验',  // Usage experience
-        '$zh 测评',      // Review
-        '$zh 推荐',      // Recommendation
-        '$zh 值得买吗',  // Worth buying?
-        '$zh 好用吗',    // Is it good?
-        zh,
-        en,
-      ];
-    }
 
     return [
-      '$en review',
-      '$en experience',
-      '$en worth it',
-      en,
-      ctx.shortQuery,
+      zh,
+      '$zh 使用体验',  // Usage experience
+      '$zh 测评',      // Review
+      '$zh 推荐',      // Recommendation
+      '$zh 值得买吗',  // Worth buying?
+      '$zh 好用吗',    // Is it good?
     ].where((q) => q.trim().isNotEmpty).toList();
   }
+
 
   // ─────────────────────────────────────────────────────────────
   // 🐦 Twitter/X — بحث بالإنجليزي + engagement keywords
@@ -173,24 +148,14 @@ class PlatformQueryBuilder {
   // ─────────────────────────────────────────────────────────────
   static List<String> _buildKuaishou(ProductSearchContext ctx) {
     final zh = ctx.bestChineseQuery;
-    final en = ctx.displayName;
-
-    if (ctx.chineseName.isNotEmpty) {
-      return [
-        '$zh 好物推荐',  // Good product recommendation
-        '$zh 实测',      // Real test
-        '$zh 直播',      // Livestream
-        '$zh 开箱',      // Unboxing
-        zh,
-        en,
-      ];
-    }
 
     return [
-      '$en demo',
-      '$en review',
-      en,
-      ctx.shortQuery,
+      zh,
+      '$zh 好物推荐',  // Good product recommendation
+      '$zh 测评',      // Review
+      '$zh 实测',      // Real test
+      '$zh 直播',      // Livestream
+      '$zh 开箱',      // Unboxing
     ].where((q) => q.trim().isNotEmpty).toList();
   }
 
@@ -230,21 +195,19 @@ class PlatformQueryBuilder {
   }
 
   // ─────────────────────────────────────────────────────────────
-  // 🔧 JD.com (京东) — تحديد المنتج والموديل
+  // 🔧 JD.com (京东) — تحديد المنتج والموديل بالصيني
   // ─────────────────────────────────────────────────────────────
   static List<String> _buildJD(ProductSearchContext ctx) {
     final zh = ctx.bestChineseQuery;
-    final en = ctx.displayName;
     final brand = ctx.brand;
     final model = ctx.model;
 
     return [
       if (brand.isNotEmpty && model.isNotEmpty) '$brand $model',
-      if (ctx.chineseName.isNotEmpty) zh,
-      if (brand.isNotEmpty) '$brand ${ctx.category}'.trim(),
-      ctx.shortQuery,
-      en,
-    ].where((q) => q.trim().isNotEmpty).toList();
+      if (brand.isNotEmpty && zh.isNotEmpty) '$brand $zh',
+      zh,
+      if (model.isNotEmpty) '$zh $model',
+    ].where((q) => q.trim().isNotEmpty && !q.toLowerCase().contains('unknown')).toList();
   }
 
   // ─────────────────────────────────────────────────────────────
