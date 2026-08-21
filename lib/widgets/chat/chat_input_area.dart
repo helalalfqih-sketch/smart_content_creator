@@ -527,8 +527,20 @@ class ChatInputArea extends StatelessWidget {
     if (aiRouter == null) return const SizedBox.shrink();
 
     return Obx(() {
-      final isFirebase = aiRouter.currentBackend.value == 'firebase_ai';
-      final chipColor = isFirebase ? const Color(0xFF8B5CF6) : const Color(0xFF00E5FF);
+      final backend = aiRouter.currentBackend.value;
+      final Color chipColor;
+      final String chipLabel;
+
+      if (backend == 'firebase_ai') {
+        chipColor = const Color(0xFF8B5CF6);
+        chipLabel = "Firebase AI 🟣";
+      } else if (backend == 'manus') {
+        chipColor = const Color(0xFF10B981);
+        chipLabel = "Manus AI 🤖";
+      } else {
+        chipColor = const Color(0xFF00E5FF);
+        chipLabel = "Back4App ☁️";
+      }
 
       return GestureDetector(
         onTap: () => _showModelSwitcherSheet(),
@@ -544,7 +556,7 @@ class ChatInputArea extends StatelessWidget {
             children: [
               Flexible(
                 child: Text(
-                  isFirebase ? "Firebase AI 🟣" : "Back4App ☁️",
+                  chipLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -572,8 +584,14 @@ class ChatInputArea extends StatelessWidget {
     final router = Get.isRegistered<AIBackendRouter>()
         ? Get.find<AIBackendRouter>()
         : null;
-    final isFirebase = router?.currentBackend.value == 'firebase_ai';
-    return isFirebase ? "اسأل Firebase AI..." : "اسأل Back4App Gateway...";
+    final backend = router?.currentBackend.value;
+    if (backend == 'firebase_ai') {
+      return "اسأل Firebase AI...";
+    } else if (backend == 'manus') {
+      return "اسأل Manus AI (v2)...";
+    } else {
+      return "اسأل Back4App Gateway...";
+    }
   }
 
   void _showModelSwitcherSheet() {
@@ -644,43 +662,63 @@ class ChatInputArea extends StatelessWidget {
                     aiRouter: aiRouter,
                   )),
 
+                  // 3. Manus AI Engine (v2 Agent)
+                  Obx(() => _buildBackendMenuItem(
+                    label: "Manus AI (v2 Agent) 🤖",
+                    sublabel: "محرك Manus v2 المستقل",
+                    icon: Icons.psychology_rounded,
+                    backendKey: 'manus',
+                    aiRouter: aiRouter,
+                  )),
+
                   const Divider(color: Colors.white10, height: 30),
 
-                  // 3. Status Info Box
-                  Obx(() => Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.04),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          aiRouter.currentBackend.value == 'firebase_ai'
-                              ? Icons.verified_rounded
-                              : Icons.cloud_sync_rounded,
-                          color: aiRouter.currentBackend.value == 'firebase_ai'
-                              ? const Color(0xFF8B5CF6)
-                              : const Color(0xFF00E5FF),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            aiRouter.currentBackend.value == 'firebase_ai'
-                                ? "المحرك النشط الآن: Firebase AI Logic SDK"
-                                : "المحرك النشط الآن: Back4App Cloud Proxy",
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                              fontFamily: 'IBMPlexSansArabic',
+                  // 4. Status Info Box
+                  Obx(() {
+                    final current = aiRouter.currentBackend.value;
+                    final Color statusColor;
+                    final IconData statusIcon;
+                    final String statusText;
+
+                    if (current == 'firebase_ai') {
+                      statusColor = const Color(0xFF8B5CF6);
+                      statusIcon = Icons.verified_rounded;
+                      statusText = "المحرك النشط الآن: Firebase AI Logic SDK";
+                    } else if (current == 'manus') {
+                      statusColor = const Color(0xFF10B981);
+                      statusIcon = Icons.psychology_rounded;
+                      statusText = "المحرك النشط الآن: Manus API v2 Gateway";
+                    } else {
+                      statusColor = const Color(0xFF00E5FF);
+                      statusIcon = Icons.cloud_sync_rounded;
+                      statusText = "المحرك النشط الآن: Back4App Cloud Proxy";
+                    }
+
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(statusIcon, color: statusColor, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              statusText,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontFamily: 'IBMPlexSansArabic',
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  )),
+                        ],
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -702,9 +740,14 @@ class ChatInputArea extends StatelessWidget {
     required AIBackendRouter aiRouter,
   }) {
     final bool isSelected = aiRouter.currentBackend.value == backendKey;
-    final accentColor = backendKey == 'firebase_ai'
-        ? const Color(0xFF8B5CF6)
-        : const Color(0xFF00E5FF);
+    final Color accentColor;
+    if (backendKey == 'firebase_ai') {
+      accentColor = const Color(0xFF8B5CF6);
+    } else if (backendKey == 'manus') {
+      accentColor = const Color(0xFF10B981);
+    } else {
+      accentColor = const Color(0xFF00E5FF);
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -719,12 +762,15 @@ class ChatInputArea extends StatelessWidget {
         onTap: () {
           aiRouter.switchBackend(backendKey);
           Get.back();
-          SnackBarUtils.showSuccess(
-            "تم تبديل المحرك",
-            backendKey == 'firebase_ai'
-                ? "تم التبديل إلى Firebase AI Logic 🟣"
-                : "تم التبديل إلى Back4App Gateway ☁️",
-          );
+          final String switchMsg;
+          if (backendKey == 'firebase_ai') {
+            switchMsg = "تم التبديل إلى Firebase AI Logic 🟣";
+          } else if (backendKey == 'manus') {
+            switchMsg = "تم التبديل إلى Manus AI (v2) 🤖";
+          } else {
+            switchMsg = "تم التبديل إلى Back4App Gateway ☁️";
+          }
+          SnackBarUtils.showSuccess("تم تبديل المحرك", switchMsg);
         },
         leading: Container(
           padding: const EdgeInsets.all(8),
@@ -759,6 +805,7 @@ class ChatInputArea extends StatelessWidget {
       ),
     );
   }
+
 
 
 }

@@ -310,7 +310,7 @@ class FirestoreUserService extends GetxService {
     required String newBackend,
   }) async {
     try {
-      final allowed = ['firebase_ai', 'backend'];
+      final allowed = ['firebase_ai', 'backend', 'manus'];
       if (!allowed.contains(newBackend)) {
         if (kDebugMode) {
           debugPrint('❌ قيمة ai_backend غير مسموحة: $newBackend');
