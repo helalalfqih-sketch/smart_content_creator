@@ -29,7 +29,11 @@ class ManusAiService extends GetxService {
         'history': request.history,
         'maxTokens': request.maxTokens,
         'temperature': request.temperature,
+        'isModificationMode': request.isModificationMode,
+        'templateId': request.templateId,
+        'templateInputs': request.templateInputs,
         'taskType': request.taskType,
+        'metadata': request.metadata,
       };
 
       final response = await callable.call(payload);
@@ -60,7 +64,7 @@ class ManusAiService extends GetxService {
     }
   }
 
-  /// 📸 تحليل صورة منتج عبر Manus API v2 (من خلال البوابة السحابية)
+  /// 📸 تحليل صورة أو صور منتج عبر Manus API v2 (من خلال البوابة السحابية)
   Future<Map<String, dynamic>> analyzeVision(CanonicalAiRequest request) async {
     final sw = Stopwatch()..start();
     debugPrint('[AI_PROVIDER] provider=manus operation=vision status=start');
@@ -71,20 +75,28 @@ class ManusAiService extends GetxService {
         options: HttpsCallableOptions(timeout: const Duration(seconds: 60)),
       );
 
-      String? base64Image;
-      if (request.imageBytes != null) {
-        base64Image = base64Encode(request.imageBytes!);
-      } else if (request.images != null && request.images!.isNotEmpty) {
-        base64Image = base64Encode(request.images!.first);
+      final List<String> base64Images = [];
+      if (request.images != null && request.images!.isNotEmpty) {
+        for (final img in request.images!) {
+          base64Images.add(base64Encode(img));
+        }
+      } else if (request.imageBytes != null) {
+        base64Images.add(base64Encode(request.imageBytes!));
       }
 
       final payload = {
         'prompt': request.prompt,
         'systemPersona': request.systemPersona,
         'history': request.history,
-        'image': base64Image,
+        'images': base64Images,
         'mimeType': request.mimeType,
-        'taskType': 'vision',
+        'maxTokens': request.maxTokens,
+        'temperature': request.temperature,
+        'isModificationMode': request.isModificationMode,
+        'templateId': request.templateId,
+        'templateInputs': request.templateInputs,
+        'taskType': request.taskType.isNotEmpty ? request.taskType : 'vision',
+        'metadata': request.metadata,
       };
 
       final response = await callable.call(payload);

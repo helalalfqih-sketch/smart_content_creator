@@ -297,13 +297,23 @@ exports.server = functions.https.onRequest(async (req, res) => {
 // ============================================
 
 exports.aiManusGateway = functions.https.onCall(async (data, context) => {
-  // 1. Verify App Check if present
-  if (context.app === undefined && process.env.NODE_ENV === 'production') {
-    // In production, enforce App Check
-    console.warn('[MANUS_GATEWAY] App Check token missing in production');
+  // 1. 🔒 ENFORCE Firebase Auth (Strict Authentication)
+  if (!context.auth) {
+    throw new functions.https.HttpsError(
+      'unauthenticated',
+      'User must be authenticated to access Manus AI Gateway.'
+    );
   }
 
-  // 2. Read Backend API Key
+  // 2. 🛡️ ENFORCE Firebase App Check (Strict Device Attestation)
+  if (!context.app) {
+    throw new functions.https.HttpsError(
+      'permission-denied',
+      'App Check verification failed. Unverified apps cannot access Manus AI Gateway.'
+    );
+  }
+
+  // 3. 🗝️ Read Backend API Key (Never exposed to client)
   const manusApiKey = process.env.MANUS_API_KEY;
   if (!manusApiKey) {
     console.error('[MANUS_GATEWAY] MANUS_API_KEY environment variable is not configured');
@@ -313,18 +323,21 @@ exports.aiManusGateway = functions.https.onCall(async (data, context) => {
     );
   }
 
+  // 4. 📦 Read Canonical Request Properties
   const prompt = (data && data.prompt) || '';
   const systemPersona = (data && data.systemPersona) || '';
   const history = (data && data.history) || [];
-  const imageBase64 = (data && data.image) || null;
+  const images = (data && data.images) || (data && data.image ? [data.image] : []);
   const mimeType = (data && data.mimeType) || 'image/jpeg';
+  const isModificationMode = Boolean(data && data.isModificationMode);
   const taskType = (data && data.taskType) || 'general';
+  const metadata = (data && data.metadata) || {};
 
-  if (!prompt && !imageBase64) {
-    throw new functions.https.HttpsError('invalid-argument', 'Prompt or image is required');
+  if (!prompt && images.length === 0) {
+    throw new functions.https.HttpsError('invalid-argument', 'Prompt or images are required');
   }
 
-  // 3. Assemble Canonical Content Prompt (Zero Prompt Modification)
+  // 5. 🎯 Assemble Canonical Content Prompt (Zero Prompt Modification)
   let fullPrompt = '';
   if (systemPersona) {
     fullPrompt += `${systemPersona}\n\n`;
@@ -346,12 +359,13 @@ exports.aiManusGateway = functions.https.onCall(async (data, context) => {
     },
   ];
 
-  if (imageBase64) {
+  // 6. 🖼️ Attach ALL Canonical Images (No Silent Dropping)
+  for (const imgBase64 of images) {
     contentItems.push({
       type: 'file',
       file_data: {
         mime_type: mimeType,
-        data: imageBase64,
+        data: imgBase64,
       },
     });
   }
@@ -365,8 +379,8 @@ exports.aiManusGateway = functions.https.onCall(async (data, context) => {
   try {
     const fetch = globalThis.fetch || require('node-fetch');
 
-    // 4. Create Task on Manus API v2 (POST /v2/task.create)
-    console.log(`[MANUS_GATEWAY] Creating task on Manus API v2 (taskType=${taskType}, hasImage=${Boolean(imageBase64)})`);
+    // 7. Create Task on Manus API v2 (POST /v2/task.create)
+    console.log(`[MANUS_GATEWAY] Creating task on Manus API v2 (taskType=${taskType}, imageCount=${images.length})`);
     const createRes = await fetch(`${manusBaseUrl}/task.create`, {
       method: 'POST',
       headers,
@@ -395,14 +409,15 @@ exports.aiManusGateway = functions.https.onCall(async (data, context) => {
 
     const createData = await createRes.json();
     const taskId = createData.task_id || (createData.data && createData.data.task_id);
+    const createRequestId = createData.request_id || null;
 
     if (!taskId) {
       throw new functions.https.HttpsError('internal', 'Manus did not return a valid task_id');
     }
 
-    console.log(`[MANUS_GATEWAY] Task created successfully: ${taskId}. Waiting for completion...`);
+    console.log(`[MANUS_GATEWAY] Task created successfully: ${taskId} (req_id=${createRequestId}). Waiting for completion...`);
 
-    // 5. Poll for completion via task.detail (bounded backoff: max 30 seconds)
+    // 8. Poll for completion via task.detail (bounded backoff: max 30 seconds)
     const startTime = Date.now();
     const maxWaitMs = 30000;
     let pollIntervalMs = 1000;
@@ -438,31 +453,40 @@ exports.aiManusGateway = functions.https.onCall(async (data, context) => {
     }
 
     if (!isTaskFinished) {
-      // Timeout reached
       throw new functions.https.HttpsError('deadline-exceeded', 'Manus task timed out after 30s');
     }
 
-    // 6. Fetch Assistant Output from task.listMessages
+    // 9. Fetch Last Assistant Output from task.listMessages
     const messagesRes = await fetch(`${manusBaseUrl}/task.listMessages?task_id=${encodeURIComponent(taskId)}`, {
       method: 'GET',
       headers,
     });
 
     let finalOutputText = '';
+    let listRequestId = null;
+
     if (messagesRes.ok) {
       const messagesBody = await messagesRes.json();
+      listRequestId = messagesBody.request_id || null;
       const messages = messagesBody.messages || [];
-      
-      // Find the last assistant message
-      const assistantMsg = messages.find((m) => m.type === 'assistant_message' && m.assistant_message);
-      if (assistantMsg && assistantMsg.assistant_message) {
-        const content = assistantMsg.assistant_message.content;
-        finalOutputText = typeof content === 'string' ? content : JSON.stringify(content);
+
+      // Find the ACTUAL LAST assistant message (traverse backwards)
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const m = messages[i];
+        if (m.type === 'assistant_message' && m.assistant_message && m.assistant_message.content) {
+          const content = m.assistant_message.content;
+          finalOutputText = typeof content === 'string' ? content : JSON.stringify(content);
+          break;
+        }
       }
     }
 
-    if (!finalOutputText) {
-      finalOutputText = 'تم تنفيذ المهمة بنجاح عبر Manus.';
+    // 10. Reject Empty Output without Fabricating Sentences
+    if (!finalOutputText || finalOutputText.trim().length === 0) {
+      throw new functions.https.HttpsError(
+        'internal',
+        'Manus task finished but returned an empty assistant output.'
+      );
     }
 
     return {
@@ -472,6 +496,7 @@ exports.aiManusGateway = functions.https.onCall(async (data, context) => {
         provider: 'manus',
         model: 'manus-v2',
         task_id: taskId,
+        request_id: createRequestId || listRequestId,
       },
     };
   } catch (err) {
@@ -482,5 +507,7 @@ exports.aiManusGateway = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', err.message || 'Unknown Manus Gateway Error');
   }
 });
+
+
 
 

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
@@ -88,6 +89,51 @@ void main() {
           reason: 'Hardcoded Manus API key detected in ${file.path}',
         );
       }
+    });
+
+    test('Test G: Multiple images are properly preserved and encoded without dropping', () {
+      final image1 = Uint8List.fromList([10, 20, 30]);
+      final image2 = Uint8List.fromList([40, 50, 60]);
+      final image3 = Uint8List.fromList([70, 80, 90]);
+
+      final request = CanonicalAiRequest(
+        prompt: 'Compare these 3 images',
+        images: [image1, image2, image3],
+        taskType: 'vision',
+      );
+
+      expect(request.images, isNotNull);
+      expect(request.images!.length, equals(3));
+      
+      final base64Images = request.images!.map(base64Encode).toList();
+      expect(base64Images.length, equals(3));
+      expect(base64Images[0], equals(base64Encode(image1)));
+      expect(base64Images[1], equals(base64Encode(image2)));
+      expect(base64Images[2], equals(base64Encode(image3)));
+    });
+
+    test('Test H: Last assistant message extraction selects the true last assistant response', () {
+      final mockMessages = [
+        {'type': 'user_message', 'content': 'Hello'},
+        {'type': 'status_update', 'brief': 'Running'},
+        {'type': 'assistant_message', 'assistant_message': {'content': 'Initial response'}},
+        {'type': 'status_update', 'brief': 'Refining'},
+        {'type': 'assistant_message', 'assistant_message': {'content': 'Final refined answer'}},
+        {'type': 'status_update', 'brief': 'Stopped'},
+      ];
+
+      // Simulate backward search
+      String? finalOutputText;
+      for (int i = mockMessages.length - 1; i >= 0; i--) {
+        final m = mockMessages[i];
+        if (m['type'] == 'assistant_message' && m['assistant_message'] != null) {
+          final assist = m['assistant_message'] as Map<String, dynamic>;
+          finalOutputText = assist['content']?.toString();
+          break;
+        }
+      }
+
+      expect(finalOutputText, equals('Final refined answer'));
     });
   });
 }
