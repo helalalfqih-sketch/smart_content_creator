@@ -42,9 +42,13 @@ import '../../services/api/jina_service.dart';
 import '../../services/secure_storage_service.dart';
 import '../../services/remotion_service.dart';
 import '../../services/ai/openrouter_video_service.dart';
+import '../../services/media_processing_service.dart';
+import '../../services/ai/remote_segmentation_service.dart';
 import '../../services/telegram_service.dart'; // ✈️ Telegram Integration
 import '../../services/global_config_service.dart'; // 🌍 Global Config
 import '../../services/back4app_gateway_service.dart'; // ☁️ Back4App AI Gateway
+import '../../services/firebase_ai_logic_service.dart'; // 🟣 Firebase AI Logic Service
+import '../../services/ai_backend_router.dart'; // 🎯 AI Backend Router
 import '../../services/vertex_ai_service.dart';
 import '../../services/product_matching_service.dart';
 
@@ -118,6 +122,8 @@ class InitialBinding extends Bindings {
     // 3️⃣ خدمات الذكاء الاصطناعي التخصصية
     Get.lazyPut(() => GeminiService(), fenix: true);
     Get.lazyPut(() => Back4AppGatewayService(), fenix: true); // ☁️ Back4App AI Gateway (18 keys)
+    Get.lazyPut(() => FirebaseAiLogicService(), fenix: true); // 🟣 Firebase AI Logic (SDK)
+    Get.lazyPut(() => AIBackendRouter(), fenix: true); // 🎯 AI Backend Router (Phase 2)
     Get.lazyPut(() => VertexAiService(), fenix: true); // ☁️ Vertex AI Service (via Back4App)
     Get.lazyPut(() => KlingService(), fenix: true);
     Get.lazyPut(() => HiggsfieldService(), fenix: true);
@@ -129,12 +135,14 @@ class InitialBinding extends Bindings {
     Get.lazyPut(() => VisionProductService(), fenix: true);
     Get.lazyPut(() => ProductMemoryService(), fenix: true);
     Get.lazyPut(() => ProductMatchingService(), fenix: true);
-    Get.lazyPut(() => BackgroundRemovalService(), fenix: true); // ✂️ Inject Background Service
+    Get.lazyPut(() => RemoteSegmentationService(), fenix: true);
+    Get.lazyPut(() => BackgroundRemovalService(), fenix: true); // ✂️ Inject Background Service (Adapter)
     Get.lazyPut(() => SceneDirectorService(), fenix: true);
     Get.lazyPut(() => MediaMergeService(), fenix: true);
     Get.lazyPut(() => ModelCapabilityService(), fenix: true);
     
     // 🎬 Video & Media Services (Improved Lazy Loading)
+    Get.lazyPut(() => MediaProcessingService(), fenix: true);
     Get.lazyPut(() => VideoPipelineService(), fenix: true);
     Get.lazyPut(() => GeminiDirectorService(), fenix: true);
     Get.lazyPut(() => FfmpegService(), fenix: true);
@@ -164,7 +172,7 @@ class InitialBinding extends Bindings {
 
     // 4️⃣ المحركات الذكية والعملاء (Agents)
     Get.lazyPut(
-      () => IntentClassifierService(Get.find<UnifiedAIService>()),
+      () => IntentClassifierService(Get.find<AIBackendRouter>()),
       fenix: true,
     );
     Get.lazyPut(() => ChatSmartAgent(), fenix: true);

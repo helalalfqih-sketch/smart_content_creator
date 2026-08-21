@@ -46,6 +46,7 @@ class FirestoreUserService extends GetxService {
           'is_trial_active': true,
           'is_ai_blocked': false, // 🛑 Kill switch for AI access
           'last_credit_reset': FieldValue.serverTimestamp(),
+          'ai_backend': 'firebase_ai', // 🎯 مسار الذكاء الاصطناعي الافتراضي
 
           'newUserNotification': true, // 🟢 إشعار للمدير بوجود مستخدم جديد
           'createdAt': FieldValue.serverTimestamp(),
@@ -284,6 +285,53 @@ class FirestoreUserService extends GetxService {
     } catch (e) {
       if (kDebugMode) debugPrint('❌ فشل استرجاع الهوية البصرية: $e');
       return null;
+    }
+  }
+
+  // ──────────────────────────────────────────────────────
+  // 🎯 AI Backend Management (Phase 2)
+  // ──────────────────────────────────────────────────────
+
+  /// الحصول على مسار الذكاء الاصطناعي للمستخدم
+  Future<String> getUserAiBackend(String uid) async {
+    try {
+      final doc = await _firestore.collection(_usersCollection).doc(uid).get();
+      if (!doc.exists) return 'firebase_ai';
+      return doc.data()?['ai_backend']?.toString() ?? 'firebase_ai';
+    } catch (e) {
+      if (kDebugMode) debugPrint('❌ خطأ في getUserAiBackend: $e');
+      return 'firebase_ai';
+    }
+  }
+
+  /// 🔄 تبديل مسار الذكاء الاصطناعي للمستخدم (Admin فقط)
+  Future<bool> switchUserAiBackend({
+    required String uid,
+    required String newBackend,
+  }) async {
+    try {
+      final allowed = ['firebase_ai', 'backend'];
+      if (!allowed.contains(newBackend)) {
+        if (kDebugMode) {
+          debugPrint('❌ قيمة ai_backend غير مسموحة: $newBackend');
+        }
+        return false;
+      }
+
+      await _firestore.collection(_usersCollection).doc(uid).update({
+        'ai_backend': newBackend,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (kDebugMode) {
+        debugPrint('✅ تم تبديل ai_backend للمستخدم $uid → $newBackend');
+      }
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('❌ خطأ في switchUserAiBackend: $e');
+      }
+      return false;
     }
   }
 }

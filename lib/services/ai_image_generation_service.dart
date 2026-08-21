@@ -18,6 +18,7 @@ import '../core/api/enterprise_api_client.dart';
 import 'ai_provider.dart';
 import '../core/utils/image_utils.dart';
 import 'ai/background_removal_service.dart';
+import 'ai/remote_segmentation_service.dart';
 
 class AiImageGenerationService extends GetxService {
   static AiImageGenerationService get to => Get.find();
@@ -598,7 +599,7 @@ class AiImageGenerationService extends GetxService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $apiKey',
-          'HTTP-Referer': 'https://smartcontentcreator-d49f2.web.app',
+          'HTTP-Referer': 'https://smartcontentcreator2.web.app',
           'X-Title': 'Smart Content Creator',
         },
         data: {
@@ -898,50 +899,16 @@ extension ProductPhotographyExtension on AiImageGenerationService {
   }
 
 
-  /// 🖼️ خدمة إزالة الخلفية (Remove.bg)
+  /// 🖼️ خدمة إزالة الخلفية عبر السيرفر (Remote Segmentation)
   Future<Uint8List?> removeBackground(Uint8List imageBytes) async {
     try {
-      // Get API key from settings
-      final settingsController = Get.find<SettingsController>();
-      final apiKey = settingsController.getApiKey(ProviderType.removebg);
-
-      if (apiKey.isEmpty) {
-        debugPrint('⚠️ مفتاح remove.bg غير موجود');
-        return null;
+      final remoteService = Get.find<RemoteSegmentationService>();
+      final resultBytes = await remoteService.removeBackgroundFromBytes(imageBytes);
+      if (resultBytes != null && resultBytes.isNotEmpty) {
+        debugPrint('✅ تمت إزالة الخلفية عبر السيرفر بنجاح');
+        return resultBytes;
       }
-
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('https://api.remove.bg/v1.0/removebg'),
-      );
-
-      request.headers['X-Api-Key'] = apiKey;
-      request.files.add(http.MultipartFile.fromBytes(
-        'image_file',
-        imageBytes,
-        filename: 'product.jpg',
-      ));
-      request.fields['size'] = 'auto';
-      request.fields['format'] = 'png';
-
-      final response = await request.send().timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        debugPrint('✅ تمت إزالة الخلفية بنجاح');
-        return await response.stream.toBytes();
-      } else if (response.statusCode == 402) {
-        debugPrint('❌ خطأ remove.bg: 402 (رصيدك نفد). جاري استخدام Stability AI كبديل للطوارئ...');
-        final stabResult = await _removeBackgroundWithStability(imageBytes);
-        if (stabResult != null) return stabResult;
-        
-        debugPrint('❌ فشل خيار Stability AI (رصيد غير كافٍ). جاري استخدام ML Kit (المحلي والمجاني) كحل أخير...');
-        return await _removeBackgroundWithLocalAi(imageBytes);
-      } else {
-        debugPrint('❌ خطأ remove.bg: ${response.statusCode}');
-        
-        // Always try local fallback on failure
-        return await _removeBackgroundWithLocalAi(imageBytes);
-      }
+      return await _removeBackgroundWithLocalAi(imageBytes);
     } catch (e) {
       debugPrint('❌ استثناء في إزالة الخلفية: $e');
       return await _removeBackgroundWithLocalAi(imageBytes);
@@ -965,50 +932,7 @@ extension ProductPhotographyExtension on AiImageGenerationService {
       }
       return null;
     } catch (e) {
-      debugPrint("❌ فشل العزل المحلي (ML Kit): $e");
-      return null;
-    }
-  }
-
-
-  /// 🛡️ خدمة الاسترداد والطوارئ (Stability AI Background Removal)
-  Future<Uint8List?> _removeBackgroundWithStability(Uint8List imageBytes) async {
-    try {
-      final settingsController = Get.find<SettingsController>();
-      final apiKey = settingsController.getApiKey(ProviderType.stability);
-      
-      if (apiKey.isEmpty) {
-        throw Exception("فشل البديل: مفتاح Stability غير متوفر");
-      }
-
-      debugPrint('🚀 إرسال طلب Remove Background إلى Stability AI (التكلفة: 2 Credits)...');
-
-      final response = await _apiClient.request(
-        url: 'https://api.stability.ai/v2beta/stable-image/edit/remove-background',
-        method: 'POST',
-        providerName: 'stability-bg-removal',
-        headers: {
-          'Authorization': 'Bearer $apiKey',
-          'Accept': 'image/*',
-        },
-        responseType: dio.ResponseType.bytes,
-        data: dio.FormData.fromMap({
-          'image': dio.MultipartFile.fromBytes(imageBytes,
-              filename: 'fallback_product.png',
-              contentType: http_parser.MediaType('image', 'png')),
-          'output_format': 'webp',
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        debugPrint('✅ تمت إزالة الخلفية عبر محرك Stability البديل بنجاح!');
-        return response.data; // responseType is bytes
-      } else {
-        debugPrint('❌ خطأ في المحرك البديل: ${response.statusCode}');
-        return null;
-      }
-    } catch (e) {
-      debugPrint('❌ فشل كلي في إزالة الخلفية البديلة: $e');
+      debugPrint("❌ فشل العزل (RemoteSegmentationService): $e");
       return null;
     }
   }

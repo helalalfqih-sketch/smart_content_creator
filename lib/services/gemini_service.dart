@@ -486,7 +486,7 @@ class GeminiService implements AIProvider {
           ? "$baseUrl/chat/completions"
           : "$baseUrl/v1/chat/completions";
       headers["Authorization"] = "Bearer $cleanKey";
-      headers["HTTP-Referer"] = "https://smartcontentcreator-d49f2.web.app";
+      headers["HTTP-Referer"] = "https://smartcontentcreator2.web.app";
       headers["X-Title"] = "Smart Content Creator";
 
 

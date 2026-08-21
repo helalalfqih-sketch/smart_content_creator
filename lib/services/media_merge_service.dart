@@ -5,8 +5,7 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
-import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter_new/return_code.dart';
+import 'media_processing_service.dart';
 import 'ffmpeg_service.dart';
 import 'unified_ai_service.dart';
 import '../controllers/settings_controller.dart';
@@ -256,7 +255,7 @@ class MediaMergeService extends GetxService {
     }
   }
 
-  /// 🎬 تنفيذ الدمج عبر FFmpeg
+  /// 🎬 تنفيذ الدمج عبر الخادم (MediaProcessingService)
   Future<String?> _executeMerge({
     required String videoPath,
     required String overlayPath,
@@ -265,115 +264,39 @@ class MediaMergeService extends GetxService {
     String aspectRatio = '9:16',
   }) async {
     try {
-      final tempDir = await getTemporaryDirectory();
-      final outputPath =
-          '${tempDir.path}/merged_${DateTime.now().millisecondsSinceEpoch}.mp4';
-
-      // حساب إحداثيات Overlay
-      final overlayFile = File(overlayPath);
-      final overlayBytes = await overlayFile.readAsBytes();
-      final overlayDecoded = img.decodeImage(overlayBytes);
-      final overlayW = overlayDecoded?.width ?? 300;
-      final overlayH = overlayDecoded?.height ?? 300;
-
-      // حساب الموضع بالبكسل
-      final int posX = ((videoWidth - overlayW) * positionX.value)
-          .toInt()
-          .clamp(0, videoWidth);
-      final int posY = ((videoHeight - overlayH) * positionY.value)
-          .toInt()
-          .clamp(0, videoHeight);
-
-      // بناء أمر FFmpeg
-      String filterComplex;
-
-      // المرحلة 1: الدمج (Overlay) مع وسم فريد للمخرج
-      if (opacity.value < 1.0) {
-        filterComplex =
-            '[1:v]format=rgba,colorchannelmixer=aa=${opacity.value}[ov];'
-            '[0:v][ov]overlay=$posX:$posY:shortest=1[v_overlay]';
-      } else {
-        filterComplex = '[0:v][1:v]overlay=$posX:$posY:shortest=1[v_overlay]';
-      }
-
-      // المرحلة 2: ضبط النسبة (Scale/Pad) بناءً على الوسم السابق
-      if (aspectRatio == '9:16') {
-        filterComplex +=
-            '; [v_overlay] scale=1080:1920:force_original_aspect_ratio=decrease,'
-            'pad=1080:1920:(ow-iw)/2:(oh-ih)/2:black [outv]';
-      } else if (aspectRatio == '1:1') {
-        filterComplex +=
-            '; [v_overlay] scale=1080:1080:force_original_aspect_ratio=decrease,'
-            'pad=1080:1080:(ow-iw)/2:(oh-ih)/2:black [outv]';
-      } else {
-        // إذا لم يكن هناك ضبط نسبة، نعتبر مخرج الأوفرلاي هو المخرج النهائي
-        filterComplex = filterComplex.replaceFirst('[v_overlay]', '[outv]');
-      }
-
-      final command = '-y '
-          '-i "$videoPath" '
-          '-i "$overlayPath" '
-          '-filter_complex "$filterComplex" '
-          '-map "[outv]" '
-          '-map "0:a?" '
-          '-c:v libx264 -preset fast -crf 18 '
-          '-c:a copy '
-          '-movflags +faststart '
-          '"$outputPath"';
-
-      if (kDebugMode) debugPrint('🚀 FFmpeg Merge Command: ffmpeg $command');
-
       progress.value = 0.6;
-      final session = await FFmpegKit.execute(command);
-      final returnCode = await session.getReturnCode();
-
-      if (ReturnCode.isSuccess(returnCode)) {
-        final output = File(outputPath);
-        if (await output.exists() && await output.length() > 0) {
-          if (kDebugMode) debugPrint('✅ Merge successful: $outputPath');
-          return outputPath;
-        }
-      } else {
-        await FfmpegService.handleFFmpegError(session, 'الدمج');
-      }
+      final mediaService = Get.find<MediaProcessingService>();
+      final result = await mediaService.mergeImageWithVideo(
+        productImage: File(overlayPath),
+        videoPath: videoPath,
+        positionX: positionX.value,
+        positionY: positionY.value,
+        imageScale: imageScale.value,
+        opacity: opacity.value,
+        aspectRatio: aspectRatio,
+        onProgress: (p, status) {
+          progress.value = p;
+          _updateStatus(status, p);
+        },
+      );
+      return result;
     } catch (e) {
-      if (kDebugMode) debugPrint('❌ FFmpeg Merge Error: $e');
+      if (kDebugMode) debugPrint('❌ Media Merge Error: $e');
     }
     return null;
   }
 
-  /// 🔄 حل احتياطي (Fallback) - دمج بسيط إذا فشل FFmpeg المتقدم
+  /// 🔄 حل احتياطي (Fallback)
   Future<String?> _fallbackMerge({
     required String videoPath,
     required String overlayPath,
   }) async {
-    try {
-      final tempDir = await getTemporaryDirectory();
-      final outputPath =
-          '${tempDir.path}/merged_simple_${DateTime.now().millisecondsSinceEpoch}.mp4';
-
-      // أمر FFmpeg مبسّط
-      final command = '-y '
-          '-i "$videoPath" '
-          '-i "$overlayPath" '
-          '-filter_complex "overlay=W/2-w/2:H/2-h/2:shortest=1" '
-          '-c:v libx264 -preset ultrafast -crf 23 '
-          '-c:a copy '
-          '"$outputPath"';
-
-      final session = await FFmpegKit.execute(command);
-      final returnCode = await session.getReturnCode();
-
-      if (ReturnCode.isSuccess(returnCode)) {
-        final output = File(outputPath);
-        if (await output.exists() && await output.length() > 0) {
-          return outputPath;
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('❌ Fallback merge failed: $e');
-    }
-    return null;
+    return _executeMerge(
+      videoPath: videoPath,
+      overlayPath: overlayPath,
+      videoWidth: 1080,
+      videoHeight: 1920,
+    );
   }
 
   /// 🔄 إعادة تعيين الإعدادات

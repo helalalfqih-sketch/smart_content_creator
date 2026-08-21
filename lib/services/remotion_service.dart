@@ -2,10 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:get/get.dart';
 import 'package:path/path.dart' as p;
-import 'package:http/http.dart' as http; // ignore: unused_import
-import 'package:path_provider/path_provider.dart';
-import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter_new/return_code.dart';
+import 'media_processing_service.dart';
 import 'package:smart_content_creator/services/ai/gemini_director_service.dart'; // ignore: unused_import
 import '../core/services/log_service.dart';
 import '../models/video_composition.dart';
@@ -123,128 +120,10 @@ class RemotionService extends GetxService {
     }
   }
 
-  /// 📱 Mobile Rendering Engine (FFmpeg based)
+  /// 📱 Mobile Rendering Engine (Server-Side via MediaProcessingService)
   Future<String?> _renderMobile(VideoProject project, Function(String)? onStatusUpdate) async {
-    onStatusUpdate?.call("📱 Initializing Multi-Scene Engine...");
-    
-    if (project.scenes.isEmpty) return null;
-    
-    final tempDir = await getTemporaryDirectory();
-    final List<String> scenePaths = [];
-    
-    try {
-      for (int i = 0; i < project.scenes.length; i++) {
-        final scene = project.scenes[i];
-        final scenePath = p.join(tempDir.path, "scene_$i.mp4");
-        
-        // Safer extension detection
-        String ext = "jpg";
-        try {
-          ext = scene.visualUrl.split('?').first.split('.').last.toLowerCase();
-          if (ext.length > 4) ext = "jpg"; // Fallback for weird URLs
-        } catch (_) {}
-        
-        final localFile = File(p.join(tempDir.path, "input_scene_$i.$ext"));
-        
-        onStatusUpdate?.call("📥 Preparing Scene ${i + 1}/${project.scenes.length}...");
-        
-        if (scene.visualUrl.startsWith('http')) {
-          final response = await http.get(Uri.parse(scene.visualUrl));
-          if (response.statusCode == 200) {
-            await localFile.writeAsBytes(response.bodyBytes);
-          } else {
-            continue;
-          }
-        } else {
-          final pickedFile = File(scene.visualUrl);
-          if (await pickedFile.exists()) {
-            await pickedFile.copy(localFile.path);
-          } else {
-            continue;
-          }
-        }
-
-        onStatusUpdate?.call("✨ Rendering Scene ${i + 1} (30fps + Transitions)...");
-        final subtitleText = scene.subtitle?.replaceAll("'", "") ?? "";
-        final bool isVideo = ext == 'mp4' || ext == 'mov' || ext == 'mkv' || ext == 'webm';
-        final double dur = scene.duration;
-        
-        // TikTok Style Text Filter
-        final String textFilter = "drawtext=text='$subtitleText':fontcolor=white:fontsize=75:x=(w-text_w)/2:y=(h-text_h)*0.82:box=1:boxcolor=black@0.6:boxborderw=30:borderw=2:bordercolor=black@0.2";
-        // Fade Transitions Filter
-        final String fadeFilter = "fade=t=in:st=0:d=0.5,fade=t=out:st=${dur - 0.5}:d=0.5";
-
-        String command;
-        if (isVideo) {
-          command = '-i "${localFile.path}" -t $dur -r 30 -pix_fmt yuv420p '
-                    '-vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2,$fadeFilter,$textFilter" '
-                    '-y "$scenePath"';
-        } else {
-          command = '-loop 1 -i "${localFile.path}" -t $dur -r 30 -pix_fmt yuv420p '
-                    '-vf "scale=8000:-1,zoompan=z=\'min(zoom+0.0015,1.5)\':x=\'iw/2-(iw/zoom/2)\':y=\'ih/2-(ih/zoom/2)\':d=${(dur * 30).toInt()}:s=1080x1920,$fadeFilter,$textFilter" '
-                    '-y "$scenePath"';
-        }
-        
-        final session = await FFmpegKit.execute(command);
-        final returnCode = await session.getReturnCode();
-        
-        if (ReturnCode.isSuccess(returnCode)) {
-          scenePaths.add(scenePath);
-        } else {
-          final logs = await session.getLogs();
-          LogService.error("FFmpeg Scene Error: ${logs.last.getMessage()}", tag: 'REMOTION');
-          onStatusUpdate?.call("❌ Error in Scene ${i + 1}");
-          return null;
-        }
-      }
-
-      if (scenePaths.isEmpty) return null;
-
-      // 🔗 Step 2: Concatenate Scenes
-      onStatusUpdate?.call("🔗 Stitching Scenes Together...");
-      final String listPath = p.join(tempDir.path, 'scenes.txt');
-      final String silentVideoPath = p.join(tempDir.path, 'temp_silent_video.mp4');
-      
-      final listContent = scenePaths.map((path) => "file '$path'").join('\n');
-      await File(listPath).writeAsString(listContent);
-
-      final concatCommand = '-f concat -safe 0 -i "$listPath" -c copy -y "$silentVideoPath"';
-      final concatSession = await FFmpegKit.execute(concatCommand);
-
-      if (!ReturnCode.isSuccess(await concatSession.getReturnCode())) {
-        LogService.error("FFmpeg Concat Error", tag: 'REMOTION');
-        return scenePaths.first;
-      }
-
-      // 🎶 Step 3: Mix Background Music if available
-      if (project.backgroundMusicUrl != null && project.backgroundMusicUrl!.startsWith('http')) {
-        onStatusUpdate?.call("🎶 Adding Background Music...");
-        final musicFile = File(p.join(tempDir.path, "bg_music.mp3"));
-        final musicResponse = await http.get(Uri.parse(project.backgroundMusicUrl!));
-        
-        if (musicResponse.statusCode == 200) {
-          await musicFile.writeAsBytes(musicResponse.bodyBytes);
-          final finalVideoPath = p.join(tempDir.path, 'final_masterpiece_${DateTime.now().millisecondsSinceEpoch}.mp4');
-          
-          // Mix music: Reduce music volume to 0.3 to keep it as background
-          final mixCommand = '-i "$silentVideoPath" -i "${musicFile.path}" '
-                            '-filter_complex "[1:a]volume=0.3[music];[0:a][music]amix=inputs=2:duration=first[a]" '
-                            '-map 0:v -map "[a]" -c:v copy -y "$finalVideoPath"';
-          
-          final mixSession = await FFmpegKit.execute(mixCommand);
-          if (ReturnCode.isSuccess(await mixSession.getReturnCode())) {
-            onStatusUpdate?.call("✅ Production Complete!");
-            return finalVideoPath;
-          }
-        }
-      }
-
-      onStatusUpdate?.call("✅ Masterpiece Ready!");
-      return silentVideoPath;
-    } catch (e) {
-      LogService.error("Multi-Scene Render Exception: $e", tag: 'REMOTION');
-      return project.scenes.first.visualUrl;
-    }
+    final mediaService = Get.find<MediaProcessingService>();
+    return await mediaService.renderProject(project, onStatusUpdate: onStatusUpdate);
   }
 
   /// 💻 Desktop Rendering Engine (Remotion based)

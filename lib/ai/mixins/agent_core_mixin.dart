@@ -14,6 +14,7 @@ import '../../core/utils/log_service.dart';
 import '../chat_smart_agent.dart';
 import '../../utils/logger.dart';
 import '../../services/activity_tracking_service.dart';
+import '../../services/ai_backend_router.dart';
 import '../../services/search/product_search_context.dart';
 import '../../services/search/platform_query_builder.dart';
 
@@ -734,23 +735,30 @@ $productDescSection
           ? "You are a helpful AI assistant for a Content Creation app. The user is currently focusing on this product: $currentProduct. Answer naturally and helpfully in the same language as the user. Use context from the history if provided."
           : "You are a helpful AI assistant for a Content Creation app. Answer naturally and helpfully in the same language as the user. Use context from the history if provided.";
 
+      final router = Get.find<AIBackendRouter>();
       final String response;
       if (images != null && images.isNotEmpty) {
         final finalPrompt = "$systemPersona\n\n$prompt";
-        final result = await agent.unifiedService.analyzeImage(
-          images.first,
-          finalPrompt,
-          history: chatHistory,
-          cancelToken: cancelToken,
+        final bytes = await images.first.readAsBytes();
+        final result = await router.analyzeProductVision(
+          prompt: finalPrompt,
+          imageBytes: bytes,
+          mimeType: 'image/jpeg',
         );
-        response = result.description;
+        if (result['success'] != true) {
+          throw Exception(result['error'] ?? 'Vision analysis failed');
+        }
+        response = result['data']?.toString() ?? '';
       } else {
-        response = await agent.unifiedService.generateText(
-          prompt, 
+        final result = await router.generateText(
+          prompt: prompt, 
           systemPersona: systemPersona,
           history: chatHistory,
-          cancelToken: cancelToken,
         );
+        if (result['success'] != true) {
+          throw Exception(result['error'] ?? 'Text generation failed');
+        }
+        response = result['data']?.toString() ?? '';
       }
       
       String cleanContent = stripJsonFromResponse(response);
@@ -815,7 +823,10 @@ $productDescSection
           }
 
           // تحديد المزود الفعلي
-          final String effectiveProvider = provider ?? agent.unifiedService.lastUsedProvider;
+          final String effectiveProvider = provider ??
+              (Get.isRegistered<AIBackendRouter>()
+                  ? Get.find<AIBackendRouter>().currentBackend.value
+                  : 'firebase_ai');
           if (effectiveProvider.isNotEmpty) {
             details['provider'] = effectiveProvider;
           }

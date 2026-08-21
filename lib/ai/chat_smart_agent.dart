@@ -18,6 +18,7 @@ import '../core/models/tiktok_video.dart';
 // Services
 import '../services/db_service.dart';
 import '../services/product_memory_service.dart';
+import '../services/ai_backend_router.dart';
 import '../services/unified_ai_service.dart';
 import '../services/ai/vision_product_service.dart';
 import '../services/ai/background_removal_service.dart';
@@ -78,6 +79,7 @@ class ChatSmartAgent extends GetxService
   GoogleImagesService get imagesService => Get.find<GoogleImagesService>();
 
   // 🧠 Logic Services
+  AIBackendRouter get aiRouter => Get.find<AIBackendRouter>();
   UnifiedAIService get unifiedService => Get.find<UnifiedAIService>();
   ChatTaskDistributor get _taskDistributor => Get.find<ChatTaskDistributor>();
   ProductMemoryService get productMemory => Get.find<ProductMemoryService>();
@@ -478,9 +480,11 @@ class ChatSmartAgent extends GetxService
       Input: "$descriptiveText"
       Output ONLY the keywords, no explaination.
       """;
-      final result = await unifiedService.generateText(prompt,
-          systemPersona: "You are a Search Keyword Optimizer.",
-          cancelToken: cancelToken);
+      final res = await aiRouter.generateText(
+        prompt: prompt,
+        systemPersona: "You are a Search Keyword Optimizer.",
+      );
+      final result = res['data']?.toString() ?? '';
       return result.trim().replaceAll('"', '').split('\n').first;
     } catch (e) {
       return descriptiveText
@@ -576,9 +580,10 @@ class ChatSmartAgent extends GetxService
 
     // 🧠 Use provided context or fall back to global active product
     final context = productContext ?? lastAnalyzedProduct.value;
+    final provider = aiRouter.currentBackend.value;
 
     await _dbService.logChatMessage(
-      unifiedService.lastUsedProvider,
+      provider,
       query,
       result,
       sessionId: sessionId,
@@ -718,8 +723,11 @@ class ChatSmartAgent extends GetxService
     final prompt = "Generate a viral script for this product: $product";
 
     try {
-      final result = await unifiedService.generateText(prompt,
-          systemPersona: systemPrompt, cancelToken: cancelToken);
+      final res = await aiRouter.generateText(
+        prompt: prompt,
+        systemPersona: systemPrompt,
+      );
+      final result = res['data']?.toString() ?? '';
       // Clean result if AI includes markdown code blocks
       final cleanJson =
           result.replaceAll('```json', '').replaceAll('```', '').trim();

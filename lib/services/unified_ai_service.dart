@@ -14,6 +14,7 @@ import '../core/models/api_provider.dart';
 import '../core/utils/json_utils.dart';
 import '../core/utils/image_utils.dart';
 import './serpapi_services.dart';
+import 'ai_backend_router.dart';
 
 import '../ai/core/agent_models.dart';
 import '../models/brand_identity_model.dart';
@@ -352,36 +353,40 @@ IMPORTANT:
       String? mode,
       List<Map<String, String>>? history,
       dio.CancelToken? cancelToken}) async {
-    
     // 🛡️ Guard: Prevent empty prompt crashes (Error 1201)
     if (prompt.trim().isEmpty) {
       debugPrint("⚠️ [UnifiedAI]: Attempted to send empty prompt. Aborting.");
       return "⚠️ عذراً، لم أستطع معالجة طلبك لأن النص فارغ. يرجى كتابة شيء ما.";
     }
+
+    if (Get.isRegistered<AIBackendRouter>()) {
+      final router = Get.find<AIBackendRouter>();
+      final res = await router.generateText(
+        prompt: prompt,
+        systemPersona: systemPersona,
+        history: history,
+      );
+      if (res['success'] == true && res['data'] != null) {
+        lastUsedProvider = res['meta']?['provider']?.toString() ?? 'firebase_ai';
+        return res['data'].toString();
+      }
+      throw Exception(res['error'] ?? 'AI generation failed');
+    }
+
     String? effectiveSystemPersona = systemPersona;
     String finalPrompt = prompt;
-
-    // 🎯 تخصيص الإعدادات بناءً على الوضع المختار
-    if (mode != null && mode.isNotEmpty) {
-      switch (mode) {
-        default:
-          // Default behavior
-      }
-    }
 
     if (effectiveSystemPersona != null) {
       finalPrompt = "$effectiveSystemPersona\n\n$prompt";
     }
 
-    // 🚀 تنفيذ الطلب عبر نظام التبديل الذكي (Smart Fallback System)
-    // يدعم الآن التبديل التلقائي لـ SerpApi/Google AI Mode في حال فشل Gemini
     try {
       final res = await AIProviderFactory.generateWithSmartFallback(
         finalPrompt,
         history: history,
         cancelToken: cancelToken,
       );
-      lastUsedProvider = res.provider; // 🤖 حفظ اسم المحرك الفعلي المستخدم
+      lastUsedProvider = res.provider;
       return res.description;
     } catch (e) {
       if (kDebugMode) debugPrint("❌ UnifiedAIService.generateText Fallback Error: $e");

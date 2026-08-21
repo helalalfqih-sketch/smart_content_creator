@@ -2,12 +2,11 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:get/get.dart';
 
-import 'package:path/path.dart' as p;
 import '../ai_provider.dart';
 import '../../core/models/api_provider.dart';
 import '../../controllers/settings_controller.dart';
 import '../gemini_service.dart';
-import '../../services/ffmpeg_service.dart';
+import '../../services/media_processing_service.dart';
 import '../../core/utils/json_utils.dart';
 
 class GeminiVisionService {
@@ -163,36 +162,10 @@ class GeminiVisionService {
 
   // --- Helper: Frame Extraction ---
   Future<List<Uint8List>> _extractKeyFrames(File file, {int count = 3}) async {
-    final frames = <Uint8List>[];
-    
-    // 🛡️ Standardizing on FFmpeg for both platforms to solve ImageReader/Buffer issues
-    if (!await FfmpegService.isAvailable()) return [];
-
-    // Note: To get precise frames at percentages, we'd need duration.
-    // For now, we use the robust logic of extracting at 1s, 6s, 11s...
-    // which is safe and avoids native buffer locks often seen in video_thumbnail.
-    
-    for (int i = 0; i < count; i++) {
-      final sec = 1 + (i * 5); // 1s, 6s, 11s...
-      final timestamp = "00:00:${sec.toString().padLeft(2, '0')}.000";
-      final tempName = "frame_${i}_${DateTime.now().millisecondsSinceEpoch}.jpg";
-      final outPath = p.join(Directory.systemTemp.path, tempName);
-      
-      final f = await FfmpegService.extractFrame(
-        videoPath: file.path, 
-        outputPath: outPath, 
-        timestamp: timestamp
-      );
-      
-      if (f != null) {
-        final b = await f.readAsBytes();
-        frames.add(b);
-        // 🛡️ Immediately delete the file to free system resources (satisfying 'close every image')
-        try { await f.delete(); } catch (_) {}
-      }
-    }
-    
-    return frames;
+    final mediaService = Get.isRegistered<MediaProcessingService>()
+        ? Get.find<MediaProcessingService>()
+        : Get.put(MediaProcessingService());
+    return await mediaService.extractKeyFrames(file, count: count);
   }
 
   // Helper methods removed in favor of JsonUtils

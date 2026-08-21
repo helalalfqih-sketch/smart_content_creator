@@ -21,7 +21,7 @@ class TikTokAccountService extends GetxService {
   static const String _clientSecret = ''; // سيتم تعبئته
 
   static const String _redirectUri =
-      'https://smartcontentcreator-d49f2.web.app/auth/tiktok/callback';
+      'https://smartcontentcreator2.web.app/auth/tiktok/callback';
 
   // TikTok OAuth Endpoints
   static const String _authBaseUrl = 'https://www.tiktok.com/v2/auth/authorize';

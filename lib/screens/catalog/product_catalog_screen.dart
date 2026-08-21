@@ -764,7 +764,7 @@ class ProductCatalogScreen extends StatelessWidget {
     if (shareUrl.isEmpty) {
       // أولوية: صفحة المنتج في الموقع → واتساب (بدون معرف المنتج)
       if (product.id != null && product.id!.isNotEmpty) {
-        shareUrl = 'https://smartcontentcreator-d49f2.web.app/app/product/${product.id}';
+        shareUrl = 'https://smartcontentcreator2.web.app/app/product/${product.id}';
       } else {
         try {
           final secure = Get.find<SecureStorageService>();
@@ -780,10 +780,10 @@ class ProductCatalogScreen extends StatelessWidget {
           } else {
             final appStorage = Get.find<AppStorageService>();
             final inst = appStorage.readString('instagram_profile_url') ?? '';
-            shareUrl = inst.isNotEmpty ? inst : 'https://smartcontentcreator-d49f2.web.app/app';
+            shareUrl = inst.isNotEmpty ? inst : 'https://smartcontentcreator2.web.app/app';
           }
         } catch (_) {
-          shareUrl = 'https://smartcontentcreator-d49f2.web.app/app';
+          shareUrl = 'https://smartcontentcreator2.web.app/app';
         }
       }
     }

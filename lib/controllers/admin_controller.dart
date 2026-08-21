@@ -341,9 +341,14 @@ class AdminController extends GetxController {
           users.value = snapshot.docs.map((doc) {
             final data = doc.data();
             final aiUsage = data['ai_usage'] as Map? ?? {};
+            final resolvedName = data['name']?.toString() ??
+                data['username']?.toString() ??
+                data['displayName']?.toString() ??
+                (data['email']?.toString().split('@').first ?? 'مستخدم');
+
             return {
               'id': doc.id, // Firestore UID
-              'username': data['name']?.toString() ?? '',
+              'username': resolvedName,
               'email': data['email']?.toString() ?? '',
               'role': data['role']?.toString() ?? 'user',
               'bio': data['bio']?.toString() ?? '',
@@ -1145,6 +1150,39 @@ class AdminController extends GetxController {
     }
   }
 
+
+  // ──────────────────────────────────────────────────────
+  // 🎯 AI Backend Switching (Phase 2)
+  // ──────────────────────────────────────────────────────
+
+  /// 🔄 تبديل مسار الذكاء الاصطناعي للمستخدم
+  Future<void> switchUserAiBackend(String uid, String newBackend) async {
+    try {
+      final firestoreService = Get.find<FirestoreUserService>();
+      final success = await firestoreService.switchUserAiBackend(
+        uid: uid,
+        newBackend: newBackend,
+      );
+
+      if (success) {
+        // تحديث القائمة المحلية
+        final index = users.indexWhere((u) => u['uid'] == uid);
+        if (index != -1) {
+          users[index] = {...users[index], 'ai_backend': newBackend};
+          users.refresh();
+        }
+        Get.snackbar(
+          '✅ تم التبديل',
+          'مسار AI للمستخدم: $newBackend',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      } else {
+        Get.snackbar('❌ خطأ', 'فشل تبديل مسار AI');
+      }
+    } catch (e) {
+      Get.snackbar('❌ خطأ', 'فشل تبديل مسار AI: $e');
+    }
+  }
 
   @override
   void onClose() {

@@ -103,7 +103,7 @@ class CatalogController extends GetxController {
           .snapshots()
           .listen((snapshot) {
         final parsed = snapshot.docs
-            .map((doc) => CatalogProduct.fromMap(doc.data()))
+            .map((doc) => CatalogProduct.fromMap(doc.data(), docId: doc.id))
             .toList();
         
         // ترتيب المنتجات حسب الأحدث
@@ -362,7 +362,7 @@ class CatalogController extends GetxController {
               // استبدل الرابط بصفحة المنتج في الموقع
               final productId = doc.data()['id']?.toString() ?? doc.id;
               final storeLink = productId.isNotEmpty
-                  ? 'https://smartcontentcreator-d49f2.web.app/app/product/$productId'
+                  ? 'https://smartcontentcreator2.web.app/app/product/$productId'
                   : '';
               batch.update(doc.reference, {'link': storeLink});
             }
@@ -991,7 +991,7 @@ class CatalogController extends GetxController {
       final instagramUrl = _appStorage.readString('instagram_profile_url') ?? '';
 
       // رابط الموقع الأساسي للمتجر
-      const String storeBaseUrl = 'https://smartcontentcreator-d49f2.web.app/app';
+      const String storeBaseUrl = 'https://smartcontentcreator2.web.app/app';
 
       final buffer = StringBuffer();
       buffer.writeln(CatalogProduct.csvHeader);

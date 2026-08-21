@@ -78,14 +78,15 @@ class AuthService extends GetxService {
     }
   }
 
-  // 🌐 Web Client ID من google-services.json (type=3)
+  // 🌐 Web Client ID من google-services.json (project: smartcontentcreator2)
   static const _webClientId =
-      '947880578188-hnd32gc8c9f3n6u22nl95bsumjq1em7e.apps.googleusercontent.com';
+      '663916675240-lraulfk0fs7hsjoa4d83fi480t68970q.apps.googleusercontent.com';
 
-  // Enable Google Sign-In with minimal scopes for initial login
+  // Enable Google Sign-In with serverClientId to guarantee idToken on Android
   late final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: ['email'],
+    scopes: ['email', 'profile'],
     clientId: kIsWeb ? _webClientId : null,
+    serverClientId: _webClientId,
   );
 
   // 🔑 Gemini-Specific Sign-In Instance (Magic UX)
@@ -93,6 +94,7 @@ class AuthService extends GetxService {
   late final GoogleSignIn _geminiSignIn = GoogleSignIn(
     scopes: ['https://www.googleapis.com/auth/generative-language'],
     clientId: kIsWeb ? _webClientId : null,
+    serverClientId: _webClientId,
   );
 
   // 🛡️ Concurrency Guard (Lock) for silent sign-in
@@ -159,7 +161,7 @@ class AuthService extends GetxService {
   Future<(AuthCredential?, String?)> getGoogleCredential() async {
     try {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return (null, null);
+      if (googleUser == null) return (null, null); // User cancelled dialog
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
       final credential = GoogleAuthProvider.credential(
@@ -168,8 +170,8 @@ class AuthService extends GetxService {
       );
       return (credential, googleAuth.accessToken);
     } catch (e) {
-      if (kDebugMode) debugPrint("Google Auth Error: $e");
-      return (null, null);
+      if (kDebugMode) debugPrint("❌ [GoogleSignIn-Error]: $e");
+      rethrow;
     }
   }
 
@@ -210,7 +212,7 @@ class AuthService extends GetxService {
                 'https://smartcontentcreator.page.link/login', // يجب تحديث هذا الرابط في Firebase Console
             handleCodeInApp: true,
             iOSBundleId: 'com.smartcc.ai',
-            androidPackageName: 'com.example.smart_content_creator',
+            androidPackageName: 'com.smartcontentcreator.app',
             androidInstallApp: true,
             androidMinimumVersion: '12',
           ),
@@ -224,10 +226,10 @@ class AuthService extends GetxService {
           await _auth.sendSignInLinkToEmail(
             email: email,
             actionCodeSettings: ActionCodeSettings(
-              url: 'https://smartcontentcreator-d49f2.firebaseapp.com',
+              url: 'https://smartcontentcreator2.firebaseapp.com',
               handleCodeInApp: false,
               iOSBundleId: 'com.smartcc.ai',
-              androidPackageName: 'com.example.smart_content_creator',
+              androidPackageName: 'com.smartcontentcreator.app',
               androidInstallApp: true,
               androidMinimumVersion: '12',
             ),
@@ -252,7 +254,7 @@ class AuthService extends GetxService {
             url: 'https://smartcontentcreator.page.link/reset',
             handleCodeInApp: true,
             iOSBundleId: 'com.smartcc.ai',
-            androidPackageName: 'com.example.smart_content_creator',
+            androidPackageName: 'com.smartcontentcreator.app',
             androidInstallApp: true,
             androidMinimumVersion: '12',
           ),
@@ -303,9 +305,9 @@ class AuthService extends GetxService {
     try {
       // إعدادات العودة للتطبيق بعد تغيير كلمة المرور (Deep Linking)
       final actionCodeSettings = ActionCodeSettings(
-        url: 'https://smartcontentcreator-d49f2.web.app/login',
+        url: 'https://smartcontentcreator2.web.app/login',
         handleCodeInApp: true,
-        androidPackageName: 'com.example.smart_content_creator',
+        androidPackageName: 'com.smartcontentcreator.app',
         androidInstallApp: true,
         androidMinimumVersion: '24',
       );

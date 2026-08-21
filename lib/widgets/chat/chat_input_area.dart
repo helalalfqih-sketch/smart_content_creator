@@ -6,8 +6,8 @@ import '../../core/models/chat_message.dart'; // Using central ChatMessage
 import 'context_preview_bar.dart';
 import '../../ai/core/agent_models.dart'; // 🧬 Needed for SuggestedAction
 import '../../controllers/settings_controller.dart';
-import '../../core/models/api_provider.dart';
-import '../../theme/app_theme.dart';
+import '../../services/ai_backend_router.dart';
+import '../../core/utils/snackbar_utils.dart';
 
 /// 💬 Chat Input Area - Complete input section for chat
 ///
@@ -520,66 +520,67 @@ class ChatInputArea extends StatelessWidget {
   }
 
   Widget _buildGeminiModelChip(SettingsController settings) {
-    return Obx(() => GestureDetector(
-          onTap: () => _showModelSwitcherSheet(),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2DD486).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFF2DD486).withValues(alpha: 0.2)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: Text(
-                    _getGeminiLabel(settings.activeTextProvider.value),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Color(0xFF2DD486),
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'IBMPlexSansArabic',
-                    ),
+    final aiRouter = Get.isRegistered<AIBackendRouter>()
+        ? Get.find<AIBackendRouter>()
+        : null;
+
+    if (aiRouter == null) return const SizedBox.shrink();
+
+    return Obx(() {
+      final isFirebase = aiRouter.currentBackend.value == 'firebase_ai';
+      final chipColor = isFirebase ? const Color(0xFF8B5CF6) : const Color(0xFF00E5FF);
+
+      return GestureDetector(
+        onTap: () => _showModelSwitcherSheet(),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: chipColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: chipColor.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  isFirebase ? "Firebase AI 🟣" : "Back4App ☁️",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: chipColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'IBMPlexSansArabic',
                   ),
                 ),
-                const SizedBox(width: 4),
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: Color(0xFF2DD486),
-                  size: 14,
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: chipColor,
+                size: 14,
+              ),
+            ],
           ),
-        ));
-  }
-
-  String _getGeminiLabel(ProviderType type) {
-    switch (type) {
-      case ProviderType.gemini:
-        return "بيلت 🏎️";
-      case ProviderType.openai:
-        return "تفكير 🧠";
-      case ProviderType.anthropic:
-        return "إبداعي 🎨";
-      default:
-        return "برو 💎";
-    }
+        ),
+      );
+    });
   }
 
   String _getGeminiHint() {
-    return "Ask Smart 3";
+    final router = Get.isRegistered<AIBackendRouter>()
+        ? Get.find<AIBackendRouter>()
+        : null;
+    final isFirebase = router?.currentBackend.value == 'firebase_ai';
+    return isFirebase ? "اسأل Firebase AI..." : "اسأل Back4App Gateway...";
   }
 
-  // (Previous Methods follow...)
-
-
-
   void _showModelSwitcherSheet() {
-    final settings = Get.find<SettingsController>();
+    final aiRouter = Get.isRegistered<AIBackendRouter>()
+        ? Get.find<AIBackendRouter>()
+        : Get.put(AIBackendRouter());
+
     Get.bottomSheet(
       ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
@@ -591,9 +592,9 @@ class ChatInputArea extends StatelessWidget {
             ),
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 40),
             decoration: BoxDecoration(
-              color: const Color(0xFF0D0D10).withValues(alpha: 0.9), // 🌑 Premium Space
+              color: const Color(0xFF0D0D10).withValues(alpha: 0.95), // 🌑 Premium Space
               borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -613,9 +614,9 @@ class ChatInputArea extends StatelessWidget {
                     ),
                   ),
                   const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                     child: Text(
-                      "اختر المحرك الذكي 🧠",
+                      "اختر محرك الذكاء الاصطناعي 🧠",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -625,44 +626,61 @@ class ChatInputArea extends StatelessWidget {
                     ),
                   ),
 
-                  // 1. Fast
-                  _buildGeminiMenuItem(
-                    label: "بيلت (Bolt) 🏎️",
-                    sublabel: "إجابات سريعة جداً للمهام البسيطة",
-                    icon: Icons.bolt_rounded,
-                    type: ProviderType.gemini,
-                    settings: settings,
-                  ),
+                  // 1. Firebase AI Logic (Gemini SDK)
+                  Obx(() => _buildBackendMenuItem(
+                    label: "Firebase AI Logic (Vertex) 🟣",
+                    sublabel: "smart ai",
+                    icon: Icons.auto_awesome_rounded,
+                    backendKey: 'firebase_ai',
+                    aiRouter: aiRouter,
+                  )),
 
-                  // 2. Thinking
-                  _buildGeminiMenuItem(
-                    label: "التفكير العميق 🧠",
-                    sublabel: "يحل المشاكل المعقدة والمنطقية",
-                    icon: Icons.psychology_rounded,
-                    type: ProviderType.openai,
-                    settings: settings,
-                  ),
-
-                  // 3. Pro
-                  _buildGeminiMenuItem(
-                    label: "جيمناي برو (Pro) 💎",
-                    sublabel: "أفضل دقة للمهام الإبداعية والرياضيات",
-                    icon: Icons.stars_rounded,
-                    type: ProviderType.github,
-                    settings: settings,
-                  ),
+                  // 2. Back4App Gateway (Multi-Key)
+                  Obx(() => _buildBackendMenuItem(
+                    label: "Back4App Gateway ☁️",
+                    sublabel: "بوابة ai )",
+                    icon: Icons.hub_rounded,
+                    backendKey: 'backend',
+                    aiRouter: aiRouter,
+                  )),
 
                   const Divider(color: Colors.white10, height: 30),
 
-                  // 4. Upgrade Placeholder
-                  _buildGeminiMenuItem(
-                    label: "SMART AI Ultra 🚀",
-                    sublabel: "احصل على وصول حصري لنماذج الجيل القادم",
-                    icon: Icons.auto_awesome_rounded,
-                    type: null,
-                    settings: settings,
-                    isUpgrade: true,
-                  ),
+                  // 3. Status Info Box
+                  Obx(() => Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          aiRouter.currentBackend.value == 'firebase_ai'
+                              ? Icons.verified_rounded
+                              : Icons.cloud_sync_rounded,
+                          color: aiRouter.currentBackend.value == 'firebase_ai'
+                              ? const Color(0xFF8B5CF6)
+                              : const Color(0xFF00E5FF),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            aiRouter.currentBackend.value == 'firebase_ai'
+                                ? "المحرك النشط الآن: Firebase AI Logic SDK"
+                                : "المحرك النشط الآن: Back4App Cloud Proxy",
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontFamily: 'IBMPlexSansArabic',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
                 ],
               ),
             ),
@@ -676,46 +694,51 @@ class ChatInputArea extends StatelessWidget {
     );
   }
 
-  Widget _buildGeminiMenuItem({
+  Widget _buildBackendMenuItem({
     required String label,
     required String sublabel,
     required IconData icon,
-    required ProviderType? type,
-    required SettingsController settings,
-    bool isUpgrade = false,
+    required String backendKey,
+    required AIBackendRouter aiRouter,
   }) {
-    final bool isSelected = type != null && settings.activeTextProvider.value == type;
-    
+    final bool isSelected = aiRouter.currentBackend.value == backendKey;
+    final accentColor = backendKey == 'firebase_ai'
+        ? const Color(0xFF8B5CF6)
+        : const Color(0xFF00E5FF);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: isSelected ? AppTheme.primary.withValues(alpha: 0.1) : Colors.transparent,
+        color: isSelected ? accentColor.withValues(alpha: 0.12) : Colors.transparent,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isSelected ? AppTheme.primary.withValues(alpha: 0.3) : Colors.transparent,
+          color: isSelected ? accentColor.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.06),
         ),
       ),
       child: ListTile(
-        onTap: type != null ? () {
-          settings.setActiveProvider(type);
+        onTap: () {
+          aiRouter.switchBackend(backendKey);
           Get.back();
-        } : (isUpgrade ? () {
-          Get.back();
-          Get.toNamed('/subscription');
-        } : null),
+          SnackBarUtils.showSuccess(
+            "تم تبديل المحرك",
+            backendKey == 'firebase_ai'
+                ? "تم التبديل إلى Firebase AI Logic 🟣"
+                : "تم التبديل إلى Back4App Gateway ☁️",
+          );
+        },
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.primary : Colors.white.withValues(alpha: 0.05),
+            color: isSelected ? accentColor : Colors.white.withValues(alpha: 0.05),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: isSelected ? Colors.black : Colors.white70, size: 20),
+          child: Icon(icon, color: isSelected ? Colors.white : Colors.white70, size: 20),
         ),
         title: Text(
           label,
           style: TextStyle(
-            color: Colors.white, 
-            fontSize: 16, 
+            color: Colors.white,
+            fontSize: 15,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
             fontFamily: 'IBMPlexSansArabic',
           ),
@@ -723,21 +746,14 @@ class ChatInputArea extends StatelessWidget {
         subtitle: Text(
           sublabel,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: isSelected ? 0.6 : 0.38), 
-            fontSize: 12,
+            color: Colors.white.withValues(alpha: isSelected ? 0.75 : 0.4),
+            fontSize: 11,
             fontFamily: 'IBMPlexSansArabic',
           ),
         ),
-        trailing: isSelected 
-          ? const Icon(Icons.check_circle_rounded, color: AppTheme.primary)
-          : (isUpgrade ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppTheme.primary,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Text("ترقية", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 10, fontFamily: 'IBMPlexSansArabic')),
-            ) : null),
+        trailing: isSelected
+            ? Icon(Icons.check_circle_rounded, color: accentColor, size: 22)
+            : null,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),

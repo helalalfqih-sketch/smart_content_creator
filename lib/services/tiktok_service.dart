@@ -46,7 +46,7 @@ class TikTokService {
 
     // 💡 هذا الرابط يجب أن يكون مسجلاً في TikTok Developer Portal بالملي!
     const redirectUri =
-        "https://smartcontentcreator-d49f2.web.app/auth/tiktok/callback";
+        "https://smartcontentcreator2.web.app/auth/tiktok/callback";
 
     if (clientKey.isEmpty) return "";
 

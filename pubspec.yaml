@@ -20,16 +20,11 @@ dependencies:
   image_picker: ^1.1.2
   cached_network_image: ^3.4.1
 
-  # مشغل الفيديو (Windows)
+  # مشغل الفيديو (Client-Side Video & Audio Playback)
   video_player: ^2.10.0
   video_player_win: ^3.1.5
   chewie: ^1.8.1
   audioplayers: ^6.1.1
-  
-  # Media Kit for High Performance Video (tmp_lib)
-  media_kit: ^1.1.10
-  media_kit_video: ^1.2.4
-  media_kit_libs_video: ^1.0.4
 
   # Gemini + التخزين
   google_generative_ai: ^0.4.4
@@ -54,18 +49,16 @@ dependencies:
   dio: ^5.9.0
   file_picker: ^8.1.4
   open_filex: ^4.7.0
-  video_editor: ^3.0.0
   video_thumbnail: ^0.5.3 # For AI Analysis frames
   crypto: ^3.0.3 # For password hashing
   google_fonts: ^6.2.0 # Professional typography
   flutter_linkify: ^6.0.0 # Clickable links in chat
   lucide_icons: ^0.257.0 # Soft UI Icon System
 
-  # Execution (for FFmpeg on Windows)
+  # Execution
   process_run: ^0.13.0
   archive: ^3.3.7 # To unzip ffmpeg if we download it (future proofing)
   flutter_secure_storage: ^10.0.0
-  ffmpeg_kit_flutter_new: ^4.1.0
   firebase_core: ^4.4.0
   firebase_auth: ^6.1.4
   cloud_firestore: ^6.1.2
@@ -89,14 +82,19 @@ dependencies:
   youtube_explode_dart: ^3.0.5
   webview_flutter: ^4.13.1
   webview_flutter_android: ^4.0.0
-  google_mlkit_selfie_segmentation: ^0.10.1
   get_storage: ^2.1.1
   logger: ^2.7.0
   animate_do: ^5.1.0
   excel: ^4.0.3 # For reading .xlsx catalog files
 
+  # 🛡️ Firebase AI Logic + App Check (Phase 2)
+  firebase_ai: ^3.15.0 # Official Firebase AI Logic SDK (replaces firebase_vertexai)
+  firebase_app_check: ^0.4.6 # App Check for Play Integrity / Debug attestation
+
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   lints: ^6.0.0

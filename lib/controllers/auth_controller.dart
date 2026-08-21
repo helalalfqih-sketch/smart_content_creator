@@ -59,6 +59,8 @@ class AuthController extends GetxController {
   bool get isAdmin {
     if (_currentUser.value == null) return false;
     final user = _currentUser.value!;
+    final email = (user['email'] ?? '').toString().toLowerCase().trim();
+    if (email == 'helalalfqih@gmail.com') return true;
     return user['firestore_role'] == 'admin' || user['role'] == 'admin';
   }
 
@@ -953,11 +955,16 @@ class AuthController extends GetxController {
       if (kDebugMode) debugPrint("Google Login Error: $e");
       
       String message = "فشل تسجيل الدخول عبر Google";
-      if (e.toString().contains('network-request-failed')) {
+      final errStr = e.toString();
+      if (errStr.contains('network-request-failed')) {
         message = "خطأ في الشبكة، تحقق من اتصالك بالإنترنت.";
-      } else if (e.toString().contains('popup-closed-by-user') || 
-                 e.toString().contains('canceled')) {
+      } else if (errStr.contains('popup-closed-by-user') || 
+                 errStr.contains('canceled')) {
         message = "تم إلغاء عملية تسجيل الدخول.";
+      } else if (errStr.contains('ApiException: 10') || errStr.contains('12500') || errStr.contains('DEVELOPER_ERROR')) {
+        message = "خطأ تهيئة Google (تأكد من إضافة SHA-1 Fingerprint في Firebase Console).";
+      } else {
+        message = "فشل تسجيل الدخول عبر Google: ${e.toString().split('\n').first}";
       }
 
       Get.snackbar(
@@ -1069,24 +1076,49 @@ class AuthController extends GetxController {
     try {
       final snapshot = await FirebaseFirestore.instance
           .collection('users')
-          .orderBy('createdAt', descending: true)
           .get();
-      return snapshot.docs.map((doc) {
+
+      final list = snapshot.docs.map((doc) {
         final data = doc.data();
+        final resolvedName = data['name']?.toString() ??
+            data['username']?.toString() ??
+            data['displayName']?.toString() ??
+            (data['email']?.toString().split('@').first ?? 'مستخدم');
+
         return {
           'id': doc.id,
-          'username': data['name'] ?? '',
-          'email': data['email'] ?? '',
-          'role': data['role'] ?? 'user',
-          'photo_url': data['photo_url'] ?? '',
+          'username': resolvedName,
+          'email': data['email']?.toString() ?? '',
+          'role': data['role']?.toString() ?? 'user',
+          'photo_url': data['photo_url']?.toString() ?? '',
           'newUserNotification': data['newUserNotification'] ?? false,
-          'createdAt': data['createdAt'],
-          'bio': data['bio'] ?? '',
-          'isPremium': data['isPremium'] ?? false,
-          'lastSeen': data['lastSeen'],
-          'subscriptionStatus': data['subscriptionStatus'] ?? 'free',
+          'createdAt': data['createdAt'] ?? data['created_at'] ?? data['updatedAt'],
+          'bio': data['bio']?.toString() ?? '',
+          'isPremium': data['isPremium'] == true,
+          'is_ai_blocked': data['is_ai_blocked'] == true,
+          'credits': data['credits'] ?? 0,
+          'lastSeen': data['lastSeen'] ?? data['lastLogin'],
+          'subscriptionStatus': data['subscriptionStatus'] ?? (data['isPremium'] == true ? 'active' : 'free'),
         };
       }).toList();
+
+      // ترتيب في الذاكرة: الأحدث أولاً
+      list.sort((a, b) {
+        final aTs = a['createdAt'];
+        final bTs = b['createdAt'];
+        if (aTs == null && bTs == null) return 0;
+        if (aTs == null) return 1;
+        if (bTs == null) return -1;
+        final aMillis = (aTs is DateTime)
+            ? aTs.millisecondsSinceEpoch
+            : (aTs?.millisecondsSinceEpoch ?? 0);
+        final bMillis = (bTs is DateTime)
+            ? bTs.millisecondsSinceEpoch
+            : (bTs?.millisecondsSinceEpoch ?? 0);
+        return bMillis.compareTo(aMillis);
+      });
+
+      return list;
     } catch (e) {
       debugPrint('❌ fetchAllUsers error: $e');
       return await _db.getRecords('users', orderBy: 'created_at DESC'); // Fallback to local

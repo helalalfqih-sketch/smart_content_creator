@@ -9,6 +9,7 @@ class AIConstants {
 
   // =========================================
   // 🎯 System Persona (شخصية النظام)
+  // LEGACY_MIGRATION_SOURCE: Matches Firebase Prompt Template 'system_persona_default'
   // =========================================
 
   static const systemPersona = """
@@ -22,6 +23,7 @@ class AIConstants {
 
   // =========================================
   // ✏️ Modification Rules (قواعد التعديل)
+  // LEGACY_MIGRATION_SOURCE: Matches Firebase Prompt Template 'modification_rules_default'
   // =========================================
 
   static const modificationRules = """

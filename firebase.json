@@ -17,11 +17,7 @@
     "rewrites": [
       {
         "source": "/app/**",
-        "function": "server"
-      },
-      {
-        "source": "/api/**",
-        "function": "server"
+        "destination": "/app/index.html"
       }
     ],
     "headers": [

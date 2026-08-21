@@ -10,6 +10,7 @@ import '../../core/utils/log_service.dart';
 import '../chat_smart_agent.dart';
 import '../../utils/logger.dart';
 import '../core/agent_models.dart';
+import '../../services/ai_backend_router.dart';
 
 mixin AgentMediaMixin on GetxService {
   ChatSmartAgent get agent => this as ChatSmartAgent;
@@ -99,7 +100,10 @@ $description
 
       final String searchQuery = data['search_query'] ?? productName ?? "";
 
-      final String providerUsed = data['provider'] ?? agent.unifiedService.lastUsedProvider;
+      final String providerUsed = data['provider'] ??
+          (Get.isRegistered<AIBackendRouter>()
+              ? Get.find<AIBackendRouter>().currentBackend.value
+              : 'firebase_ai');
 
       await agent.addAndSaveMessage(
         ChatMessage.assistant(

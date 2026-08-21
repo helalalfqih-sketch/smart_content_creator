@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart'; // استيراد حزمة Flutter الأساسية لواجهة المستخدم
 import 'package:get/get.dart'; // استيراد حزمة GetX لإدارة الحالة والتنقل
 import 'package:flutter/foundation.dart'
-    show kIsWeb; // استيراد ثوابت للتحقق من المنصة ووضع التشغيل
+    show kIsWeb, kReleaseMode; // استيراد ثوابت للتحقق من المنصة ووضع التشغيل
 import 'dart:io' show Platform; // استيراد مكتبة التعامل مع نظام التشغيل
 import 'package:firebase_core/firebase_core.dart'; // استيراد المكتبة الأساسية لخدمات Firebase
 import 'package:cloud_firestore/cloud_firestore.dart'; // استيراد مكتبة Cloud Firestore للتعامل مع قواعد البيانات السحابية
-import 'package:media_kit/media_kit.dart'; // استيراد مكتبة تشغيل الوسائط المتعددة (فيديو وصوت)
-
+import 'package:firebase_app_check/firebase_app_check.dart'; // 🛡️ Firebase App Check لحماية API
 // --- استيراد الروابط والارتباطات (Bindings) ---
 import 'core/bindings/initial_binding.dart'; // استيراد ملف تهيئة الخدمات عند التشغيل
 
@@ -48,9 +47,6 @@ Future<void> main() async {
   
   // ⚡ تهيئة Supabase للمصادقة وقواعد البيانات
   await SupabaseConfig.initialize();
-  
-  // 🎬 تهيئة مكتبة الميديا لتشغيل الفيديوهات والتريندات (Media Kit)
-  MediaKit.ensureInitialized();
 
   // 📂 تهيئة خدمة التخزين الموحدة (AppStorageService)
   Get.put(SecureStorageService(), permanent: true);
@@ -88,6 +84,22 @@ Future<void> main() async {
     );
     
     debugPrint("✅ تم تهيئة Firebase بنجاح");
+
+    // 🛡️ تفعيل Firebase App Check لحماية API من الاستغلال
+    if (!kIsWeb) {
+      try {
+        // ignore: deprecated_member_use
+        await FirebaseAppCheck.instance.activate(
+          // ignore: deprecated_member_use
+          androidProvider: AndroidProvider.debug,
+          // ignore: deprecated_member_use
+          appleProvider: AppleProvider.debug,
+        );
+        debugPrint('[APP_CHECK] provider=debug');
+      } catch (appCheckError) {
+        debugPrint("⚠️ Firebase App Check activation failed: $appCheckError");
+      }
+    }
   } catch (e) {
     debugPrint("⚠️ فشل تهيئة Firebase (تأكد من ملفات الإعداد): $e");
   }

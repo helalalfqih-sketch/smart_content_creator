@@ -4,19 +4,20 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../ai/core/agent_models.dart';
 import '../../controllers/auth_controller.dart';
-import '../unified_ai_service.dart';
+import '../ai_backend_router.dart';
 import '../product_memory_service.dart';
 import '../firestore_user_service.dart';
 import '../../models/brand_identity_model.dart';
 import '../../controllers/settings_controller.dart';
+import '../../core/utils/json_utils.dart';
 
 class VisionProductService extends GetxService {
-  UnifiedAIService get _unifiedService => Get.find<UnifiedAIService>();
+  AIBackendRouter get _router => Get.find<AIBackendRouter>();
   ProductMemoryService get _productMemoryService =>
       Get.find<ProductMemoryService>();
   FirestoreUserService get _firestoreService => Get.find<FirestoreUserService>();
 
-  /// 🧠 تحليل ذكي باستخدام رؤية Gemini (Smart Analysis using Gemini Vision)
+  /// 🧠 تحليل ذكي باستخدام رؤية Gemini عبر AIBackendRouter
   Future<ProductVisionResult> analyzeImage(File image, {BrandIdentity? brand, dio.CancelToken? cancelToken}) async {
     try {
       // 1. فحص مبدئي سريع (اسم الملف) - للأداء فقط ولا يُعتمد عليه وحده (Naive Check)
@@ -37,16 +38,47 @@ class VisionProductService extends GetxService {
         }
       }
 
-      // 3. تحليل الذكاء الاصطناعي الحقيقي (AI Analysis)
-      // نستخدم extractProductInfo لاستخراج {الاسم، الفئة، كلمات البحث}
-      final info = await _unifiedService.extractProductInfo(image, brand: resolvedBrand, cancelToken: cancelToken);
+      // 3. تحليل الذكاء الاصطناعي الحقيقي (AI Analysis) عبر AIBackendRouter
+      final brandContext = resolvedBrand != null ? """
+CONTEXT: The user belongs to the brand '${resolvedBrand.storeName}'. 
+If the product in the image looks like it belongs to this brand or category (${resolvedBrand.industry}), please prioritize identifying it as such.
+""" : "";
+
+      final prompt = """
+$brandContext
+You are an expert visual analyst. Analyze the image and extract details.
+CRITICAL: Distinguish between a commercial product (for sale) and a personal item/person (selfie, person wearing clothes, casual photo).
+
+Return ONLY JSON:
+{
+  "name": "Specific product name OR visual description (e.g., 'Person wearing grey shawl')",
+  "category": "Category (Electronics, Fashion, Person, Home, Selfie, Food)",
+  "brand": "Brand or 'Unknown'",
+  "is_commercial": true/false,
+  "search_query": "Detailed English search query including [Brand] [Product Name] [Model] for best search results",
+  "description": "Brief description in Arabic",
+  "teaser": "A smart, unique marketing teaser or friendly comment in Arabic based SPECIFICALLY on this image (Max 15 words)"
+}
+NO MARKDOWN. NO EXTRA TEXT.
+""";
+
+      final bytes = await image.readAsBytes();
+      final visionResponse = await _router.analyzeProductVision(
+        prompt: prompt,
+        imageBytes: bytes,
+        mimeType: 'image/jpeg',
+      );
+
+      final rawText = visionResponse['data']?.toString() ?? '';
+      final Map<String, dynamic> info = JsonUtils.parseSafe(rawText);
+      info['provider'] = visionResponse['meta']?['provider'] ?? 'firebase_ai';
 
       // إذا أعاد الذكاء الاصطناعي اسماً صالحاً، فهو غالباً منتج
       bool isProduct = heuristicsFound;
       String? productName = heuristicsFound ? name : null;
       Map<String, dynamic> data = {};
 
-      if (info.containsKey('name') && info['name'] != null) {
+      if (info.containsKey('name') && info['name'] != null && info['name'].toString().isNotEmpty) {
         String n = info['name'].toString().trim();
         // 🛡️ Guard against generic names
         if ([
@@ -95,8 +127,7 @@ class VisionProductService extends GetxService {
         isProduct: isProduct,
         productName: productName,
         confidence: isProduct ? 0.95 : 0.0,
-        data:
-            data, // تخزين البيانات الكاملة (كلمات البحث، الفئة) (Store Full Data)
+        data: data,
       );
 
       // 🧠 حفظ المنتج في الذاكرة بعد التحليل الناجح
@@ -108,12 +139,6 @@ class VisionProductService extends GetxService {
             userId = auth.firebaseUid ??
                 auth.user?['id']?.toString() ??
                 'default_user';
-          }
-
-          // Try creating if not exists - Simplified for now
-
-          if (userId != 'default_user') {
-            // Logic to link product to user would go here
           }
 
           // 🛡️ Normalize data before saving (remove N/A, Null, etc.)
@@ -152,8 +177,7 @@ class VisionProductService extends GetxService {
 
           final normBrand = normalize(data['brand']);
           final normModel = normalize(data['model']);
-          final normBrandEn = normalize(data['brand_en']) ??
-              normBrand; // Try brand_en or fallback to brand
+          final normBrandEn = normalize(data['brand_en']) ?? normBrand;
 
           await _productMemoryService.saveProductMemory(
             userId: userId,
@@ -180,7 +204,9 @@ class VisionProductService extends GetxService {
 
       return result;
     } catch (e) {
-      // احتياطي (Fallback)
+      if (kDebugMode) {
+        debugPrint('❌ VisionProductService.analyzeImage error: $e');
+      }
       return ProductVisionResult(isProduct: false, confidence: 0.0);
     }
   }
@@ -194,7 +220,6 @@ class VisionProductService extends GetxService {
     final name = result.productName?.toLowerCase() ?? "";
 
     // 1. الهوية البصرية (الشعار/العلامة التجارية) (Visual Identity)
-    // استنتاج: إذا كان المنتج يبدو عاماً أو ذكر المستخدم "نشاط جديد"
     upsells.add({
       "title": "تصميم هوية بصرية",
       "subtitle": "شعار وألوان لنشاطك التجاري",

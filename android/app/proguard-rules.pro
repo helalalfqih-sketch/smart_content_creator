@@ -15,9 +15,9 @@
 
 # GetX - Prevent obfuscation of controllers and models used by GetX reflection
 -keep class com.getx.** { *; }
--keep class com.example.smart_content_creator.controllers.** { *; }
--keep class com.example.smart_content_creator.models.** { *; }
--keepNames class com.example.smart_content_creator.controllers.** { *; }
+-keep class com.smartcontentcreator.app.controllers.** { *; }
+-keep class com.smartcontentcreator.app.models.** { *; }
+-keepNames class com.smartcontentcreator.app.controllers.** { *; }
 
 # Firebase
 -keep class com.google.firebase.** { *; }
@@ -33,8 +33,8 @@
 -keep class com.alexmercerind.media_kit.** { *; }
 
 # Prevent stripping of the startup flow
--keep class com.example.smart_content_creator.screens.SplashScreen { *; }
--keep class com.example.smart_content_creator.MainActivity { *; }
+-keep class com.smartcontentcreator.app.screens.SplashScreen { *; }
+-keep class com.smartcontentcreator.app.MainActivity { *; }
 
 # General
 -dontwarn okio.**

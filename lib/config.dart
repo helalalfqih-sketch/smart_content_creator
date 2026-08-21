@@ -11,5 +11,5 @@ class Config {
 
   // 🌐 الموقع الرسمي وسيرفر التحديثات
   // Note: Update this to your custom domain once DNS is configured
-  static const String baseUrl = "https://smartcontentcreator-d49f2.web.app";
+  static const String baseUrl = "https://smartcontentcreator2.web.app";
 }

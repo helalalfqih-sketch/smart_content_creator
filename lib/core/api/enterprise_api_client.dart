@@ -205,13 +205,21 @@ class EnterpriseApiClient {
     }
 
     final status = e.response?.statusCode;
+    final responseBody = e.response?.data?.toString().toLowerCase() ?? '';
+
+    if (status == 429 || responseBody.contains('resource_exhausted') || responseBody.contains('quota')) {
+      return ApiErrorType.rateLimit;
+    }
+
+    if (status == 403 && (responseBody.contains('location') || responseBody.contains('country') || responseBody.contains('region'))) {
+      return ApiErrorType.network; // Geo-blocking handled as network/routing fallback
+    }
+
     switch (status) {
       case 401:
         return ApiErrorType.auth;
       case 402:
         return ApiErrorType.quota;
-      case 429:
-        return ApiErrorType.rateLimit;
       case 400:
       case 403:
       case 404:
@@ -251,29 +259,39 @@ class EnterpriseApiClient {
 
   /// 💬 رسائل خطأ ودودة للمستخدم
   String _getFriendlyErrorMessage(ApiErrorType type, dio.DioException e) {
+    final data = e.response?.data;
+    final text = (data is String ? data : data?.toString() ?? '').toLowerCase();
+
     switch (type) {
       case ApiErrorType.auth:
         return "مفتاح الـ API غير صالح أو منتهي الصلاحية.";
       case ApiErrorType.quota:
-        return "لقد استهلكت كامل رصيدك في هذه الخدمة.";
+        return "تم استهلاك الحصة المجانية/الرصيد المتاح لهذا المزود.";
       case ApiErrorType.rateLimit:
-        return "طلبات سريعة جداً! النظام يقوم بالتهدئة الآن.";
+        return "تم الوصول للحد الأقصى من الطلبات المتزامنة (429). جاري التحويل للمسار الاحتياطي.";
       case ApiErrorType.server:
-        return "عذراً، سيرفر الخدمة يواجه ضغطاً حالياً.";
+        if (e.response?.statusCode == 503 || text.contains('high demand') || text.contains('overloaded')) {
+          return "خادم الذكاء الاصطناعي يواجه ضغطاً كبيراً حالياً (503). يرجى المحاولة بعد لحظات.";
+        }
+        return "عذراً، خادم الخدمة يواجه ضغطاً حالياً.";
       case ApiErrorType.network:
-        return "تحقق من اتصالك بالإنترنت.";
+        if (e.type == dio.DioExceptionType.connectionTimeout || e.type == dio.DioExceptionType.receiveTimeout) {
+          return "استغرقت معالجة الطلب وقتاً أطول من المتوقع (Timeout). جاري المحاولة عبر خادم بديل.";
+        }
+        if (text.contains('location') || text.contains('unsupported')) {
+          return "الخدمة المباشرة غير متاحة في هذا النطاق الجغرافي. جاري التبديل للمسار السحابي.";
+        }
+        return "تعذر الاتصال بالخادم، يرجى التحقق من اتصالك بالإنترنت.";
       case ApiErrorType.invalid:
-        final data = e.response?.data;
-        final text = (data is String ? data : data?.toString() ?? '').toLowerCase();
         if (text.contains('content_moderation') ||
             text.contains('flagged') ||
             text.contains('denied') ||
             text.contains('moderation')) {
           return 'تم رفض الطلب بواسطة نظام الأمان/المراجعة بسبب محتوى غير مناسب أو حساس. جرّب وصفاً أكثر حيادية للمنتج.';
         }
-        return "المدخلات غير مدعومة من قبل الذكاء الاصطناعي.";
+        return "المدخلات غير مدعومة من قبل النموذج المحدد.";
       default:
-        return e.message ?? "حدث خطأ غير متوقع.";
+        return e.message ?? "حدث خطأ أثناء معالجة الطلب.";
     }
   }
 }

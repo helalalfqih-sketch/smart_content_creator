@@ -1,14 +1,24 @@
 import 'dart:io';
-import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
-import 'package:ffmpeg_kit_flutter_new/return_code.dart';
-import 'package:ffmpeg_kit_flutter_new/ffprobe_kit.dart';
-import 'package:ffmpeg_kit_flutter_new/ffmpeg_session.dart';
 import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
+import 'media_processing_service.dart';
 
-class FfmpegService {
-  /// Check if FFmpeg is ready (implicitly always true with Kit effectively, but good placeholder)
+/// 🎬 FfmpegService (Compatibility Adapter)
+///
+/// Serves as a backward-compatible adapter routing all legacy requests to
+/// [MediaProcessingService] on the backend.
+/// Contains ZERO local native FFmpeg executions or native C++ binaries.
+class FfmpegService extends GetxService {
+  static MediaProcessingService get _mediaService {
+    if (Get.isRegistered<MediaProcessingService>()) {
+      return Get.find<MediaProcessingService>();
+    }
+    return Get.put(MediaProcessingService());
+  }
+
+  /// Check if media processing is ready
   static Future<bool> isAvailable() async {
-    return true; 
+    return _mediaService.isAvailable();
   }
 
   /// Extracts a single frame at a specific timestamp.
@@ -18,200 +28,77 @@ class FfmpegService {
     required String timestamp,
     int quality = 5,
   }) async {
-    // -qn is not standard, using -q:v.
-    // FFmpegKit execution
-    final command = '-ss $timestamp -i "$videoPath" -frames:v 1 -q:v $quality -y "$outputPath"';
-    
-    try {
-      final session = await FFmpegKit.execute(command);
-      final returnCode = await session.getReturnCode();
-
-      if (ReturnCode.isSuccess(returnCode)) {
-        final file = File(outputPath);
-        if (await file.exists()) return file;
-      } else {
-        final logs = await session.getAllLogsAsString();
-        debugPrint("FFmpeg Error (Extract Frame): $logs");
-      }
-    } catch (e) {
-      debugPrint("FFmpegKit Exception: $e");
-    }
-    return null;
+    if (kDebugMode) debugPrint("[🎬 FfmpegService Adapter]: extractFrame routing to MediaProcessingService");
+    return _mediaService.extractFrame(
+      videoPath: videoPath,
+      outputPath: outputPath,
+      timestamp: timestamp,
+      quality: quality,
+    );
   }
 
+  /// Applies audio filter complex
   static Future<File?> applyAudioFilter({
     required String videoPath,
     required String outputPath,
-    required String filterComplex, 
+    required String filterComplex,
   }) async {
-    // -i input -af filter -c:v copy -y output
-    final command = '-i "$videoPath" -af "$filterComplex" -c:v copy -y "$outputPath"';
-
-    try {
-       final session = await FFmpegKit.execute(command);
-       final returnCode = await session.getReturnCode();
-
-       if (ReturnCode.isSuccess(returnCode)) {
-         final file = File(outputPath);
-         if (await file.exists()) return file; 
-       } else {
-         final logs = await session.getAllLogsAsString();
-         debugPrint("FFmpeg Audio Error: $logs");
-       }
-    } catch (e) {
-      debugPrint("FFmpegKit Exception (Audio): $e");
-    }
-    return null;
+    if (kDebugMode) debugPrint("[🎬 FfmpegService Adapter]: applyAudioFilter routing to MediaProcessingService");
+    return _mediaService.applyAudioFilter(
+      videoPath: videoPath,
+      outputPath: outputPath,
+      filterComplex: filterComplex,
+    );
   }
-  
-  /// Helper to extract audio only
+
+  /// Extracts audio only from video
   static Future<String?> extractAudio(String videoPath) async {
-    final audioPath = videoPath.replaceAll('.mp4', '_audio.mp3');
-    final command = '-i "$videoPath" -vn -acodec mp3 -y "$audioPath"';
-    
-    try {
-      final session = await FFmpegKit.execute(command);
-      if (ReturnCode.isSuccess(await session.getReturnCode())) {
-        return audioPath;
-      }
-    } catch (e) {
-      debugPrint("Audio Extraction Error: $e");
-    }
-    return null;
+    if (kDebugMode) debugPrint("[🎬 FfmpegService Adapter]: extractAudio routing to MediaProcessingService");
+    return _mediaService.extractAudio(videoPath);
   }
+
+  /// Merges audio and video streams
   static Future<File?> mergeAudioVideo({
     required String videoPath,
     required String audioPath,
     required String outputPath,
   }) async {
-    // Merge video (stream 0) and audio (stream 1)
-    // -map 0:v -map 1:a ensures we pick video from file 1 and audio from file 2
-    // -c:v copy avoids re-encoding video (fast)
-    // -shortest ends when the shortest stream ends
-    final command = '-i "$videoPath" -i "$audioPath" -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 -shortest -y "$outputPath"';
-    
-    try {
-      final session = await FFmpegKit.execute(command);
-      final returnCode = await session.getReturnCode();
-
-      if (ReturnCode.isSuccess(returnCode)) {
-        final file = File(outputPath);
-        if (await file.exists()) return file;
-      } else {
-        final logs = await session.getAllLogsAsString();
-        debugPrint("FFmpeg Merge Error: $logs");
-      }
-    } catch (e) {
-      debugPrint("FFmpegKit Merge Exception: $e");
-    }
-    return null;
+    if (kDebugMode) debugPrint("[🎬 FfmpegService Adapter]: mergeAudioVideo routing to MediaProcessingService");
+    return _mediaService.mergeAudioVideo(
+      videoPath: videoPath,
+      audioPath: audioPath,
+      outputPath: outputPath,
+    );
   }
 
-  /// 🎬 AI Cinematic Enhancement
-  /// Executes high-quality processing including upscaling, denoising, and color correction.
+  /// AI Cinematic Enhancement
   static Future<File?> enhanceVideo({
     required String inputPath,
     required String outputPath,
     required String filterChain,
-    String? targetRatio, // Original, 9:16, 16:9, 1:1, 4:5
+    String? targetRatio,
   }) async {
-    String finalFilters = filterChain;
-    
-    // Add Smart Aspect Ratio Formatting if requested
-    if (targetRatio != null && targetRatio != 'Original') {
-      String scaleCrop = "";
-      switch (targetRatio) {
-        case '9:16':
-          scaleCrop = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920";
-          break;
-        case '16:9':
-          scaleCrop = "scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080";
-          break;
-        case '1:1':
-          scaleCrop = "scale=1080:1080:force_original_aspect_ratio=increase,crop=1080:1080";
-          break;
-        case '4:5':
-          scaleCrop = "scale=1080:1350:force_original_aspect_ratio=increase,crop=1080:1350";
-          break;
-      }
-      
-      if (scaleCrop.isNotEmpty) {
-        // If the filterChain already contains a scale, we might need to replace it or append.
-        // For simplicity and to avoid conflicts, we append it at the end.
-        finalFilters = "$finalFilters,$scaleCrop";
-      }
-    }
-
-    // We use a slightly slower preset for better quality and detail retention.
-    final command = '-i "$inputPath" -vf "$finalFilters" -c:v libx264 -preset medium -crf 18 -c:a copy -y "$outputPath"';
-    debugPrint("🚀 FFmpeg AI Enhancement Command: ffmpeg $command");
-    
-    try {
-      final session = await FFmpegKit.execute(command);
-      final returnCode = await session.getReturnCode();
-
-      if (ReturnCode.isSuccess(returnCode)) {
-        final file = File(outputPath);
-        if (await file.exists()) return file;
-      } else if (ReturnCode.isCancel(returnCode)) {
-        if (kDebugMode) debugPrint("FFmpeg Operation Cancelled by User");
-      } else {
-        await handleFFmpegError(session, "Enhancement");
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint("FFmpegKit Enhancement Exception: $e");
-    }
-    return null;
+    if (kDebugMode) debugPrint("[🎬 FfmpegService Adapter]: enhanceVideo routing to MediaProcessingService");
+    return _mediaService.enhanceVideo(
+      inputPath: inputPath,
+      outputPath: outputPath,
+      filterChain: filterChain,
+      targetRatio: targetRatio,
+    );
   }
 
   /// 🛑 Global Cancellation
   static Future<void> cancelAll() async {
-    await FFmpegKit.cancel();
-    if (kDebugMode) debugPrint("🚫 All FFmpeg sessions requested to cancel.");
+    _mediaService.cancelAll();
   }
 
-  /// 🔍 Detects specific errors from logs to show user-friendly messages
-  static Future<void> handleFFmpegError(FFmpegSession session, String stage) async {
-    final returnCode = await session.getReturnCode();
-    if (ReturnCode.isCancel(returnCode)) {
-       throw Exception("تم إلغاء عملية $stage.");
-    }
-
-    final logs = await session.getAllLogsAsString();
-    
-    if (logs?.contains("No such file or directory") ?? false) {
-      throw Exception("الملف غير موجود أو المسار خاطئ.");
-    } else if (logs?.contains("out of memory") ?? false) {
-      throw Exception("ذاكرة الجهاز غير كافية لمعالجة هذا الفيديو.");
-    } else if ((logs?.contains("Invalid data found when processing input") ?? false) || (logs?.contains("could not find codec parameters") ?? false)) {
-      throw Exception("تنسيق الفيديو غير مدعوم أو الملف تالف.");
-    } else if (logs?.contains("Read-only file system") ?? false) {
-      throw Exception("لا يمكن الكتابة في ذاكرة التخزين. تأكد من الأذونات.");
-    }
-    
-    if (kDebugMode) debugPrint("FFmpeg Error ($stage): $logs");
-    throw Exception("فشل عملية $stage: تأكد من سلامة الملف ومساحة التخزين.");
+  /// 🔍 Detects errors to show user-friendly messages (Compatibility)
+  static Future<void> handleFFmpegError(dynamic session, String stage) async {
+    throw Exception("فشلت عملية $stage عبر الخادم السحابي. يرجى المحاولة مرة أخرى.");
   }
 
-  /// 📊 Get Metadata (Codec, Resolution, Duration)
+  /// 📊 Get Media Information
   static Future<Map<String, dynamic>?> getMediaInfo(String path) async {
-    try {
-      final session = await FFprobeKit.getMediaInformation(path);
-      final info = session.getMediaInformation();
-      if (info == null) return null;
-
-      final props = info.getAllProperties();
-      return {
-        'duration': info.getDuration(),
-        'format': info.getFormat(),
-        'bitrate': info.getBitrate(),
-        'codec': props?['streams']?[0]?['codec_name'],
-        'width': props?['streams']?[0]?['width'],
-        'height': props?['streams']?[0]?['height'],
-      };
-    } catch (e) {
-      if (kDebugMode) debugPrint("FFprobe Error: $e");
-      return null;
-    }
+    return _mediaService.getMediaInfo(path);
   }
 }

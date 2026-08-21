@@ -1981,6 +1981,39 @@ class AdminDashboardScreen extends StatelessWidget {
           onTap: () => controller.toggleUserAiBlock(
               user['id'].toString(), user['is_ai_blocked'] != true),
         ),
+        // 🎯 تبديل مسار الذكاء الاصطناعي (Phase 2)
+        PopupMenuItem(
+          child: Row(
+            children: [
+              Icon(
+                  (user['ai_backend'] ?? 'firebase_ai') == 'firebase_ai'
+                      ? Icons.cloud_rounded
+                      : Icons.dns_rounded,
+                  color: (user['ai_backend'] ?? 'firebase_ai') == 'firebase_ai'
+                      ? Colors.purpleAccent
+                      : Colors.cyanAccent,
+                  size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                    'مسار AI: ${(user['ai_backend'] ?? 'firebase_ai') == 'firebase_ai' ? 'Firebase AI' : 'Backend'}',
+                    style: GoogleFonts.cairo(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600)),
+              ),
+              Icon(Icons.swap_horiz_rounded,
+                  color: Colors.white38, size: 18),
+            ],
+          ),
+          onTap: () {
+            final current = (user['ai_backend'] ?? 'firebase_ai').toString();
+            final newBackend =
+                current == 'firebase_ai' ? 'backend' : 'firebase_ai';
+            controller.switchUserAiBackend(
+                user['id'].toString(), newBackend);
+          },
+        ),
       ],
     );
   }

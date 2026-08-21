@@ -205,11 +205,43 @@ class CatalogProduct {
   }
 
   // ---------------------------------------------------------------------------
-  // 🏭 إنشاء من Map (قاعدة البيانات)
+  // 🏭 إنشاء من Map (قاعدة البيانات والسحابة)
   // ---------------------------------------------------------------------------
-  factory CatalogProduct.fromMap(Map<String, dynamic> map) {
+  factory CatalogProduct.fromMap(Map<String, dynamic> map, {String? docId}) {
+    List<String> parseStringList(dynamic val) {
+      if (val == null) return [];
+      if (val is List) {
+        return val
+            .map((e) => e?.toString().trim() ?? '')
+            .where((e) => e.isNotEmpty)
+            .toList();
+      }
+      if (val is String) {
+        return val
+            .split(',')
+            .map((e) => e.trim())
+            .where((e) => e.isNotEmpty)
+            .toList();
+      }
+      return [];
+    }
+
+    DateTime? parseDateTime(dynamic val) {
+      if (val == null) return null;
+      if (val is DateTime) return val;
+      if (val is String) return DateTime.tryParse(val);
+      try {
+        if (val.runtimeType.toString() == 'Timestamp' ||
+            val.toString().startsWith('Timestamp(')) {
+          return (val as dynamic).toDate() as DateTime?;
+        }
+      } catch (_) {}
+      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+      return null;
+    }
+
     return CatalogProduct(
-      id: map['id']?.toString(),
+      id: docId ?? map['id']?.toString() ?? '',
       title: map['title'] as String? ?? '',
       description: map['description'] as String? ?? '',
       availability: map['availability'] as String? ?? 'in stock',
@@ -217,44 +249,41 @@ class CatalogProduct {
       price: (map['price'] as num?)?.toDouble() ?? 0.0,
       currency: map['currency'] as String? ?? 'YER',
       link: map['link'] as String? ?? '',
-      imageLink: map['image_link'] as String? ?? '',
-      additionalImageLinks: (map['additional_image_links'] as String? ?? '')
-          .split(',')
-          .where((e) => e.trim().isNotEmpty)
-          .toList(),
-      videoUrl: map['video_url'] as String?,
+      imageLink: (map['image_link'] ?? map['imageLink']) as String? ?? '',
+      additionalImageLinks: parseStringList(
+          map['additional_image_links'] ?? map['additionalImageLinks']),
+      videoUrl: (map['video_url'] ?? map['videoUrl']) as String?,
       brand: map['brand'] as String?,
-      googleProductCategory: map['google_product_category'] as String?,
-      fbProductCategory: map['fb_product_category'] as String?,
-      categoryId: map['category_id'] as String?,
-      categoryName: map['category_name'] as String?,
-      metaProductType: map['meta_product_type'] as String?,
+      googleProductCategory: (map['google_product_category'] ??
+          map['googleProductCategory']) as String?,
+      fbProductCategory: (map['fb_product_category'] ??
+          map['fbProductCategory']) as String?,
+      categoryId: (map['category_id'] ?? map['categoryId']) as String?,
+      categoryName: (map['category_name'] ?? map['categoryName']) as String?,
+      metaProductType: (map['meta_product_type'] ??
+          map['metaProductType']) as String?,
       quantity: (map['quantity'] as num?)?.toInt() ?? 1,
-      salePrice: (map['sale_price'] as num?)?.toDouble(),
-      salePriceEffectiveDate: map['sale_price_effective_date'] as String?,
-      itemGroupId: map['item_group_id'] as String?,
+      salePrice: (map['sale_price'] ?? map['salePrice'] as num?)?.toDouble(),
+      salePriceEffectiveDate: (map['sale_price_effective_date'] ??
+          map['salePriceEffectiveDate']) as String?,
+      itemGroupId: (map['item_group_id'] ?? map['itemGroupId']) as String?,
       gender: map['gender'] as String?,
       color: map['color'] as String?,
       size: map['size'] as String?,
-      ageGroup: map['age_group'] as String?,
+      ageGroup: (map['age_group'] ?? map['ageGroup']) as String?,
       material: map['material'] as String?,
       pattern: map['pattern'] as String?,
       shipping: map['shipping'] as String?,
-      shippingWeight: map['shipping_weight'] as String?,
+      shippingWeight: (map['shipping_weight'] ?? map['shippingWeight']) as String?,
       gtin: map['gtin'] as String?,
-      productTags: (map['product_tags'] as String? ?? '')
-          .split(',')
-          .where((e) => e.trim().isNotEmpty)
-          .toList(),
+      productTags: parseStringList(map['product_tags'] ?? map['productTags']),
       style: map['style'] as String?,
-      createdAt: map['created_at'] != null
-          ? DateTime.tryParse(map['created_at'] as String)
-          : null,
-      updatedAt: map['updated_at'] != null
-          ? DateTime.tryParse(map['updated_at'] as String)
-          : null,
-      isSynced: (map['is_synced'] as int? ?? 0) == 1,
-      creatorUid: map['creator_uid'] as String?,
+      createdAt: parseDateTime(map['created_at'] ?? map['createdAt']),
+      updatedAt: parseDateTime(map['updated_at'] ?? map['updatedAt']),
+      isSynced: (map['is_synced'] == 1 ||
+          map['is_synced'] == true ||
+          map['isSynced'] == true),
+      creatorUid: (map['creator_uid'] ?? map['creatorUid']) as String?,
       status: map['status'] as String? ?? 'approved',
     );
   }

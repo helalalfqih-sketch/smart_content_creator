@@ -33,7 +33,7 @@ class OpenRouterVideoService extends GetxService {
         headers: {
           "Authorization": "Bearer $keyToUse",
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://smartcontentcreator-d49f2.web.app",
+          "HTTP-Referer": "https://smartcontentcreator2.web.app",
           "X-Title": "Smart Content Creator",
         },
         data: {

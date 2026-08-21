@@ -18,7 +18,7 @@ if (hasKeystore) {
 }
 
 android {
-    namespace = "com.example.smart_content_creator"
+    namespace = "com.smartcontentcreator.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = "28.2.13676358"
 
@@ -32,7 +32,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.smart_content_creator"
+        applicationId = "com.smartcontentcreator.app"
         minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

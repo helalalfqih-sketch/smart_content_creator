@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
+import 'package:get/get.dart';
 import '../../ai/core/agent_models.dart';
 import '../../ai/models/app_context.dart';
-import '../unified_ai_service.dart';
+import '../ai_backend_router.dart';
 import 'naive_bayes_classifier.dart';
 import 'data/naive_bayes_data.dart';
 
@@ -11,10 +12,10 @@ enum Sentiment { neutral, excited, angry, urgent, inquisitive }
 
 class IntentClassifierService {
   final NaiveBayesClassifier _bayes = NaiveBayesClassifier();
-  final UnifiedAIService? _aiService;
+  final AIBackendRouter? _aiRouter;
   bool _isTrained = false;
 
-  IntentClassifierService([this._aiService]) {
+  IntentClassifierService([this._aiRouter]) {
     _trainClassifier();
   }
 
@@ -25,10 +26,14 @@ class IntentClassifierService {
     }
   }
 
-  /// 🧠 المحلل الذكي: يستخدم Gemini لفهم النية العميقة وتحويلها لـ JSON
+  /// 🧠 المحلل الذكي: يستخدم AIBackendRouter لفهم النية العميقة وتحويلها لـ JSON
   Future<Map<String, dynamic>> smartClassify(String text,
       {AppContext? context, dio.CancelToken? cancelToken}) async {
-    if (_aiService == null) return {'intent': 'casualChat', 'confidence': 0.5};
+    final router = _aiRouter ??
+        (Get.isRegistered<AIBackendRouter>()
+            ? Get.find<AIBackendRouter>()
+            : null);
+    if (router == null) return {'intent': 'casualChat', 'confidence': 0.5};
 
     try {
       final prompt = """
@@ -92,8 +97,11 @@ class IntentClassifierService {
       }
       """;
 
-      final raw = await _aiService.generateText(prompt,
-          systemPersona: "You are an Intent and Planning API.", cancelToken: cancelToken);
+      final res = await router.generateText(
+        prompt: prompt,
+        systemPersona: "You are an Intent and Planning API.",
+      );
+      final raw = res['data']?.toString() ?? '';
           
       // 🛡️ Robust Extraction: Use regex to find the first JSON-like block {}
       final jsonMatch = RegExp(r'\{[\s\S]*\}', multiLine: true).firstMatch(raw);

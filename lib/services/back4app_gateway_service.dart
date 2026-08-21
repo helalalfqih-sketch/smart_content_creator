@@ -62,7 +62,7 @@ class Back4AppGatewayService extends GetxService {
         url,
         headers: _headers,
         body: json.encode(body),
-      ).timeout(const Duration(seconds: 35));
+      ).timeout(const Duration(seconds: 90));
 
       if (kDebugMode) {
         print('📡 [Back4App-Vertex]: Status: ${response.statusCode}');
@@ -141,7 +141,7 @@ class Back4AppGatewayService extends GetxService {
         url,
         headers: _headers,
         body: json.encode(body),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 90));
 
       if (kDebugMode) {
         print('📡 [Back4App-Gateway]: Status: ${response.statusCode}');
