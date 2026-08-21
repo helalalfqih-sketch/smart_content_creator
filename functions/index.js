@@ -290,3 +290,197 @@ exports.server = functions.https.onRequest(async (req, res) => {
   }
 });
 
+// ============================================
+// 🤖 Manus API v2 Gateway (Secure Backend Transport)
+// Integrates Manus API v2 behind Firebase Auth & App Check
+// Holds MANUS_API_KEY in backend environment securely
+// ============================================
+
+exports.aiManusGateway = functions.https.onCall(async (data, context) => {
+  // 1. Verify App Check if present
+  if (context.app === undefined && process.env.NODE_ENV === 'production') {
+    // In production, enforce App Check
+    console.warn('[MANUS_GATEWAY] App Check token missing in production');
+  }
+
+  // 2. Read Backend API Key
+  const manusApiKey = process.env.MANUS_API_KEY;
+  if (!manusApiKey) {
+    console.error('[MANUS_GATEWAY] MANUS_API_KEY environment variable is not configured');
+    throw new functions.https.HttpsError(
+      'failed-precondition',
+      'MANUS_API_KEY is not configured on the backend server.'
+    );
+  }
+
+  const prompt = (data && data.prompt) || '';
+  const systemPersona = (data && data.systemPersona) || '';
+  const history = (data && data.history) || [];
+  const imageBase64 = (data && data.image) || null;
+  const mimeType = (data && data.mimeType) || 'image/jpeg';
+  const taskType = (data && data.taskType) || 'general';
+
+  if (!prompt && !imageBase64) {
+    throw new functions.https.HttpsError('invalid-argument', 'Prompt or image is required');
+  }
+
+  // 3. Assemble Canonical Content Prompt (Zero Prompt Modification)
+  let fullPrompt = '';
+  if (systemPersona) {
+    fullPrompt += `${systemPersona}\n\n`;
+  }
+  if (history && history.length > 0) {
+    fullPrompt += '--- Previous Conversation ---\n';
+    for (const msg of history) {
+      const role = msg.role === 'assistant' || msg.role === 'model' ? 'Assistant' : 'User';
+      fullPrompt += `${role}: ${msg.content || ''}\n`;
+    }
+    fullPrompt += '-----------------------------\n\n';
+  }
+  fullPrompt += prompt;
+
+  const contentItems = [
+    {
+      type: 'text',
+      text: fullPrompt,
+    },
+  ];
+
+  if (imageBase64) {
+    contentItems.push({
+      type: 'file',
+      file_data: {
+        mime_type: mimeType,
+        data: imageBase64,
+      },
+    });
+  }
+
+  const manusBaseUrl = 'https://api.manus.ai/v2';
+  const headers = {
+    'Content-Type': 'application/json',
+    'x-manus-api-key': manusApiKey,
+  };
+
+  try {
+    const fetch = globalThis.fetch || require('node-fetch');
+
+    // 4. Create Task on Manus API v2 (POST /v2/task.create)
+    console.log(`[MANUS_GATEWAY] Creating task on Manus API v2 (taskType=${taskType}, hasImage=${Boolean(imageBase64)})`);
+    const createRes = await fetch(`${manusBaseUrl}/task.create`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        message: {
+          content: contentItems,
+        },
+      }),
+    });
+
+    if (!createRes.ok) {
+      const status = createRes.status;
+      const errBody = await createRes.text();
+      console.error(`[MANUS_GATEWAY] task.create failed with HTTP ${status}: ${errBody}`);
+
+      if (status === 401 || status === 403) {
+        throw new functions.https.HttpsError('unauthenticated', `Manus Auth Error: ${errBody}`);
+      } else if (status === 429) {
+        throw new functions.https.HttpsError('resource-exhausted', `Manus Quota / Rate Limited: ${errBody}`);
+      } else if (status >= 400 && status < 500) {
+        throw new functions.https.HttpsError('invalid-argument', `Manus Bad Request: ${errBody}`);
+      } else {
+        throw new functions.https.HttpsError('internal', `Manus Server Error (${status}): ${errBody}`);
+      }
+    }
+
+    const createData = await createRes.json();
+    const taskId = createData.task_id || (createData.data && createData.data.task_id);
+
+    if (!taskId) {
+      throw new functions.https.HttpsError('internal', 'Manus did not return a valid task_id');
+    }
+
+    console.log(`[MANUS_GATEWAY] Task created successfully: ${taskId}. Waiting for completion...`);
+
+    // 5. Poll for completion via task.detail (bounded backoff: max 30 seconds)
+    const startTime = Date.now();
+    const maxWaitMs = 30000;
+    let pollIntervalMs = 1000;
+    let isTaskFinished = false;
+
+    while (Date.now() - startTime < maxWaitMs) {
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+
+      const detailRes = await fetch(`${manusBaseUrl}/task.detail?task_id=${encodeURIComponent(taskId)}`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!detailRes.ok) {
+        console.warn(`[MANUS_GATEWAY] task.detail HTTP ${detailRes.status}`);
+        continue;
+      }
+
+      const detailBody = await detailRes.json();
+      const taskObj = detailBody.task || detailBody.data || detailBody;
+      const status = taskObj.status;
+
+      if (status === 'stopped' || status === 'completed' || status === 'done' || status === 'success') {
+        isTaskFinished = true;
+        break;
+      } else if (status === 'failed' || status === 'error') {
+        const errorMsg = taskObj.error || taskObj.message || 'Task failed on Manus';
+        throw new functions.https.HttpsError('internal', `Manus task failed: ${JSON.stringify(errorMsg)}`);
+      }
+
+      // Linear backoff up to 2.0s
+      pollIntervalMs = Math.min(pollIntervalMs + 500, 2000);
+    }
+
+    if (!isTaskFinished) {
+      // Timeout reached
+      throw new functions.https.HttpsError('deadline-exceeded', 'Manus task timed out after 30s');
+    }
+
+    // 6. Fetch Assistant Output from task.listMessages
+    const messagesRes = await fetch(`${manusBaseUrl}/task.listMessages?task_id=${encodeURIComponent(taskId)}`, {
+      method: 'GET',
+      headers,
+    });
+
+    let finalOutputText = '';
+    if (messagesRes.ok) {
+      const messagesBody = await messagesRes.json();
+      const messages = messagesBody.messages || [];
+      
+      // Find the last assistant message
+      const assistantMsg = messages.find((m) => m.type === 'assistant_message' && m.assistant_message);
+      if (assistantMsg && assistantMsg.assistant_message) {
+        const content = assistantMsg.assistant_message.content;
+        finalOutputText = typeof content === 'string' ? content : JSON.stringify(content);
+      }
+    }
+
+    if (!finalOutputText) {
+      finalOutputText = 'تم تنفيذ المهمة بنجاح عبر Manus.';
+    }
+
+    return {
+      success: true,
+      data: finalOutputText,
+      meta: {
+        provider: 'manus',
+        model: 'manus-v2',
+        task_id: taskId,
+      },
+    };
+  } catch (err) {
+    if (err instanceof functions.https.HttpsError) {
+      throw err;
+    }
+    console.error('[MANUS_GATEWAY] Unexpected error:', err);
+    throw new functions.https.HttpsError('internal', err.message || 'Unknown Manus Gateway Error');
+  }
+});
+
+

@@ -14,13 +14,19 @@ import '../controllers/chat_history_controller.dart';
 import '../core/models/chat_message.dart';
 import '../core/data/chat_repository.dart';
 import 'models/app_context.dart';
-import 'core/agent_router.dart';
-import 'core/agent_feature_flags.dart';
 import 'core/agent_models.dart';
-import 'memory/agent_memory.dart';
-import '../services/ai_provider.dart';
 import '../services/api/jina_service.dart';
+import '../services/ai_backend_router.dart';
+import 'core/ai_constants.dart';
 import '../utils/logger.dart';
+
+/// 🧭 نمط تنفيذ طلب الذكاء الاصطناعي (Deterministic Execution Modes)
+enum ExecutionMode {
+  directText,
+  directMultimodal,
+  workflowMultimodal,
+  agentMode,
+}
 
 /// 🧠 AIOrchestrator: المنسق الاستراتيجي (Strategic Planning Agent).
 /// يطبق مفهوم "Reasoning Loop" المتقدم: [Think → Plan → Validate → Execute].
@@ -35,17 +41,10 @@ class AIOrchestrator extends GetxService {
       Get.find<ChatHistoryController>();
   final ChatRepository _repo = Get.find<ChatRepository>();
 
-  late final AgentRouter _agentRouter;
-
   @override
   void onInit() {
     AppLogger.info('ENTERING: onInit');
     super.onInit();
-    // Initialize Agent System (V2)
-    _agentRouter = AgentRouter(
-      aiProvider: Get.find<AIProvider>(),
-      memory: AgentMemory(),
-    );
     AppLogger.info('EXITING: onInit');
   }
 
@@ -143,18 +142,6 @@ class AIOrchestrator extends GetxService {
             null; // 🧹 تفريغ المتغير اللحظي حتى لا يتسرب السياق القديم
       }
 
-      // 🔥 [Race Condition Fix]: إذا كان هناك صور، يجب تحليلها أولاً قبل بناء السياق
-      // لضمان استخراج اسم المنتج وحفظه في الذاكرة.
-      dynamic preAnalyzedResult;
-      if (images != null && images.isNotEmpty) {
-        debugPrint(
-            "🧠 AIOrchestrator: Image detected, forcing pre-analysis before context build...");
-        _agent.isLoading.value = true;
-        _agent.pipelineMessage.value = "جاري التعرّف على تفاصيل   👁️";
-        preAnalyzedResult =
-            await preAnalyze(images.first, cancelToken: cancelToken);
-      }
-
       final context = await _buildContext();
 
       debugPrint(
@@ -169,7 +156,6 @@ class AIOrchestrator extends GetxService {
         final rawUrl = _extractUrl(prompt);
         final url = _cleanUrl(rawUrl);
 
-        // تجنب استخراج الروابط الداخلية أو غير المرغوب فيها
         if (url != null &&
             !url.contains("google.com") &&
             !url.contains("firebaseapp.com")) {
@@ -184,11 +170,9 @@ class AIOrchestrator extends GetxService {
           _agent.pipelineMessage.value = "";
 
           if (cleanContent != null && !cleanContent.startsWith("[ERROR]")) {
-            // ✅ النجاح: دمج البيانات المستخرجة
             prompt = "$prompt\n\n[بيانات المنتج من الرابط]:\n$cleanContent";
             debugPrint("✅ AIOrchestrator: URL content extracted and injected.");
           } else {
-            // 🛡️ [Silent Fallback]: فشل الاستخراج، الاعتماد على تخمين Gemini للرابط
             debugPrint(
                 "📡 [Silent Fallback]: Content extraction failed for $url, using raw URL inference.");
             prompt =
@@ -204,7 +188,6 @@ class AIOrchestrator extends GetxService {
             "🧠 AIOrchestrator: Creating new session (forced: $forceNewSession)...");
 
         if (forceNewSession) {
-          // إذا كان الإجبار مفعلاً، نقوم بتفريغ المعرف الحالي لضمان إنشاء جلسة جديدة كلياً
           _historyController.currentSessionId.value = null;
         }
 
@@ -216,8 +199,6 @@ class AIOrchestrator extends GetxService {
                     : 'تحليل صورة 🖼️')
                 : (video != null ? 'تحليل فيديو 🎬' : 'محادثة جديدة'));
         await _historyController.createNewSession(title);
-        await Future.delayed(
-            const Duration(milliseconds: 100)); // Slightly longer delay
         debugPrint(
             "🧠 AIOrchestrator: New Session ID: ${_historyController.currentSessionId.value}");
       }
@@ -225,10 +206,8 @@ class AIOrchestrator extends GetxService {
       final currentSessionId = _historyController.currentSessionId.value;
       debugPrint("🧠 AIOrchestrator: Using Session: $currentSessionId");
 
-      // 🆕 2. إضافة رسالة المستخدم للسجل والواجهة (إخفاء بيانات السحب من الواجهة)
-      final String uiContent = (text == null || text.trim().isEmpty)
-          ? (image != null ? 'صورة' : (video != null ? 'فيديو' : 'نص'))
-          : text;
+      // 🆕 2. إضافة رسالة المستخدم للسجل والواجهة
+      final String uiContent = text?.trim() ?? '';
 
       final bool alreadyAdded = _agent.history.any((m) =>
           m.role == 'user' &&
@@ -239,9 +218,9 @@ class AIOrchestrator extends GetxService {
         debugPrint("🧠 AIOrchestrator: Adding message to repository...");
         await _repo.addMessage(
           ChatMessage.user(
-            content: uiContent, // 👈 عرض النص الأصلي فقط للمستخدم
+            content: uiContent,
             image: image,
-            images: images, // 📸 Pass the full list to history
+            images: images,
             mediaPath: image?.path ?? video?.path,
             type: image != null ? 'image' : (video != null ? 'video' : 'text'),
             replyToId: replyToId,
@@ -251,64 +230,117 @@ class AIOrchestrator extends GetxService {
           ),
           sessionId: currentSessionId,
         );
-      } else {
-        debugPrint(
-            "🧠 AIOrchestrator: Message already in history, skipping duplicate.");
       }
 
       _agent.pipelineMessage.value = "🧠 المنسق الذكي يفكر في طلبك...";
       _agent.isLoading.value = true;
 
-      // PHASE 0: Agent System Interceptor (V2 Flow)
-      if (AgentFeatureFlags.mockModeEnabled ||
-          AgentFeatureFlags.architectureValidationEnabled) {
-        final agentRequest = AgentRequest(
-          userMessage: prompt,
-          userId: userId,
-          activePlatform: 'alibaba',
-        );
+      // ⏱️ Start Stopwatch for routing and total execution telemetry
+      final routingWatch = Stopwatch()..start();
+      final totalWatch = Stopwatch()..start();
 
-        final result = await _agentRouter.route(agentRequest);
+      final normalizedText = _normalizeArabic(prompt);
+      final mode = _selectExecutionMode(
+        prompt: prompt,
+        images: images,
+        video: video,
+        normalizedText: normalizedText,
+      );
+      routingWatch.stop();
 
-        // Check if the agent actually handled the request
-        if (result.data != "AGENT_NOT_HANDLED" &&
-            result.data != "AGENT_SYSTEM_DISABLED") {
-          // 1️⃣ VALIDATION MODE (LOG ONLY): Ensure it never blocks or returns
-          if (AgentFeatureFlags.architectureValidationEnabled) {
-            debugPrint(
-                "🔬 [ARCHITECTURE_VALIDATION] Captured Agent Result: ${result.type}");
-            debugPrint("🔬 Reasoning: ${result.reasoning}");
-            // No return here! Legacy pipeline will continue if mockMode is off.
-          }
+      final routingMs = routingWatch.elapsedMilliseconds;
+      debugPrint('[AI_ROUTE] mode=${_modeString(mode)} routing_ms=$routingMs');
 
-          // 2️⃣ MOCK MODE (EXECUTION PATH): Actually shows UI and halts pipeline
-          if (AgentFeatureFlags.mockModeEnabled) {
-            debugPrint("🚀 [MOCK_MODE] Executing Agent UI Flow");
+      // ──────────────────────────────────────────────────────
+      // 🚀 EXECUTION ENGINE: Execute according to selected mode
+      // ──────────────────────────────────────────────────────
 
-            await _repo.addMessage(
-              ChatMessage.assistant(
-                content: result.reasoning ?? "جاري عرض النتائج...",
-                agentResult: result,
-                state: MessageState.completed,
-                productContext: context.productName,
-              ),
-              sessionId: _historyController.currentSessionId.value,
-            );
-
-            _agent.isLoading.value = false;
-            _agent.pipelineMessage.value = "";
-            AppLogger.info('EXITING: processUserInput (Via Agent Router)');
-            return; // STOP execution of legacy pipeline in Mock Mode
-          }
+      // 🅰️ MODE: DIRECT_TEXT (Single LLM Call = 1)
+      if (mode == ExecutionMode.directText) {
+        // Fast-Path 1: إزالة الخلفية
+        if (normalizedText.contains('ازاله الخلفيه') ||
+            normalizedText.contains('مسح الخلفيه') ||
+            normalizedText.contains('حذف الخلفيه') ||
+            normalizedText.contains('بدون خلفيه') ||
+            normalizedText.contains('شيل الخلفيه') ||
+            normalizedText.contains('امسح الخلفيه') ||
+            normalizedText.contains('تفريغ الخلفيه')) {
+          _agent.isLoading.value = false;
+          _agent.pipelineMessage.value = "";
+          debugPrint("🚀 [AI_EXEC] Fast-Path Remove Background");
+          await _agent.handleAction('remove_background',
+              payload: context.productName, cancelToken: cancelToken);
+          totalWatch.stop();
+          debugPrint(
+              '[AI_CALL] count=1 retries=0 backend=${_getBackend()} total_ms=${totalWatch.elapsedMilliseconds}');
+          AppLogger.info(
+              'EXITING: processUserInput (Background Removal Fast-Path)');
+          return;
         }
+
+        // Fast-Path 2: توليد الصور الصريح
+        if (_containsImageGenRequest(normalizedText)) {
+          _agent.pipelineMessage.value =
+              "جاري تصميم الصورة بالذكاء الاصطناعي... 🎨";
+          await _agent.executeTask(
+            AiDecisionEngine.createTask(
+              prompt,
+              context: context,
+              overrideIntent: Intent.imageGeneration,
+            ),
+            skipHistory: true,
+            cancelToken: cancelToken,
+          );
+          _agent.isLoading.value = false;
+          _agent.pipelineMessage.value = "";
+          totalWatch.stop();
+          debugPrint(
+              '[AI_CALL] count=1 retries=0 backend=${_getBackend()} total_ms=${totalWatch.elapsedMilliseconds}');
+          AppLogger.info('EXITING: processUserInput (Direct Image Gen)');
+          return;
+        }
+
+        // Fast-Path 3: توليد الفيديو الصريح
+        if (_containsVideoGenRequest(normalizedText)) {
+          _agent.pipelineMessage.value =
+              "جاري إنشاء الفيديو بالذكاء الاصطناعي... 🎬";
+          await _agent.executeTask(
+            AiDecisionEngine.createTask(
+              prompt,
+              context: context,
+              overrideIntent: Intent.videoGeneration,
+            ),
+            skipHistory: true,
+            cancelToken: cancelToken,
+          );
+          _agent.isLoading.value = false;
+          _agent.pipelineMessage.value = "";
+          totalWatch.stop();
+          debugPrint(
+              '[AI_CALL] count=1 retries=0 backend=${_getBackend()} total_ms=${totalWatch.elapsedMilliseconds}');
+          AppLogger.info('EXITING: processUserInput (Direct Video Gen)');
+          return;
+        }
+
+        // المسار العام للدردشة والنصوص (إعلانات، أوصاف، محادثة، أسئلة): استدعاء AI واحد مباشر
+        await _agent.respondNormally(prompt, cancelToken: cancelToken);
+        _agent.isLoading.value = false;
+        _agent.pipelineMessage.value = "";
+        totalWatch.stop();
+        debugPrint(
+            '[AI_CALL] count=1 retries=0 backend=${_getBackend()} total_ms=${totalWatch.elapsedMilliseconds}');
+        AppLogger.info('EXITING: processUserInput (Direct Text Path)');
+        return;
       }
 
-      // 🆕 2. اكتشاف المنتج تلقائياً (دعم الـ Batch والزر الذهبي)
-      if (images != null && images.isNotEmpty) {
-        if (images.length >= 3 && prompt.trim().isEmpty) {
-          _agent.pipelineMessage.value =
-              "جاري إجراء تحليل مجمع للمنتج (3D Mode)... 🧊";
-          await _agent.executeTask(
+      // 🅱️ MODE: DIRECT_MULTIMODAL (Single Multimodal Call = 1)
+      if (mode == ExecutionMode.directMultimodal) {
+        if (prompt.trim().isEmpty) {
+          // صورة/صور بدون نص مرفق
+          if (images != null && images.length >= 3) {
+            _agent.pipelineMessage.value =
+                "جاري إجراء تحليل مجمع للمنتج (3D Mode)... 🧊";
+            await _agent.executeTask(
               AiDecisionEngine.createTask(
                 "تحليل مجمع لهذه الصور",
                 images: images,
@@ -316,151 +348,74 @@ class AIOrchestrator extends GetxService {
                 overrideIntent: Intent.productDetected,
               ),
               skipHistory: true,
-              cancelToken: cancelToken);
-          _agent.isLoading.value = false;
-          _agent.pipelineMessage.value = "";
-          AppLogger.info('EXITING: processUserInput (Batch Analysis)');
-          return;
-        } else if (images.length == 2) {
-          // 🍱 [Full Meal Recovery]: Joint Vision for Product + Template
-          // نفعله دائماً عند وجود صورتين لضمان عدم التشتت بين المنتج والقالب
-          _agent.pipelineMessage.value =
-              "جاري استيعاب (المنتج + القالب) في وجبة واحدة... 🍱";
-          await _agent.analyzeJointProductAndTemplate(images,
-              userPrompt: prompt,
-              preAnalyzedResult: preAnalyzedResult,
-              cancelToken: cancelToken);
-
-          // إذا كان هناك نص مع الصورتين، سنكمل للـ Classifier لاحقاً إذا لزم الأمر،
-          // ولكن غالباً الـ analyzeJoint سيتكفل بالبداية الصحيحة.
-          if (prompt.trim().isEmpty) {
-            _agent.isLoading.value = false;
-            _agent.pipelineMessage.value = "";
-            AppLogger.info('EXITING: processUserInput (Joint Vision)');
-            return;
+              cancelToken: cancelToken,
+            );
+          } else if (images != null && images.length == 2) {
+            _agent.pipelineMessage.value =
+                "جاري استيعاب (المنتج + القالب)... 🍱";
+            await _agent.analyzeJointProductAndTemplate(images,
+                userPrompt: prompt, cancelToken: cancelToken);
+          } else if (images != null && images.isNotEmpty) {
+            _agent.pipelineMessage.value = "جاري تحليل المنتج... 🔍";
+            await _agent.analyzeProductAndFetchTrends(
+              images.first,
+              force: true,
+              skipHistory: true,
+              cancelToken: cancelToken,
+            );
           }
-        } else if (prompt.trim().isEmpty) {
-          // صورة واحدة فقط وبدون نص -> تحليل كلاسيكي
-          _agent.pipelineMessage.value = "جاري تحليل المنتج... 🔍";
-          await _agent.analyzeProductAndFetchTrends(
-            images.first,
-            force: true,
-            preAnalyzedResult: preAnalyzedResult,
-            skipHistory: true,
-            cancelToken: cancelToken,
-          );
-          _agent.isLoading.value = false;
-          _agent.pipelineMessage.value = "";
-          AppLogger.info('EXITING: processUserInput (Classic Analysis)');
-          return;
+        } else {
+          // صورة/صور + نص موجه (مثال: صورة + "اكتب وصفاً لهذا المنتج" أو صورتان + "قارن بينهما")
+          // استدعاء مباشر لـ multimodal بدون preAnalyze مسبق
+          _agent.pipelineMessage.value = "جاري معالجة الصورة والطلب... 👁️";
+          await _agent.respondNormally(prompt,
+              images: images, cancelToken: cancelToken);
         }
-      }
 
-      // ⚡ Fast Path: تحيات بسيطة — تجنب smartClassify بالكامل
-      if (_isSimpleGreeting(prompt)) {
         _agent.isLoading.value = false;
         _agent.pipelineMessage.value = "";
-        await _agent.sendUserMessage(prompt,
-            skipHistory: true, cancelToken: cancelToken);
-        AppLogger.info('EXITING: processUserInput (Simple Greeting)');
-        return;
-      }
-
-      // ⚡ Fast Path: إزالة الخلفية المباشر (Direct Background Removal)
-      // 🪚 Normalize Arabic text to catch typos (ة -> ه, إ/أ -> ا)
-      final normalizedText = prompt
-          .toLowerCase()
-          .replaceAll('ة', 'ه')
-          .replaceAll('أ', 'ا')
-          .replaceAll('إ', 'ا')
-          .replaceAll('آ', 'ا');
-
-      if (normalizedText.contains('ازاله الخلفيه') ||
-          normalizedText.contains('مسح الخلفيه') ||
-          normalizedText.contains('حذف الخلفيه') ||
-          normalizedText.contains('بدون خلفيه') ||
-          normalizedText.contains('شيل الخلفيه') ||
-          normalizedText.contains('امسح الخلفيه') ||
-          normalizedText.contains('تفريغ الخلفيه')) {
-        _agent.isLoading.value = false;
-        _agent.pipelineMessage.value = "";
-        debugPrint("🚀 [Intent Detected]: Fast-Path Remove Background");
-        await _agent.handleAction('remove_background',
-            payload: context.productName, cancelToken: cancelToken);
-        AppLogger.info(
-            'EXITING: processUserInput (Background Removal Fast-Path)');
-        return;
-      }
-
-      // ⚡ Fast Path: محادثة قصيرة جداً (Optimization) — تجنب المخطط للدردشة البسيطة
-      // ⚡ Fast Path: محادثة قصيرة جداً أو سياقية (Optimization) — تجنب المخطط للدردشة البسيطة
-      final wordCount = prompt.trim().split(RegExp(r'\s+')).length;
-      final isContextual = _isContextualReply(normalizedText);
-
-      if ((wordCount < 5 || isContextual) &&
-          !_isTechnicalRequest(normalizedText) &&
-          images == null &&
-          video == null) {
-        _agent.isLoading.value = false;
-        _agent.pipelineMessage.value = "";
+        totalWatch.stop();
         debugPrint(
-            "🚀 [Optimization]: Contextual/Short Fast-Path (WordCount: $wordCount, Contextual: $isContextual)");
-        await _agent.respondNormally(prompt, cancelToken: cancelToken);
-        AppLogger.info('EXITING: processUserInput (Contextual Optimization)');
+            '[AI_CALL] count=1 retries=0 backend=${_getBackend()} total_ms=${totalWatch.elapsedMilliseconds}');
+        AppLogger.info('EXITING: processUserInput (Direct Multimodal Path)');
         return;
       }
 
-      // 1️⃣ PHASE 1: THINK & PLAN
+      // 🅲 & 🅳 MODES: WORKFLOW_MULTIMODAL & AGENT_MODE (Multi-Step Planning Allowed)
+      dynamic preAnalyzedResult;
+      if (images != null && images.isNotEmpty) {
+        _agent.pipelineMessage.value =
+            "جاري استخراج سياق المنتج للعملية... 👁️";
+        preAnalyzedResult =
+            await preAnalyze(images.first, cancelToken: cancelToken);
+      }
+
+      // 1️⃣ PHASE 1: THINK & PLAN عبر LLM
       final analysis = await _classifier.smartClassify(prompt,
           context: context, cancelToken: cancelToken);
+
+      if (preAnalyzedResult != null && preAnalyzedResult.productName != null) {
+        analysis['product_name'] ??= preAnalyzedResult.productName;
+      }
 
       if (analysis['source'] == 'local_fallback') {
         _agent.pipelineMessage.value =
             "⚠️ (نمط الاحتياط) جاري استخدام التحليل المحلي...";
       }
 
-      final String intentKey = analysis['intent']?.toString() ?? 'chat';
-      final bool isNaturalChat = intentKey == 'TEXT' ||
-          intentKey == 'chat' ||
-          intentKey == 'casual_chat';
-
-      // 🔓 [解放 (liberation)]: If it's natural chat, bypass strict planning/clarification checks.
-      // We only enforce strict planning for technical tools (Video/Search/Analysis).
-      if (isNaturalChat && images == null && video == null) {
-        await _agent.respondNormally(prompt, cancelToken: cancelToken);
-        _agent.isLoading.value = false;
-        _agent.pipelineMessage.value = "";
-        AppLogger.info('EXITING: processUserInput (Natural Conversation Path)');
-        return;
-      }
-
-      // 🔓 [解放 (liberation)]: Absolute Fix - Zero Blocking.
-      // We process everything. If there's a plan, we execute it.
-      // If no steps or low confidence, we fall back to normal chat.
-
       AiPlan plan = _buildPlan(analysis);
       plan = await _reflectAndRefinePlan(plan, context);
 
-      final double confidence = (analysis['confidence'] ?? 0.0).toDouble();
-
-      // IF No Plan OR Low Confidence OR Natural Chat -> Just Respond Normally
-      if (plan.steps.isEmpty ||
-          (confidence < 0.6 && !isNaturalChat) ||
-          isNaturalChat) {
-        debugPrint(
-            "💬 [Orchestrator]: Falling back to Normal Chat (No plan or low confidence)");
-        await _agent.respondNormally(prompt, cancelToken: cancelToken);
-        _agent.isLoading.value = false;
-        _agent.pipelineMessage.value = "";
-        AppLogger.info('EXITING: processUserInput (Direct Chat Path)');
-        return;
-      }
-
-      // 3️⃣ PHASE 3: EXECUTE
+      // 2️⃣ PHASE 2: EXECUTE
       if (plan.steps.length > 1) {
         await _executeMultiStepPlan(
-            plan, context, images, video, analysis['product_name'],
-            cancelToken: cancelToken);
+          plan,
+          context,
+          images,
+          video,
+          analysis['product_name'],
+          cancelToken: cancelToken,
+        );
       } else {
         final String intentKey = analysis['intent']?.toString() ?? 'chat';
         final String feasibility =
@@ -480,18 +435,16 @@ class AIOrchestrator extends GetxService {
             cancelToken: cancelToken,
           );
         } else {
-          // Alternative negotiation as a fallback
-          await _negotiateAlternatives(
-            intentKey: intentKey,
-            userGoal: analysis['user_goal'],
-            feasibility: feasibility,
-            reasoning: analysis['reasoning'],
-            userMessage: prompt,
-            context: context,
-            cancelToken: cancelToken,
-          );
+          await _agent.respondNormally(prompt,
+              images: images, cancelToken: cancelToken);
         }
       }
+
+      totalWatch.stop();
+      debugPrint(
+          '[AI_CALL] count=${plan.steps.isNotEmpty ? plan.steps.length : 1} retries=0 backend=${_getBackend()} total_ms=${totalWatch.elapsedMilliseconds}');
+      _agent.isLoading.value = false;
+      AppLogger.info('EXITING: processUserInput SUCCESS (Workflow/Agent Path)');
 
       _agent.isLoading.value = false;
       AppLogger.info('EXITING: processUserInput SUCCESS');
@@ -629,36 +582,6 @@ class AIOrchestrator extends GetxService {
     AppLogger.info('EXITING: _executeSingleStep');
   }
 
-  Future<void> _negotiateAlternatives({
-    required String intentKey,
-    String? userGoal,
-    required String feasibility,
-    String? reasoning,
-    required String userMessage,
-    required AppContext context,
-    dio.CancelToken? cancelToken,
-  }) async {
-    AppLogger.info('ENTERING: _negotiateAlternatives for intent: $intentKey');
-    final negotiationPrompt = """
-    User Request: "$userMessage"
-    Goal: ${userGoal ?? 'Unknown'}
-    Intent: $intentKey
-    Feasibility: $feasibility
-    Reasoning: ${reasoning ?? 'Limited capability'}
-    Identify alternatives in Arabic for the Smart Content Creator app.
-    """;
-    final response = await _unifiedAi.generateText(negotiationPrompt,
-        systemPersona: "You are a helpful AI Strategist.",
-        cancelToken: cancelToken);
-    _agent.history.add(ChatMessage.assistant(
-      content: response,
-      productContext: _agent.lastAnalyzedProduct.value,
-    ).copyWith(
-      state: MessageState.completed,
-    ));
-    AppLogger.info('EXITING: _negotiateAlternatives');
-  }
-
   Intent? _mapIntentKey(String key) {
     AppLogger.info('ENTERING: _mapIntentKey with key: $key');
     Intent? result;
@@ -744,95 +667,6 @@ class AIOrchestrator extends GetxService {
     return result;
   }
 
-  /// ⚡ كشف سريع للتحيات البسيطة لتجنب smartClassify
-  bool _isSimpleGreeting(String text) {
-    final lower = text.trim().toLowerCase();
-    const greetings = [
-      'مرحبا',
-      'هلا',
-      'سلام',
-      'هاي',
-      'صباح الخير',
-      'مساء الخير',
-      'صباح الورد',
-      'مساء الورد',
-      'hello',
-      'hi',
-      'hey',
-      'salam',
-      'اهلا',
-      'أهلا',
-      'أهلاً',
-      'مراحب',
-      'السلام عليكم',
-    ];
-    final result = greetings.contains(lower) ||
-        (lower.length <= 6 && greetings.any((g) => lower.contains(g)));
-    AppLogger.info('EXITING: _isSimpleGreeting result: $result');
-    return result;
-  }
-
-  /// 🛡️ فحص إذا كان الطلب يتطلب أدوات تقنية (Searching for Keywords)
-  bool _isTechnicalRequest(String text) {
-    final technicalKeywords = [
-      'اعلان',
-      'إعلان',
-      'بحث',
-      'تريند',
-      'وصف',
-      'فيديو',
-      'صورة',
-      'صوره',
-      'صمم',
-      'ارسم',
-      'حلل',
-      'تخيل',
-      'لوجو',
-      'شعار',
-      'انمي',
-      'كرتون',
-      'بكم',
-      'سعر',
-      'السعر'
-    ];
-    return technicalKeywords.any((k) => text.toLowerCase().contains(k));
-  }
-
-  /// 🧠 كشف الردود السياقية القصيرة (نعم، أكمل، لا، إلخ)
-  bool _isContextualReply(String text) {
-    final lower = text.trim().toLowerCase();
-    final contextualKeywords = [
-      'نعم',
-      'أجل',
-      'ايوه',
-      'أيوة',
-      'تم',
-      'تمام',
-      'ماشي',
-      'موافق',
-      'اوكي',
-      'ok',
-      'لا',
-      'كلا',
-      'بلاش',
-      'أكمل',
-      'كمل',
-      'استمر',
-      'واصل',
-      'بعدين',
-      'غيره',
-      'شي ثاني',
-      'أخر',
-      'آخر',
-      'فهمت',
-      'وضحت',
-      'شكرا',
-      'يسلمو',
-    ];
-    return contextualKeywords.contains(lower) ||
-        (lower.length <= 10 && contextualKeywords.any((k) => lower == k));
-  }
-
   /// ✍️ توليد وصف تسويقي ذكي تلقائي بناءً على المنتج
   Future<String> generateMarketingDescription({
     required String query,
@@ -904,5 +738,125 @@ class AIOrchestrator extends GetxService {
     } catch (e) {
       return url;
     }
+  }
+
+  // ──────────────────────────────────────────────────────
+  // 🧭 Deterministic Local Router Helpers
+  // ──────────────────────────────────────────────────────
+
+  /// تنظيف وتوحيد الأحرف العربية للمقارنة الحتمية
+  String _normalizeArabic(String text) {
+    return text
+        .toLowerCase()
+        .trim()
+        .replaceAll('ة', 'ه')
+        .replaceAll('أ', 'ا')
+        .replaceAll('إ', 'ا')
+        .replaceAll('آ', 'ا')
+        .replaceAll('ى', 'ي');
+  }
+
+  /// تحويل Enum النمط إلى نص للـ Telemetry
+  String _modeString(ExecutionMode mode) {
+    switch (mode) {
+      case ExecutionMode.directText:
+        return 'DIRECT_TEXT';
+      case ExecutionMode.directMultimodal:
+        return 'DIRECT_MULTIMODAL';
+      case ExecutionMode.workflowMultimodal:
+        return 'WORKFLOW_MULTIMODAL';
+      case ExecutionMode.agentMode:
+        return 'AGENT_MODE';
+    }
+  }
+
+  /// جلب اسم المحرك الفعال للـ Telemetry
+  String _getBackend() {
+    if (Get.isRegistered<AIBackendRouter>()) {
+      return Get.find<AIBackendRouter>().currentBackend.value;
+    }
+    return 'firebase_ai';
+  }
+
+  /// كشف حتمي للطلبات متعددة الخطوات (Workflows)
+  bool _isMultiStepWorkflowRequest(String text) {
+    if (text.isEmpty) return false;
+
+    // 1. تسلسل واضح لعدة أدوات متعاقبة
+    const sequenceConnectors = [
+      'ثم ابحث',
+      'وبعدها ابحث',
+      'ثم انشئ',
+      'وبعدها انشئ',
+      'ثم صمم',
+      'وبعدها صمم',
+      'ثم اكتب',
+      'وبعدها اكتب',
+      'ثم اعمل',
+      'وبعدها اعمل',
+      'ثم حلل',
+      'وبعدها حلل',
+      'ثم ولد',
+      'وبعدها ولد',
+      'ثم طلع',
+      'وبعدها طلع',
+      'ثم سوي',
+      'وبعدها سوي',
+    ];
+    if (sequenceConnectors.any((c) => text.contains(c))) return true;
+
+    // 2. طلب حملة أو خطة شاملة متعددة المنصات
+    const campaignKeywords = [
+      'حمله تسويقيه شامله',
+      'حملة تسويقية شاملة',
+      'حمله تسويقيه كامله',
+      'حملة تسويقية كاملة',
+      'خطه تسويقيه شامله',
+      'خطة تسويقية شاملة',
+      'لفيسبوك وتيك توك وانستغرام',
+      'لفيسبوك وتيك توك وانستقرام',
+      'لكل المنصات',
+      'لجميع المنصات',
+    ];
+    if (campaignKeywords.any((k) => text.contains(k))) return true;
+
+    return false;
+  }
+
+  /// فحص إذا كان النص يطلب توليد صور بشكل صريح
+  bool _containsImageGenRequest(String text) {
+    return AIConstants.imageGenKeywords.any((k) => text.contains(k));
+  }
+
+  /// فحص إذا كان النص يطلب توليد فيديو بشكل صريح
+  bool _containsVideoGenRequest(String text) {
+    return AIConstants.videoGenKeywords.any((k) => text.contains(k));
+  }
+
+  /// 🧭 المحدد الحتمي لنمط التنفيذ بدون أي استدعاء خارجي للـ LLM
+  ExecutionMode _selectExecutionMode({
+    required String prompt,
+    required List<File>? images,
+    required File? video,
+    required String normalizedText,
+  }) {
+    final hasImages = images != null && images.isNotEmpty;
+    final hasVideo = video != null;
+    final isMultiStep = _isMultiStepWorkflowRequest(normalizedText);
+
+    // 1. Workflow / Agent Mode (الطلبات المركبة متعددة الخطوات فقط)
+    if (isMultiStep) {
+      return hasImages
+          ? ExecutionMode.workflowMultimodal
+          : ExecutionMode.agentMode;
+    }
+
+    // 2. Direct Multimodal (صورة واحدة أو عدة صور أو فيديو لطلب محدد)
+    if (hasImages || hasVideo) {
+      return ExecutionMode.directMultimodal;
+    }
+
+    // 3. Direct Text (نص عادي، أسئلة، إعلانات، محادثة)
+    return ExecutionMode.directText;
   }
 }

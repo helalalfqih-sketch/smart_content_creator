@@ -252,7 +252,9 @@ class _ChatBubbleState extends State<ChatBubble> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isError = widget.isError || widget.text.contains('❌');
-    final String cleanText = widget.isUser ? widget.text : _displayText;
+    final String cleanText = widget.isUser
+        ? (widget.text.trim() == 'صورة' ? '' : widget.text.trim())
+        : _displayText;
     final bool hasImage = widget.image != null ||
         widget.responseImageUrl != null ||
         widget.mediaPath != null;

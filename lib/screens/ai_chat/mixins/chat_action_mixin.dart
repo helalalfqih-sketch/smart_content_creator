@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart' hide Intent;
 import 'package:get/get.dart';
 import '../../../core/utils/snackbar_utils.dart';
@@ -17,16 +16,18 @@ mixin ChatActionMixin on State<AiChatScreen> {
   set replyingToMessage(ChatMessage? value);
 
   Future<void> sendMessage() async {
-    if (agent.isLoading.value) return; 
-    
+    if (agent.isLoading.value) return;
+
     final text = controller.text.trim();
     final media = this as ChatMediaMixin;
-    
+
     if (media.isCompressingImage) return;
 
-    final imgs = media.compressedImages.isNotEmpty ? media.compressedImages : media.selectedImages;
+    final imgs = media.compressedImages.isNotEmpty
+        ? media.compressedImages
+        : media.selectedImages;
     final video = media.selectedVideo;
-    
+
     if (text.isEmpty && imgs.isEmpty && video == null) return;
 
     if (text.isNotEmpty && text.length <= 6 && imgs.isEmpty && video == null) {
@@ -46,17 +47,11 @@ mixin ChatActionMixin on State<AiChatScreen> {
     scrollToBottom(force: true);
 
     try {
-      if (!await hasInternet()) {
-        agent.isLoading.value = false;
-        SnackBarUtils.showSmartSnackBar(title: '📵 لا يوجد اتصال', message: 'تحقق من الشبكة', isError: true);
-        return;
-      }
-
       final orchestrator = Get.find<AIOrchestrator>();
 
       if (imgs.isNotEmpty && media.preAnalysisResult != null) {
         await agent.completeWithPreAnalysis(
-            content: text.isEmpty ? "تحليل الصورة" : text,
+            content: text,
             image: imgs.first,
             images: imgs,
             preResult: media.preAnalysisResult!,
@@ -75,22 +70,13 @@ mixin ChatActionMixin on State<AiChatScreen> {
       }
     } catch (e) {
       handleError(e);
-    }
-
-    if (mounted) {
-      agent.isLoading.value = false;
-      agent.pipelineMessage.value = "";
-      agent.pipelineProgress.value = 0.0;
-      scrollToBottom();
-    }
-  }
-
-  Future<bool> hasInternet() async {
-    try {
-      final result = await InternetAddress.lookup('example.com');
-      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
-    } catch (_) {
-      return false;
+    } finally {
+      if (mounted) {
+        agent.isLoading.value = false;
+        agent.pipelineMessage.value = "";
+        agent.pipelineProgress.value = 0.0;
+        scrollToBottom();
+      }
     }
   }
 
@@ -126,7 +112,8 @@ mixin ChatActionMixin on State<AiChatScreen> {
       title = '⚠️ خدمة الذكاء غير متاحة';
       message = 'سنحاول لاحقاً أو استخدم مزوداً آخر';
     }
-    
-    SnackBarUtils.showSmartSnackBar(title: title, message: message, isError: true);
+
+    SnackBarUtils.showSmartSnackBar(
+        title: title, message: message, isError: true);
   }
 }

@@ -64,4 +64,7 @@ scratch/
 .claude/
 .zencoder/
 .firebase/
+.env
+.env.*
+functions/.env
 

@@ -130,9 +130,9 @@ class ChatMessage {
 
     String finalContent = content;
     if (finalContent.trim().isEmpty) {
-      finalContent = firstImage != null
-          ? 'صورة'
-          : (mediaPath != null ? 'ملف' : 'نص');
+      finalContent = (firstImage != null || (images != null && images.isNotEmpty))
+          ? ''
+          : (mediaPath != null ? 'ملف' : '');
     }
 
     return ChatMessage(
