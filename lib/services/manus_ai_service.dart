@@ -13,14 +13,13 @@ class ManusAiService extends GetxService {
   static const String _parseAppId = "uWUMmdbdRjcuOKuCcl9Pg7zEYxnYGVaLXjmveGF2";
   static const String _parseRestKey = "Zsvk14ko9rvXD25G1hflNeY2Dg2hJtkocPvh6tMp";
   static const String _parseBaseUrl = "https://parseapi.back4app.com";
-  static const String _parseMasterKey = "8qRzu0pBFkDo0urIjpXeFGb23xR5C23JoOlD05ze";
 
   Map<String, String> get _headers => {
     'X-Parse-Application-Id': _parseAppId,
     'X-Parse-REST-API-Key': _parseRestKey,
-    'X-Parse-Master-Key': _parseMasterKey,
     'Content-Type': 'application/json',
   };
+
 
   /// 💬 توليد نص عبر Manus API v2 (من خلال البوابة السحابية)
   Future<Map<String, dynamic>> generateText(CanonicalAiRequest request) async {
