@@ -125,7 +125,7 @@ class ManusAiService extends GetxService {
         url,
         headers: _headers,
         body: json.encode(payload),
-      ).timeout(const Duration(seconds: 60));
+      ).timeout(const Duration(seconds: 90));
 
       sw.stop();
 
