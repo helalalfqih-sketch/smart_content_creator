@@ -1,41 +1,109 @@
-// ============================================================================
-// 🤖 Back4App Cloud Code: Manus AI Gateway (Production v2 - Production-Grade Security)
-//
-// Functions & Hooks:
-//   1. Parse.Cloud.beforeSave("ManusTaskSession") — Server-enforced unique sessionKey
-//   2. aiManusGateway     — Create or follow-up Manus tasks with atomic concurrency lock
-//   3. aiManusTaskStatus  — Poll task status + extract attachments with user authorization
-//   4. aiManusWebhook     — Receive task_stopped events from Manus
-//
-// 🔒 Cryptographic Firebase Token Verification:
-//   - Verifies RSA-SHA256 signature against Google Secure Token x509 public certificates
-//   - Validates all claims:
-//       * aud === 'smartcontentcreator2'
-//       * iss === 'https://securetoken.google.com/smartcontentcreator2'
-//       * sub is non-empty string (verified UID)
-//       * exp > now
-//       * iat <= now + 300
-//       * auth_time <= now + 300
-//       * alg === 'RS256'
-//   - Fails closed on any missing/invalid/expired/wrong-project token
-//
-// 🔒 Concurrency Guarantee:
-//   - beforeSave hook throws DUPLICATE_VALUE on duplicate sessionKey
-//   - 20 concurrent first requests → exactly ONE task.create, remaining 19 wait & follow-up
-// ============================================================================
+/**
+ * Back4App Cloud Code
+ * High-Performance Unified AI Gateway (Production v2)
+ * Supports Google Gemini & Hardened Manus API v2 (Text, Multimodal Vision, Media, Session Continuity & Cryptographic Auth)
+ */
 
+const axios = require("axios");
 const crypto = require("crypto");
+
+const GEMINI_TIMEOUT = 30000;
+const API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY || "";
+const ACTIVE_MODEL = "gemini-3.6-flash";
 
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "smartcontentcreator2";
 const GOOGLE_CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
 
-// In-memory certificate cache with TTL
+// ============================================================================
+// 1️⃣ GEMINI GATEWAY LOGIC
+// ============================================================================
+
+function sanitizeGemini(params) {
+  const maxTokens = Number(params.max_tokens);
+  const temperature = Number(params.temperature);
+  return {
+    prompt: String(params.prompt || "").slice(0, 12000),
+    history: Array.isArray(params.history)
+      ? params.history.slice(0, 20).map((h) => ({
+          role: h?.role === "assistant" || h?.role === "model" ? "model" : "user",
+          content: String(h?.content || "").slice(0, 4000),
+        }))
+      : [],
+    image: params.image && String(params.image).length < 8000000 ? params.image : null,
+    mimeType: params.mimeType || "image/jpeg",
+    max_tokens: Number.isFinite(maxTokens) ? Math.min(Math.max(maxTokens, 1), 4096) : 2048,
+    temperature: Number.isFinite(temperature) ? Math.min(Math.max(temperature, 0), 1) : 0.7,
+  };
+}
+
+async function handleGeminiRequest(requestParams) {
+  const params = sanitizeGemini(requestParams || {});
+  if (!params.prompt && !params.image) {
+    throw new Parse.Error(Parse.Error.VALIDATION_ERROR, "الرجاء كتابة سؤالك أو تحديد الصورة أولاً.");
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${ACTIVE_MODEL}:generateContent?key=${encodeURIComponent(API_KEY)}`;
+
+  const contents = [];
+  for (const h of params.history) {
+    contents.push({
+      role: h.role,
+      parts: [{ text: h.content }],
+    });
+  }
+
+  const parts = [];
+  if (params.image) {
+    parts.push({
+      inline_data: {
+        mime_type: params.mimeType,
+        data: params.image,
+      },
+    });
+  }
+  if (params.prompt) {
+    parts.push({ text: params.prompt });
+  }
+
+  contents.push({ role: "user", parts });
+
+  try {
+    const response = await axios.post(
+      url,
+      {
+        contents,
+        generationConfig: {
+          temperature: params.temperature,
+          maxOutputTokens: params.max_tokens,
+        },
+      },
+      { timeout: GEMINI_TIMEOUT, headers: { "Content-Type": "application/json" } }
+    );
+
+    const text = response?.data?.candidates?.[0]?.content?.parts?.map((p) => p.text || "")?.join("\n")?.trim() || "";
+    if (!text) throw new Parse.Error(500, "استجابة فارغة من خادم الذكاء الاصطناعي");
+
+    return {
+      success: true,
+      data: text,
+      meta: { provider: "gemini", model: ACTIVE_MODEL, status: "active" },
+    };
+  } catch (error) {
+    const status = error?.response?.status || 500;
+    const errMsg = error?.response?.data?.error?.message || error?.message || "Unknown Connection Error";
+    console.error("Gemini AI Gateway Error:", status, errMsg);
+    throw new Parse.Error(status, `فشل الاتصال بـ Gemini: ${errMsg}`);
+  }
+}
+
+// ============================================================================
+// 2️⃣ CRYPTOGRAPHIC FIREBASE AUTH & TOKEN VERIFICATION
+// ============================================================================
+
 let certsCache = {
   certs: null,
   expiresAt: 0,
 };
-
-// ─── Helper: Fetch and Cache Google x509 Public Certificates ─────────────────
 
 async function getGooglePublicCerts() {
   const now = Date.now();
@@ -44,14 +112,9 @@ async function getGooglePublicCerts() {
   }
 
   try {
-    const res = await Parse.Cloud.httpRequest({
-      method: "GET",
-      url: GOOGLE_CERTS_URL,
-    });
+    const res = await axios.get(GOOGLE_CERTS_URL, { timeout: 10000 });
+    const certs = res.data;
 
-    const certs = res.data || JSON.parse(res.text || "{}");
-
-    // Extract Cache-Control max-age header if available (default 1 hour)
     let maxAgeMs = 3600 * 1000;
     const cacheControl = (res.headers && (res.headers["cache-control"] || res.headers["Cache-Control"])) || "";
     const maxAgeMatch = cacheControl.match(/max-age=(\d+)/);
@@ -61,81 +124,45 @@ async function getGooglePublicCerts() {
 
     certsCache = {
       certs: certs,
-      expiresAt: now + Math.max(maxAgeMs, 300000), // at least 5 minutes
+      expiresAt: now + Math.max(maxAgeMs, 300000),
     };
 
     return certs;
   } catch (err) {
     console.error(`[AUTH_CERTS] Failed to fetch Google certificates: ${err.message || err}`);
-    if (certsCache.certs) return certsCache.certs; // stale fallback
+    if (certsCache.certs) return certsCache.certs;
     return null;
   }
 }
-
-// ─── Helper: Cryptographic Firebase ID Token Verification ─────────────────────
 
 async function verifyFirebaseIdToken(token) {
   if (!token || typeof token !== "string" || token.length < 20) return null;
 
   try {
     const parts = token.split(".");
-    if (parts.length !== 3) {
-      console.warn("[AUTH] Token does not have 3 JWT segments");
-      return null;
-    }
+    if (parts.length !== 3) return null;
 
-    // 1. Decode Header & Payload
-    const headerRaw = Buffer.from(parts[0], "base64").toString("utf8");
-    const payloadRaw = Buffer.from(parts[1], "base64").toString("utf8");
-    const header = JSON.parse(headerRaw);
-    const claims = JSON.parse(payloadRaw);
+    const header = JSON.parse(Buffer.from(parts[0], "base64").toString("utf8"));
+    const claims = JSON.parse(Buffer.from(parts[1], "base64").toString("utf8"));
 
-    // 2. Validate Header Claims
-    if (header.alg !== "RS256" || !header.kid) {
-      console.warn("[AUTH] Invalid token algorithm or missing kid");
-      return null;
-    }
+    if (header.alg !== "RS256" || !header.kid) return null;
 
-    // 3. Validate Payload Claims
     const now = Math.floor(Date.now() / 1000);
-    const clockSkewTolerance = 300; // 5 minutes tolerance
+    const clockSkew = 300;
 
-    if (!claims.exp || claims.exp < (now - clockSkewTolerance)) {
-      console.warn("[AUTH] Firebase ID token has expired");
-      return null;
-    }
+    if (!claims.exp || claims.exp < (now - clockSkew)) return null;
+    if (!claims.iat || claims.iat > (now + clockSkew)) return null;
 
-    if (!claims.iat || claims.iat > (now + clockSkewTolerance)) {
-      console.warn("[AUTH] Token issued in future");
-      return null;
-    }
-
-    if (!claims.aud || claims.aud !== FIREBASE_PROJECT_ID) {
-      console.warn(`[AUTH] Audience mismatch: expected ${FIREBASE_PROJECT_ID}, got ${claims.aud}`);
-      return null;
-    }
-
+    if (!claims.aud || claims.aud !== FIREBASE_PROJECT_ID) return null;
     const expectedIssuer = `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`;
-    if (!claims.iss || claims.iss !== expectedIssuer) {
-      console.warn(`[AUTH] Issuer mismatch: expected ${expectedIssuer}, got ${claims.iss}`);
-      return null;
-    }
+    if (!claims.iss || claims.iss !== expectedIssuer) return null;
 
-    if (!claims.sub || typeof claims.sub !== "string" || claims.sub.trim().length === 0) {
-      console.warn("[AUTH] Invalid or missing sub claim");
-      return null;
-    }
+    if (!claims.sub || typeof claims.sub !== "string" || claims.sub.trim().length === 0) return null;
 
-    // 4. Fetch Google Public Certificates
     const certs = await getGooglePublicCerts();
-    if (!certs || !certs[header.kid]) {
-      console.warn(`[AUTH] Certificate not found for kid: ${header.kid}`);
-      return null;
-    }
+    if (!certs || !certs[header.kid]) return null;
 
     const certPem = certs[header.kid];
-
-    // 5. Cryptographic RSA-SHA256 Signature Verification
     const dataToVerify = `${parts[0]}.${parts[1]}`;
     const signature = Buffer.from(parts[2], "base64");
 
@@ -143,28 +170,20 @@ async function verifyFirebaseIdToken(token) {
     verifier.update(dataToVerify);
     const isSignatureValid = verifier.verify(certPem, signature);
 
-    if (!isSignatureValid) {
-      console.warn("[AUTH] Cryptographic RSA-SHA256 signature verification failed");
-      return null;
-    }
+    if (!isSignatureValid) return null;
 
-    // Verified! Return the trusted UID from claims.sub
     return claims.sub;
   } catch (err) {
-    console.warn(`[AUTH] Token verification exception: ${err.message || err}`);
+    console.warn(`[AUTH] Token verification error: ${err.message || err}`);
     return null;
   }
 }
 
-// ─── Helper: Derive Trusted User Identity (Fail-Closed) ───────────────────────
-
 async function deriveTrustedUserId(request) {
-  // 1. Authenticated Parse User session
   if (request.user && request.user.id) {
     return `parse_${request.user.id}`;
   }
 
-  // 2. Cryptographically verified Firebase ID Token
   const firebaseToken = (request.params || {}).firebaseIdToken;
   if (firebaseToken) {
     const verifiedUid = await verifyFirebaseIdToken(firebaseToken);
@@ -173,17 +192,13 @@ async function deriveTrustedUserId(request) {
     }
   }
 
-  // FAIL CLOSED: No unverified client userId is ever accepted!
   return null;
 }
-
-// ─── Helper: Classify Terminal vs Transient Errors ───────────────────────────
 
 function isTerminalTaskError(statusCode, errorBody) {
   if (statusCode === 404) return { isTerminal: true, reason: "task_not_found_404" };
 
   const str = (typeof errorBody === "string" ? errorBody : JSON.stringify(errorBody || "")).toLowerCase();
-
   if (str.includes("task_not_found") || str.includes("task not found") || str.includes("task does not exist") || str.includes("no such task")) {
     return { isTerminal: true, reason: "task_not_found" };
   }
@@ -200,26 +215,17 @@ function isTerminalTaskError(statusCode, errorBody) {
   return { isTerminal: false, reason: null };
 }
 
-// ─── Helper: Extract attachments from Manus messages ──────────────────────────
-
 function extractMediaFromMessages(messages) {
   const media = [];
-
   for (const m of messages) {
     const assistantMsg = m.assistant_message || {};
     const attachments = assistantMsg.attachments || [];
-
     for (const att of attachments) {
       const contentType = (att.content_type || "").toLowerCase();
       let mediaType = "file";
-
-      if (contentType.startsWith("image/")) {
-        mediaType = "image";
-      } else if (contentType.startsWith("video/")) {
-        mediaType = "video";
-      } else if (contentType.startsWith("audio/")) {
-        mediaType = "audio";
-      }
+      if (contentType.startsWith("image/")) mediaType = "image";
+      else if (contentType.startsWith("video/")) mediaType = "video";
+      else if (contentType.startsWith("audio/")) mediaType = "audio";
 
       media.push({
         type: mediaType,
@@ -229,11 +235,8 @@ function extractMediaFromMessages(messages) {
       });
     }
   }
-
   return media;
 }
-
-// ─── Helper: Extract last assistant text ──────────────────────────────────────
 
 function extractAssistantText(messages) {
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -245,8 +248,6 @@ function extractAssistantText(messages) {
   }
   return "";
 }
-
-// ─── Helper: Extract status updates ──────────────────────────────────────────
 
 function extractStatusUpdates(messages) {
   const updates = [];
@@ -263,8 +264,6 @@ function extractStatusUpdates(messages) {
   return updates;
 }
 
-// ─── Helper: Skill Configuration ──────────────────────────────────────────────
-
 function getSkillConfig(taskType) {
   const imageSkillId = process.env.MANUS_IMAGE_SKILL_ID || null;
   const videoSkillId = process.env.MANUS_VIDEO_SKILL_ID || null;
@@ -280,12 +279,11 @@ function getSkillConfig(taskType) {
       if (videoSkillId) return { force_skills: [videoSkillId] };
       break;
   }
-
   return {};
 }
 
 // ============================================================================
-// 🔒 Hook: Enforce Server-Side Uniqueness on sessionKey
+// 🔒 SERVER-SIDE UNIQUENESS ENFORCEMENT HOOK
 // ============================================================================
 
 Parse.Cloud.beforeSave("ManusTaskSession", async (request) => {
@@ -296,11 +294,11 @@ Parse.Cloud.beforeSave("ManusTaskSession", async (request) => {
     throw new Parse.Error(Parse.Error.INVALID_QUERY, "sessionKey is required");
   }
 
-  // Only check for new objects being inserted
   if (sessionObj.isNew()) {
-    const query = new Parse.Query("ManusTaskSession");
-    query.equalTo("sessionKey", sessionKey);
-    const count = await query.count({ useMasterKey: true });
+    const count = await new Parse.Query("ManusTaskSession")
+      .equalTo("sessionKey", sessionKey)
+      .count({ useMasterKey: true });
+
     if (count > 0) {
       throw new Parse.Error(
         Parse.Error.DUPLICATE_VALUE,
@@ -311,13 +309,12 @@ Parse.Cloud.beforeSave("ManusTaskSession", async (request) => {
 });
 
 // ============================================================================
-// 1️⃣ aiManusGateway — Create or follow-up Manus tasks
+// 3️⃣ HARDENED MANUS API v2 GATEWAY LOGIC
 // ============================================================================
 
-Parse.Cloud.define("aiManusGateway", async (request) => {
+async function handleManusRequest(request) {
   const data = request.params || {};
 
-  // 1. Read Manus API key
   const manusApiKey = process.env.MANUS_API_KEY;
   if (!manusApiKey) {
     throw new Parse.Error(
@@ -326,7 +323,6 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
     );
   }
 
-  // 2. Strict Authentication (Cryptographically Verified Token or Parse Session)
   const userId = await deriveTrustedUserId(request);
   if (!userId) {
     throw new Parse.Error(
@@ -335,24 +331,24 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
     );
   }
 
-  // 3. Extract request fields
   const prompt = data.prompt || "";
   const systemPersona = data.systemPersona || "";
   const history = data.history || [];
-  const images = data.images || (data.image ? [data.image] : []);
+  const images = Array.isArray(data.images) && data.images.length > 0
+    ? data.images
+    : (data.image ? [data.image] : []);
   const mimeType = data.mimeType || "image/jpeg";
   const taskType = data.taskType || "general";
   const appSessionId = data.appSessionId != null ? String(data.appSessionId) : null;
 
   if (!prompt && images.length === 0) {
-    throw new Parse.Error(Parse.Error.INVALID_QUERY, "Prompt or images are required");
+    throw new Parse.Error(Parse.Error.VALIDATION_ERROR, "الرجاء إدخال النص أو الصور أولاً.");
   }
 
   if (!appSessionId) {
     throw new Parse.Error(Parse.Error.INVALID_QUERY, "appSessionId is required for session tracking");
   }
 
-  // 4. Assemble content items
   let fullPrompt = "";
   if (systemPersona) {
     fullPrompt += `${systemPersona}\n\n`;
@@ -369,13 +365,15 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
 
   const contentItems = [{ type: "text", text: fullPrompt }];
 
-  for (const imgBase64 of images) {
+  for (let idx = 0; idx < images.length; idx++) {
+    const imgBase64 = String(images[idx]);
+    const fileDataUri = imgBase64.startsWith("data:")
+      ? imgBase64
+      : `data:${mimeType};base64,${imgBase64}`;
     contentItems.push({
       type: "file",
-      file_data: {
-        mime_type: mimeType,
-        data: imgBase64,
-      },
+      filename: `image_${idx + 1}.jpg`,
+      file_data: fileDataUri,
     });
   }
 
@@ -399,22 +397,14 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
   let session = null;
 
   try {
-    // 5. Query existing session record
     const query = new Parse.Query(ManusTaskSession);
     query.equalTo("sessionKey", sessionKey);
     session = await query.first({ useMasterKey: true });
 
     let existingTaskId = session ? session.get("taskId") : null;
 
-    // ──────────────────────────────────────────────────────
-    // SAFE FOLLOW-UP: Reuse existing task
-    // ──────────────────────────────────────────────────────
-
+    // Follow-up
     if (existingTaskId) {
-      console.log(
-        `[MANUS_SESSION] session_key=${sessionKey} action=follow_up task_id=${existingTaskId.substring(0, 8)}...`
-      );
-
       try {
         const messagePayload = {
           task_id: existingTaskId,
@@ -423,12 +413,7 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
         if (skillConfig.force_skills) messagePayload.message.force_skills = skillConfig.force_skills;
         if (skillConfig.enable_skills) messagePayload.message.enable_skills = skillConfig.enable_skills;
 
-        await Parse.Cloud.httpRequest({
-          method: "POST",
-          url: `${manusBaseUrl}/task.sendMessage`,
-          headers: headers,
-          body: JSON.stringify(messagePayload),
-        });
+        await axios.post(`${manusBaseUrl}/task.sendMessage`, messagePayload, { headers, timeout: 20000 });
 
         taskId = existingTaskId;
         conversationMode = "follow_up";
@@ -437,35 +422,22 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
         session.set("lastTaskType", taskType);
         await session.save(null, { useMasterKey: true });
       } catch (sendErr) {
-        const statusCode = sendErr.status || sendErr.statusCode || (sendErr.response && sendErr.response.status);
-        const errorBody = sendErr.data || sendErr.text || sendErr.message;
+        const statusCode = sendErr?.response?.status || 500;
+        const errorBody = sendErr?.response?.data || sendErr?.message;
         const termCheck = isTerminalTaskError(statusCode, errorBody);
 
         if (termCheck.isTerminal) {
-          console.log(
-            `[MANUS_SESSION] action=recover_new_task reason=${termCheck.reason} old_task=${existingTaskId.substring(0, 8)}...`
-          );
+          console.log(`[MANUS_SESSION] action=recover_new_task reason=${termCheck.reason}`);
           existingTaskId = null;
           taskId = null;
         } else {
-          // Transient error: PRESERVE mapping & throw
-          console.warn(
-            `[MANUS_SESSION] app_session=${appSessionId} action=follow_up_transient_error error=${sendErr.message || sendErr}. Preserving task ${existingTaskId.substring(0, 8)}...`
-          );
-          throw new Parse.Error(
-            Parse.Error.SCRIPT_FAILED,
-            `Manus follow-up failed (transient error): ${sendErr.message || "Request failed"}`
-          );
+          throw new Parse.Error(statusCode, `Manus follow-up failed: ${sendErr?.message || "Request failed"}`);
         }
       }
     }
 
-    // ──────────────────────────────────────────────────────
-    // ATOMIC RESERVATION LOCK WITH SERVER-SIDE UNIQUENESS
-    // ──────────────────────────────────────────────────────
-
+    // Atomic creation lock
     if (!taskId) {
-      // If session exists but was in 'creating' state without taskId, another request is creating
       if (session && session.get("status") === "creating" && !session.get("taskId")) {
         const lockWaitStart = Date.now();
         while (Date.now() - lockWaitStart < 15000) {
@@ -478,7 +450,6 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
         }
       }
 
-      // If still no taskId, attempt to claim atomic creation lock
       if (!taskId) {
         if (session) {
           session.set("status", "creating");
@@ -492,10 +463,8 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
           session.set("lastUsedAt", new Date());
 
           try {
-            // Server-side beforeSave hook guarantees atomic exclusivity!
             await session.save(null, { useMasterKey: true });
           } catch (saveErr) {
-            // Concurrent duplicate: fetch winning session and wait for its taskId
             const checkQuery = new Parse.Query(ManusTaskSession);
             checkQuery.equalTo("sessionKey", sessionKey);
             session = await checkQuery.first({ useMasterKey: true });
@@ -516,10 +485,6 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
       }
 
       if (taskId) {
-        // Concurrency lock resolved: follow-up on winner's taskId
-        console.log(
-          `[MANUS_CONCURRENCY] Lock resolved: using concurrently created task_id=${taskId.substring(0, 8)}...`
-        );
         const messagePayload = {
           task_id: taskId,
           message: { content: contentItems },
@@ -527,33 +492,15 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
         if (skillConfig.force_skills) messagePayload.message.force_skills = skillConfig.force_skills;
         if (skillConfig.enable_skills) messagePayload.message.enable_skills = skillConfig.enable_skills;
 
-        await Parse.Cloud.httpRequest({
-          method: "POST",
-          url: `${manusBaseUrl}/task.sendMessage`,
-          headers: headers,
-          body: JSON.stringify(messagePayload),
-        });
+        await axios.post(`${manusBaseUrl}/task.sendMessage`, messagePayload, { headers, timeout: 20000 });
         conversationMode = "follow_up";
       } else {
-        // Lock winner: calls task.create exactly once
-        console.log(
-          `[MANUS_SESSION] session_key=${sessionKey} action=create taskType=${taskType}`
-        );
-
-        const createPayload = {
-          message: { content: contentItems },
-        };
+        const createPayload = { message: { content: contentItems } };
         if (skillConfig.force_skills) createPayload.message.force_skills = skillConfig.force_skills;
         if (skillConfig.enable_skills) createPayload.message.enable_skills = skillConfig.enable_skills;
 
-        const createRes = await Parse.Cloud.httpRequest({
-          method: "POST",
-          url: `${manusBaseUrl}/task.create`,
-          headers: headers,
-          body: JSON.stringify(createPayload),
-        });
-
-        const createData = createRes.data || JSON.parse(createRes.text || "{}");
+        const createRes = await axios.post(`${manusBaseUrl}/task.create`, createPayload, { headers, timeout: 20000 });
+        const createData = createRes.data || {};
         taskId = createData.task_id || (createData.data && createData.data.task_id);
 
         if (!taskId) {
@@ -571,22 +518,11 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
         session.set("lastUsedAt", new Date());
         session.set("lastTaskType", taskType);
         await session.save(null, { useMasterKey: true });
-
-        console.log(
-          `[MANUS_SESSION] session_key=${sessionKey} action=mapping_saved task_id=${taskId.substring(0, 8)}...`
-        );
       }
     }
 
-    // ──────────────────────────────────────────────────────
-    // ASYNC MEDIA vs SYNC TEXT RETURN STRATEGY
-    // ──────────────────────────────────────────────────────
-
+    // Return immediately for media tasks
     if (isMediaTask) {
-      console.log(
-        `[MANUS_GATEWAY] Media task ${conversationMode}: ${taskId}. Returning immediately (async).`
-      );
-
       return {
         success: true,
         async: true,
@@ -612,26 +548,24 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
       await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
 
       try {
-        const detailRes = await Parse.Cloud.httpRequest({
-          method: "GET",
-          url: `${manusBaseUrl}/task.detail?task_id=${encodeURIComponent(taskId)}`,
-          headers: headers,
-        });
+        const detailRes = await axios.get(
+          `${manusBaseUrl}/task.detail?task_id=${encodeURIComponent(taskId)}`,
+          { headers, timeout: 10000 }
+        );
 
-        const detailBody = detailRes.data || JSON.parse(detailRes.text || "{}");
+        const detailBody = detailRes.data || {};
         const taskObj = detailBody.task || detailBody.data || detailBody;
         const status = taskObj.status;
 
         if (status === "stopped" || status === "completed" || status === "done" || status === "success") {
           isTaskFinished = true;
           break;
-        } else if (status === "error") {
+        } else if (status === "failed" || status === "error") {
           const errorMsg = taskObj.error || taskObj.message || "Task failed on Manus";
           throw new Parse.Error(Parse.Error.SCRIPT_FAILED, `Manus task failed: ${JSON.stringify(errorMsg)}`);
         }
       } catch (pollErr) {
         if (pollErr instanceof Parse.Error) throw pollErr;
-        console.warn(`[MANUS_GATEWAY] Polling warn:`, pollErr);
       }
 
       pollIntervalMs = Math.min(pollIntervalMs + 500, 2000);
@@ -654,13 +588,12 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
       };
     }
 
-    const messagesRes = await Parse.Cloud.httpRequest({
-      method: "GET",
-      url: `${manusBaseUrl}/task.listMessages?task_id=${encodeURIComponent(taskId)}`,
-      headers: headers,
-    });
+    const messagesRes = await axios.get(
+      `${manusBaseUrl}/task.listMessages?task_id=${encodeURIComponent(taskId)}`,
+      { headers, timeout: 15000 }
+    );
 
-    const messagesBody = messagesRes.data || JSON.parse(messagesRes.text || "{}");
+    const messagesBody = messagesRes.data || {};
     const messages = messagesBody.messages || [];
 
     const finalOutputText = extractAssistantText(messages);
@@ -687,17 +620,17 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
   } catch (err) {
     console.error("[MANUS_GATEWAY] Error:", err);
     throw new Parse.Error(
-      err.code || Parse.Error.SCRIPT_FAILED,
+      err.code || err?.response?.status || Parse.Error.SCRIPT_FAILED,
       err.message || "Manus Gateway execution failed"
     );
   }
-});
+}
 
 // ============================================================================
-// 2️⃣ aiManusTaskStatus — Poll task status + extract attachments
+// 4️⃣ MANUS TASK STATUS & WEBHOOK ENDPOINTS
 // ============================================================================
 
-Parse.Cloud.define("aiManusTaskStatus", async (request) => {
+async function handleManusStatusRequest(request) {
   const data = request.params || {};
   const taskId = data.task_id;
 
@@ -705,7 +638,6 @@ Parse.Cloud.define("aiManusTaskStatus", async (request) => {
     throw new Parse.Error(Parse.Error.INVALID_QUERY, "task_id is required");
   }
 
-  // Strict Authentication & Authorization
   const userId = await deriveTrustedUserId(request);
   if (!userId) {
     throw new Parse.Error(
@@ -714,7 +646,6 @@ Parse.Cloud.define("aiManusTaskStatus", async (request) => {
     );
   }
 
-  // Cross-user isolation: verify task belongs to authenticated user
   const ManusTaskSession = Parse.Object.extend("ManusTaskSession");
   const query = new Parse.Query(ManusTaskSession);
   query.equalTo("taskId", taskId);
@@ -739,28 +670,26 @@ Parse.Cloud.define("aiManusTaskStatus", async (request) => {
   };
 
   try {
-    const detailRes = await Parse.Cloud.httpRequest({
-      method: "GET",
-      url: `${manusBaseUrl}/task.detail?task_id=${encodeURIComponent(taskId)}`,
-      headers: headers,
-    });
+    const detailRes = await axios.get(
+      `${manusBaseUrl}/task.detail?task_id=${encodeURIComponent(taskId)}`,
+      { headers, timeout: 10000 }
+    );
 
-    const detailBody = detailRes.data || JSON.parse(detailRes.text || "{}");
+    const detailBody = detailRes.data || {};
     const taskObj = detailBody.task || detailBody.data || detailBody;
     const status = taskObj.status || "unknown";
 
     const isCompleted = status === "stopped" || status === "completed" || status === "done" || status === "success";
-    const isError = status === "error";
+    const isError = status === "failed" || status === "error";
     const isRunning = status === "running";
     const isWaiting = status === "waiting";
 
-    const messagesRes = await Parse.Cloud.httpRequest({
-      method: "GET",
-      url: `${manusBaseUrl}/task.listMessages?task_id=${encodeURIComponent(taskId)}`,
-      headers: headers,
-    });
+    const messagesRes = await axios.get(
+      `${manusBaseUrl}/task.listMessages?task_id=${encodeURIComponent(taskId)}`,
+      { headers, timeout: 15000 }
+    );
 
-    const messagesBody = messagesRes.data || JSON.parse(messagesRes.text || "{}");
+    const messagesBody = messagesRes.data || {};
     const messages = messagesBody.messages || [];
 
     const statusUpdates = extractStatusUpdates(messages);
@@ -818,27 +747,41 @@ Parse.Cloud.define("aiManusTaskStatus", async (request) => {
       error: err.message || "Failed to check task status",
     };
   }
-});
+}
 
 // ============================================================================
-// 3️⃣ aiManusWebhook — Receive task_stopped events from Manus
+// 🚪 CLOUD FUNCTIONS ENDPOINTS
 // ============================================================================
+
+// 🟣 Gemini Gateways
+Parse.Cloud.define("aiGateway", async (request) => {
+  return await handleGeminiRequest(request.params);
+});
+
+Parse.Cloud.define("aiVertexGateway", async (request) => {
+  return await handleGeminiRequest(request.params);
+});
+
+Parse.Cloud.define("aiGenerateText", async (request) => {
+  return await handleGeminiRequest(request.params);
+});
+
+// 🤖 Hardened Manus API v2 Gateways
+Parse.Cloud.define("aiManusGateway", async (request) => {
+  return await handleManusRequest(request);
+});
+
+Parse.Cloud.define("aiManusTaskStatus", async (request) => {
+  return await handleManusStatusRequest(request);
+});
 
 Parse.Cloud.define("aiManusWebhook", async (request) => {
   const data = request.params || {};
-
-  const event = data.event || data.type || "";
   const taskId = data.task_id || (data.task && data.task.task_id) || "";
   const stopReason = data.stop_reason || (data.task && data.task.stop_reason) || "";
   const taskDetail = data.task_detail || data.task || {};
 
-  console.log(
-    `[MANUS_WEBHOOK] event=${event} task_id=${taskId ? taskId.substring(0, 8) + "..." : "none"} stop_reason=${stopReason}`
-  );
-
-  if (!taskId) {
-    return { success: false, error: "No task_id in webhook payload" };
-  }
+  if (!taskId) return { success: false, error: "No task_id in webhook payload" };
 
   try {
     const ManusTaskSession = Parse.Object.extend("ManusTaskSession");
@@ -846,29 +789,15 @@ Parse.Cloud.define("aiManusWebhook", async (request) => {
     query.equalTo("taskId", taskId);
     const session = await query.first({ useMasterKey: true });
 
-    if (!session) {
-      console.warn(`[MANUS_WEBHOOK] No session found for task_id=${taskId.substring(0, 8)}...`);
-      return { success: true, message: "No matching session, event ignored" };
-    }
+    if (!session) return { success: true, message: "No matching session" };
 
-    let taskStatus = "unknown";
-    if (stopReason === "finish") {
-      taskStatus = "completed";
-    } else if (stopReason === "ask") {
-      taskStatus = "waiting_for_user";
-    } else if (event === "task_stopped") {
-      taskStatus = "stopped";
-    }
+    let taskStatus = stopReason === "finish" ? "completed" : stopReason === "ask" ? "waiting_for_user" : "stopped";
 
     const attachments = taskDetail.attachments || [];
     const media = [];
     for (const att of attachments) {
       const contentType = (att.content_type || "").toLowerCase();
-      let mediaType = "file";
-      if (contentType.startsWith("image/")) mediaType = "image";
-      else if (contentType.startsWith("video/")) mediaType = "video";
-      else if (contentType.startsWith("audio/")) mediaType = "audio";
-
+      let mediaType = contentType.startsWith("image/") ? "image" : contentType.startsWith("video/") ? "video" : contentType.startsWith("audio/") ? "audio" : "file";
       media.push({
         type: mediaType,
         filename: att.filename || null,
@@ -879,23 +808,11 @@ Parse.Cloud.define("aiManusWebhook", async (request) => {
 
     session.set("taskStatus", taskStatus);
     session.set("completedAt", new Date());
-    if (media.length > 0) {
-      session.set("mediaResults", media);
-    }
+    if (media.length > 0) session.set("mediaResults", media);
     await session.save(null, { useMasterKey: true });
 
-    console.log(
-      `[MANUS_WEBHOOK] Session updated: status=${taskStatus} media_count=${media.length}`
-    );
-
-    return {
-      success: true,
-      task_id: taskId,
-      status: taskStatus,
-      media_count: media.length,
-    };
+    return { success: true, task_id: taskId, status: taskStatus, media_count: media.length };
   } catch (err) {
-    console.error("[MANUS_WEBHOOK] Error:", err);
     return { success: false, error: err.message || "Webhook processing failed" };
   }
 });
