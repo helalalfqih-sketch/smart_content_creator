@@ -60,42 +60,81 @@ class Back4AppCatalogRepository implements CatalogRepository {
       return cachedProducts;
     }
 
-    // 2️⃣ جلب من Back4App Cloud Code
+    // 2️⃣ جلب كافة الصفحات بالتتالي من Back4App Cloud Code
     try {
       final token = await getFirebaseIdToken();
-      final body = {
-        'page': page,
-        'limit': limit,
-        'category': category,
-        'search': search,
-        if (token != null) 'firebaseIdToken': token,
-      };
+      int currentPage = page;
+      int totalPages = 1;
+      int serverTotal = 0;
+      final List<CatalogProduct> allFetchedProducts = [];
 
-      final response = await http.post(
-        Uri.parse('$_parseBaseUrl/functions/catalogList'),
-        headers: _headers,
-        body: json.encode(body),
-      ).timeout(const Duration(seconds: 15));
+      while (currentPage <= totalPages) {
+        final body = {
+          'page': currentPage,
+          'limit': limit,
+          'category': category,
+          'search': search,
+          if (token != null) 'firebaseIdToken': token,
+        };
 
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        final data = decoded['result']?['data'] as List? ?? [];
-        final cloudProducts = data
-            .map((item) => CatalogProduct.fromMap(Map<String, dynamic>.from(item)))
-            .toList();
+        final response = await http.post(
+          Uri.parse('$_parseBaseUrl/functions/catalogList'),
+          headers: _headers,
+          body: json.encode(body),
+        ).timeout(const Duration(seconds: 15));
 
-        // تحديث SQLite
-        for (final p in cloudProducts) {
-          await dbService.insertRecord('catalog_products', p.toMap());
+        if (response.statusCode == 200) {
+          final decoded = json.decode(response.body);
+          final resultObj = decoded['result'] ?? {};
+          final data = resultObj['data'] as List? ?? [];
+
+          serverTotal = resultObj['total'] as int? ?? data.length;
+          totalPages = resultObj['totalPages'] as int? ?? 1;
+
+          debugPrint('[CATALOG_PAGE] page=$currentPage count=${data.length}');
+
+          final pageProducts = data
+              .map((item) => CatalogProduct.fromMap(Map<String, dynamic>.from(item)))
+              .toList();
+
+          allFetchedProducts.addAll(pageProducts);
+
+          if (currentPage >= totalPages || data.isEmpty) {
+            break;
+          }
+          currentPage++;
+        } else {
+          if (kDebugMode) {
+            debugPrint('⚠️ catalogList returned HTTP ${response.statusCode}: ${response.body}');
+          }
+          break;
+        }
+      }
+
+      if (allFetchedProducts.isNotEmpty) {
+        // إزالة التكرار بالمعرف
+        final Map<String, CatalogProduct> dedupedMap = {};
+        for (final p in allFetchedProducts) {
+          final key = p.id ?? '';
+          if (key.isNotEmpty) {
+            dedupedMap[key] = p;
+          }
+        }
+        final dedupedProducts = dedupedMap.values.toList();
+
+        debugPrint('[CATALOG_TOTAL] server=$serverTotal fetched=${dedupedProducts.length}');
+
+        if (dedupedProducts.length != serverTotal && serverTotal > 0) {
+          debugPrint('⚠️ [CATALOG_SYNC_WARNING] fetched (${dedupedProducts.length}) != server total ($serverTotal)');
         }
 
-        return cloudProducts;
-      } else {
-        // Cloud Code returned non-200; do NOT fallback to direct class query.
-        // Direct /classes/ access bypasses Cloud Code security (scope/status/deletedAt filters).
-        if (kDebugMode) {
-          debugPrint('⚠️ catalogList returned HTTP ${response.statusCode}: ${response.body}');
-        }
+        // تحديث SQLite دفعة واحدة (Batch Transaction)
+        await dbService.batchInsertRecords(
+          'catalog_products',
+          dedupedProducts.map((p) => p.toMap()).toList(),
+        );
+
+        return dedupedProducts;
       }
     } catch (e) {
       if (kDebugMode) debugPrint('⚠️ Failed to fetch cloud products: $e');

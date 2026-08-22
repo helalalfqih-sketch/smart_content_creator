@@ -1176,6 +1176,23 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                 width: 50,
                                 height: 50,
                                 fit: BoxFit.cover,
+                                placeholder: (_, __) => Container(
+                                  width: 50,
+                                  height: 50,
+                                  color: Colors.white.withValues(alpha: 0.05),
+                                  child: const Icon(Icons.image, color: Colors.white24, size: 20),
+                                ),
+                                errorWidget: (_, url, __) {
+                                  if (url.contains('cdn.whatsapp.net')) {
+                                    debugPrint('[CATALOG_MEDIA_ERROR] productId=${existingProduct.id} host=cdn.whatsapp.net status=403');
+                                  }
+                                  return Container(
+                                    width: 50,
+                                    height: 50,
+                                    color: Colors.white.withValues(alpha: 0.05),
+                                    child: const Icon(Icons.broken_image, color: Colors.white30, size: 20),
+                                  );
+                                },
                               )
                             : kIsWeb
                                 ? Image.network(

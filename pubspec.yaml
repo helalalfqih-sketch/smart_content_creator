@@ -86,6 +86,7 @@ dependencies:
   logger: ^2.7.0
   animate_do: ^5.1.0
   excel: ^4.0.3 # For reading .xlsx catalog files
+  xml: ^6.5.0 # For robust XLSX XML parsing
 
   # 🛡️ Firebase AI Logic + App Check (Phase 2)
   firebase_ai: ^3.15.0 # Official Firebase AI Logic SDK (replaces firebase_vertexai)

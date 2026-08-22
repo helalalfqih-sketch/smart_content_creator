@@ -65,7 +65,12 @@ class ProductCard extends StatelessWidget {
                                     highlightColor: const Color(0xFF2E2E4A),
                                     child: Container(color: const Color(0xFF1A1A2E)),
                                   ),
-                                  errorWidget: (context, url, error) => _placeholder(),
+                                  errorWidget: (context, url, error) {
+                                    if (url.contains('cdn.whatsapp.net')) {
+                                      debugPrint('[CATALOG_MEDIA_ERROR] productId=${product.id} host=cdn.whatsapp.net status=403');
+                                    }
+                                    return _placeholder();
+                                  },
                                 )
                               : kIsWeb
                                   ? Image.network(

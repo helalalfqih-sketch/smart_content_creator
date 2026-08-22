@@ -1,9 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
-import 'package:archive/archive.dart';
 import 'package:http/http.dart' as http;
-import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -15,6 +13,7 @@ import '../models/catalog_product_model.dart';
 import '../services/db_service.dart';
 import '../services/firebase_storage_service.dart';
 import '../services/secure_storage_service.dart';
+import '../services/catalog_xlsx_import_service.dart';
 import '../controllers/auth_controller.dart';
 import '../core/storage/app_storage_service.dart';
 import '../core/repositories/catalog_repository.dart';
@@ -123,20 +122,15 @@ class CatalogController extends GetxController {
   Future<void> loadProducts() async {
     isLoading.value = true;
     try {
-      // 1. القراءة الأساسية من Back4App CatalogRepository
-      final b4aProducts = await _catalogRepo.getProducts(limit: 1000, forceRefresh: true);
+      // 1. القراءة الأساسية لجميع الصفحات من Back4App CatalogRepository
+      final b4aProducts = await _catalogRepo.getProducts(limit: 100, forceRefresh: true);
 
       if (b4aProducts.isNotEmpty) {
-        // 2. تخزين المنتجات في SQLite
-        for (final p in b4aProducts) {
-          await _db.insertRecord('catalog_products', p.toMap());
-        }
-
-        // 3. قراءة عدد السجلات من كاش SQLite
+        // 2. قراءة عدد السجلات من كاش SQLite بعد التحديث الكامل
         final sqliteRows = await _db.getRecords('catalog_products', where: 'deleted_at IS NULL');
         final sqliteCount = sqliteRows.length;
 
-        // 4. عرض المنتجات في الواجهة من نتيجة الـ Repository
+        // 3. عرض المنتجات الكاملة في الواجهة
         b4aProducts.sort((a, b) {
           final aTime = a.createdAt ?? DateTime.now();
           final bTime = b.createdAt ?? DateTime.now();
@@ -145,32 +139,40 @@ class CatalogController extends GetxController {
         products.value = b4aProducts;
         isLoading.value = false;
 
-        // 5. طباعة سجلات التحقق المطلوبة
+        // 4. طباعة سجلات التحقق المطلوبة
         debugPrint('[CATALOG_SOURCE] primary=back4app');
         debugPrint('[CATALOG_COUNT] back4app=${b4aProducts.length}');
         debugPrint('[CATALOG_CACHE] sqlite=$sqliteCount');
         debugPrint('[CATALOG_UI] rendered=${products.length}');
 
-        // 6. مقارنة غير متزامنة مع Firestore في الخلفية
-        _compareWithFirestoreCount(b4aProducts.length);
+        // 5. مقارنة مع Firestore بعد اكتمال جلب كافة صفحات Back4App
+        _compareWithFirestore(b4aProducts);
         return;
       }
     } catch (e) {
       if (kDebugMode) debugPrint('⚠️ [CATALOG_SOURCE] Back4App dual-read exception, falling back to Firestore: $e');
     }
 
-    // 7. Fallback إلى Firestore عند حدوث أي خطأ بدون فقدان للبيانات
+    // 6. Fallback إلى Firestore عند حدوث أي خطأ بدون فقدان للبيانات
     debugPrint('[CATALOG_SOURCE] fallback=firestore');
     setupProductsListener();
   }
 
-  void _compareWithFirestoreCount(int b4aCount) {
+  void _compareWithFirestore(List<CatalogProduct> b4aProducts) {
     FirebaseFirestore.instance
         .collection('catalog_products')
         .get()
         .then((snapshot) {
-      final firestoreCount = snapshot.docs.length;
-      debugPrint('[CATALOG_COMPARE] back4app=$b4aCount firestore=$firestoreCount delta=${b4aCount - firestoreCount}');
+      final firestoreDocs = snapshot.docs;
+      final firestoreCount = firestoreDocs.length;
+      final delta = b4aProducts.length - firestoreCount;
+      debugPrint('[CATALOG_COMPARE] back4app=${b4aProducts.length} firestore=$firestoreCount delta=$delta');
+
+      final b4aIds = b4aProducts.map((p) => p.id).toSet();
+      final firestoreOnlyDocs = firestoreDocs.where((doc) => !b4aIds.contains(doc.id)).map((d) => d.id).toList();
+      if (firestoreOnlyDocs.isNotEmpty) {
+        debugPrint('[CATALOG_COMPARE] firestore_only_ids (count=${firestoreOnlyDocs.length}): $firestoreOnlyDocs');
+      }
     }).catchError((e) {
       if (kDebugMode) debugPrint('⚠️ [CATALOG_COMPARE] Firestore comparison query: $e');
     });
@@ -910,56 +912,8 @@ class CatalogController extends GetxController {
     uploadedVideoUrl.value = '';
   }
 
-  /// 🛡️ يصحح ملفات الـ Excel التي تحتوي على روابط داخلية غير قياسية (/xl/worksheets/)
-  /// أو خلايا inlineStr فارغة بدون وسوم `<t>` لمنع حدوث Null Check / Bad State داخل حزمة excel
-  Uint8List _sanitizeExcelBytes(Uint8List originalBytes) {
-    try {
-      final archive = ZipDecoder().decodeBytes(originalBytes);
-      final newArchive = Archive();
-
-      for (final file in archive.files) {
-        if (file.isFile) {
-          List<int> content = file.content as List<int>;
-
-          // 1. تصحيح علاقات المسارات بإزالة البادئة /xl/ أو /
-          if (file.name == 'xl/_rels/workbook.xml.rels' || file.name.endsWith('.rels')) {
-            String text = utf8.decode(content, allowMalformed: true);
-            text = text.replaceAll('Target="/xl/', 'Target="');
-            text = text.replaceAll('Target="xl/', 'Target="');
-            text = text.replaceAll('Target="/', 'Target="');
-            content = utf8.encode(text);
-          }
-
-          // 2. تصحيح خلايا inlineStr الفارغة لمنع الانهيار الداخلي
-          if (file.name.startsWith('xl/worksheets/') && file.name.endsWith('.xml')) {
-            String text = utf8.decode(content, allowMalformed: true);
-            text = text.replaceAllMapped(
-              RegExp(r'<c([^>]*?)t="inlineStr"([^>]*?)>\s*</c>'),
-              (m) => '<c${m.group(1)}t="inlineStr"${m.group(2)}><is><t></t></is></c>',
-            );
-            text = text.replaceAllMapped(
-              RegExp(r'<c([^>]*?)t="inlineStr"([^>]*?)\s*/>'),
-              (m) => '<c${m.group(1)}t="inlineStr"${m.group(2)}><is><t></t></is></c>',
-            );
-            text = text.replaceAll('<is/>', '<is><t></t></is>');
-            text = text.replaceAll('<is></is>', '<is><t></t></is>');
-            content = utf8.encode(text);
-          }
-
-          newArchive.addFile(ArchiveFile(file.name, content.length, content));
-        }
-      }
-
-      final encoded = ZipEncoder().encode(newArchive);
-      return encoded != null ? Uint8List.fromList(encoded) : originalBytes;
-    } catch (e) {
-      debugPrint('⚠️ sanitizeExcelBytes warning: $e');
-      return originalBytes;
-    }
-  }
-
   // ---------------------------------------------------------------------------
-  // 📂 استيراد منتجات من Excel (.xlsx)
+  // 📂 استيراد منتجات من Excel (.xlsx) عبر الخدمة المخصصة لمنع أي أخطاء طرف ثالث
   // ---------------------------------------------------------------------------
   Future<void> importFromExcel() async {
     isImporting.value = true;
@@ -975,80 +929,14 @@ class CatalogController extends GetxController {
       if (path == null) return;
 
       final rawBytes = File(path).readAsBytesSync();
-      final bytes = _sanitizeExcelBytes(rawBytes);
-      final excel = Excel.decodeBytes(bytes);
-
-      int imported = 0;
-      int skipped = 0;
-
-      final List<CatalogProduct> parsedProducts = [];
-
-      final targetSheetName = 'recovery_reference';
-
-      debugPrint(
-        '[CATALOG_IMPORT_VERSION] nullsafe_recovery_reference_v2',
+      final importResult = CatalogXlsxImportService.parseBytes(
+        rawBytes,
+        targetSheetName: 'recovery_reference',
       );
 
-      debugPrint(
-        '[CATALOG_IMPORT] available_sheets=${excel.tables.keys.toList()}',
-      );
-
-      final sheet = excel.tables[targetSheetName];
-
-      if (sheet == null) {
-        throw FormatException(
-          'Required sheet "$targetSheetName" was not found. '
-          'Available sheets: ${excel.tables.keys.join(", ")}',
-        );
-      }
-
-      final rows = sheet.rows;
-
-      debugPrint(
-        '[CATALOG_IMPORT] selected_sheet=$targetSheetName',
-      );
-
-      if (rows.isEmpty) {
-        throw FormatException(
-          'Sheet "$targetSheetName" is empty',
-        );
-      }
-
-      // تحديد سطر البداية (تخطي العناوين إن وجدت)
-      int startRow = 0;
-      if (rows.isNotEmpty) {
-        final firstRowText = rows[0].map((c) => c?.value?.toString().toLowerCase() ?? '').toList();
-        if (firstRowText.any((t) => t.contains('id') || t.contains('title') || t.contains('price') || t.contains('name'))) {
-          startRow = 1;
-        }
-      }
-
-      for (int i = startRow; i < rows.length; i++) {
-        final row = rows[i];
-        final cells = row.map((c) {
-          final v = c?.value;
-          if (v == null) return '';
-          // استخراج القيمة الحقيقية من CellValue
-          return v.toString();
-        }).toList();
-        if (cells.isEmpty) continue;
-
-        // تخطي الصفوف الفارغة
-        final firstCell = cells[0].trim();
-        if (firstCell.isEmpty && (cells.length < 2 || cells[1].trim().isEmpty)) {
-          skipped++;
-          continue;
-        }
-
-        try {
-          final product = CatalogProduct.fromExcelRow(cells, i);
-          parsedProducts.add(product);
-          imported++;
-        } catch (e) {
-          skipped++;
-          if (kDebugMode) debugPrint('⚠️ Skipped row $i: $e');
-        }
-      }
+      final parsedProducts = importResult.products;
+      final imported = importResult.validProductsCount;
+      final skipped = importResult.invalidProductsCount;
 
       if (parsedProducts.isNotEmpty) {
         final uid = _uid;
@@ -1056,7 +944,7 @@ class CatalogController extends GetxController {
           final firestore = FirebaseFirestore.instance;
           final collRef = firestore.collection('catalog_products');
           
-          final batchSize = 400;
+          const batchSize = 400;
           for (var i = 0; i < parsedProducts.length; i += batchSize) {
             final batch = firestore.batch();
             final chunk = parsedProducts.sublist(

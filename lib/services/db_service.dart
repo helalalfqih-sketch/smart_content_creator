@@ -474,6 +474,23 @@ class DBService extends GetxService {
     }
   }
 
+  /// 🚀 إدراج/تحديث دفعة سجلات دفعة واحدة داخل Transaction لتسريع الأداء وتفادي تجميد الواجهة
+  Future<void> batchInsertRecords(String table, List<Map<String, dynamic>> records) async {
+    if (records.isEmpty) return;
+    try {
+      final d = await db;
+      await d.transaction((txn) async {
+        final batch = txn.batch();
+        for (final data in records) {
+          batch.insert(table, data, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+        await batch.commit(noResult: true);
+      });
+    } catch (e) {
+      if (kDebugMode) print('❌ DB Batch Insert Error [$table]: $e');
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getRecords(String table, {String? where, List<dynamic>? whereArgs, String? orderBy, int? limit}) async {
     try {
       final d = await db;
