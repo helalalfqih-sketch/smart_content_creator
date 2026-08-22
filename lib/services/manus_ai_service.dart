@@ -8,10 +8,17 @@ import '../core/models/canonical_ai_request.dart';
 import '../core/models/api_provider.dart';
 import '../core/models/manus_media_models.dart';
 
-/// 🤖 Manus AI Service (Production v2)
+/// 🤖 Manus AI Service (Production v2 - Hardened Auth)
+///
+/// Authentication:
+///   - Requires signed-in Firebase user (FirebaseAuth.instance.currentUser)
+///   - Retrieves fresh Firebase ID token (getIdToken()) on every request
+///   - Fails closed if user is unauthenticated
+///   - Backend cryptographically verifies the token against Google certificates
+///   - NEVER transmits client-specified userId as trusted identity
 ///
 /// Async media lifecycle:
-///   submitTask() → returns task_id immediately for media tasks
+///   submitMediaTask() → returns task_id immediately for media tasks
 ///   pollTaskStatus() → calls aiManusTaskStatus cloud function
 ///   Webhook fallback → aiManusWebhook cloud function
 ///
@@ -21,7 +28,7 @@ import '../core/models/manus_media_models.dart';
 ///   All requests go through Back4App Cloud Code
 ///
 /// Session continuity:
-///   userId + appSessionId → manusTaskId (managed server-side)
+///   verifiedFirebaseUid + appSessionId → manusTaskId (managed server-side)
 class ManusAiService extends GetxService {
   static const String _parseAppId = "uWUMmdbdRjcuOKuCcl9Pg7zEYxnYGVaLXjmveGF2";
   static const String _parseRestKey = "Zsvk14ko9rvXD25G1hflNeY2Dg2hJtkocPvh6tMp";
@@ -34,11 +41,22 @@ class ManusAiService extends GetxService {
     'Content-Type': 'application/json',
   };
 
-  /// 🔒 Get current Firebase UID safely
-  String? get _currentUserId {
+  /// 🔒 Retrieve fresh Firebase ID Token (Fails closed if not signed in)
+  Future<String?> _getFreshFirebaseIdToken() async {
     try {
-      return FirebaseAuth.instance.currentUser?.uid;
-    } catch (_) {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint('[MANUS_AUTH] Fail-closed: FirebaseAuth.instance.currentUser is null');
+        return null;
+      }
+      final idToken = await user.getIdToken();
+      if (idToken == null || idToken.isEmpty) {
+        debugPrint('[MANUS_AUTH] Fail-closed: getIdToken returned empty/null');
+        return null;
+      }
+      return idToken;
+    } catch (e) {
+      debugPrint('[MANUS_AUTH] Fail-closed: error retrieving Firebase ID token: $e');
       return null;
     }
   }
@@ -48,8 +66,6 @@ class ManusAiService extends GetxService {
   // ──────────────────────────────────────────────────────
 
   /// 💬 Generate text via Manus (through aiManusGateway)
-  /// For text tasks, the gateway polls internally and returns the result.
-  /// If it times out, returns task_id for client-side polling.
   Future<Map<String, dynamic>> generateText(CanonicalAiRequest request) async {
     final sw = Stopwatch()..start();
     debugPrint('[AI_PROVIDER] provider=manus operation=text status=start');
@@ -143,11 +159,6 @@ class ManusAiService extends GetxService {
   // ──────────────────────────────────────────────────────
 
   /// 🎨 Submit a media generation task (image/video/etc)
-  /// Returns ManusGatewayResponse with task_id for polling.
-  /// Does NOT wait for completion — caller must poll.
-  ///
-  /// Correction #5: No synchronous waits for media.
-  /// Correction #8: Caller maintains ONE placeholder message.
   Future<ManusGatewayResponse> submitMediaTask(
     CanonicalAiRequest request, {
     required String taskType,
@@ -190,23 +201,28 @@ class ManusAiService extends GetxService {
   }
 
   /// 🔄 Poll task status via aiManusTaskStatus cloud function
-  /// Correction #7: Flutter calls Back4App, never Manus directly.
-  /// Correction #4: Returns real status_update.brief/description, NO fake percentages.
+  /// Uses verified Firebase ID token for authorization.
   Future<ManusTaskStatus> pollTaskStatus(String taskId) async {
     try {
-      final url = Uri.parse('$_parseBaseUrl/functions/aiManusTaskStatus');
+      final idToken = await _getFreshFirebaseIdToken();
+      if (idToken == null) {
+        return ManusTaskStatus(
+          success: false,
+          taskId: taskId,
+          status: 'error',
+          isError: true,
+          error: 'AUTH_ERROR: User must be signed in with Firebase to check task status',
+        );
+      }
 
-      String? idToken;
-      try {
-        idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
-      } catch (_) {}
+      final url = Uri.parse('$_parseBaseUrl/functions/aiManusTaskStatus');
 
       final response = await http.post(
         url,
         headers: _headers,
         body: json.encode({
           'task_id': taskId,
-          if (idToken != null) 'firebaseIdToken': idToken,
+          'firebaseIdToken': idToken,
         }),
       ).timeout(const Duration(seconds: 15));
 
@@ -238,8 +254,6 @@ class ManusAiService extends GetxService {
   }
 
   /// 🔄 Poll until task completes or errors (with callback for status updates)
-  /// Correction #8: Status updates go to a SINGLE placeholder message.
-  /// Correction #4: NO fake progress percentages.
   Future<ManusTaskStatus> pollUntilComplete(
     String taskId, {
     Duration pollInterval = const Duration(seconds: 5),
@@ -264,12 +278,17 @@ class ManusAiService extends GetxService {
     required String taskType,
     Map<String, dynamic>? extraPayload,
   }) async {
-    final url = Uri.parse('$_parseBaseUrl/functions/aiManusGateway');
+    // 🔒 Fail-closed authentication check
+    final idToken = await _getFreshFirebaseIdToken();
+    if (idToken == null) {
+      return {
+        'success': false,
+        'error': 'AUTH_ERROR: User must be signed in with Firebase to access Manus AI services.',
+        'meta': {'provider': 'manus', 'status': 'auth_error'},
+      };
+    }
 
-    String? idToken;
-    try {
-      idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
-    } catch (_) {}
+    final url = Uri.parse('$_parseBaseUrl/functions/aiManusGateway');
 
     final payload = <String, dynamic>{
       'prompt': request.prompt,
@@ -282,10 +301,9 @@ class ManusAiService extends GetxService {
       'templateInputs': request.templateInputs,
       'taskType': taskType,
       'metadata': request.metadata,
-      // Session continuity & trusted identity
+      // Session continuity & trusted cryptographic token
       if (request.appSessionId != null) 'appSessionId': request.appSessionId,
-      if (idToken != null) 'firebaseIdToken': idToken,
-      if (_currentUserId != null) 'userId': _currentUserId,
+      'firebaseIdToken': idToken,
       // Merge extra payload (images, mimeType, etc.)
       ...?extraPayload,
     };

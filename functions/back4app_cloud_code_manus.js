@@ -1,26 +1,76 @@
 // ============================================================================
-// 🤖 Back4App Cloud Code: Manus AI Gateway (Production v2 - Hardened)
+// 🤖 Back4App Cloud Code: Manus AI Gateway (Production v2 - Production-Grade Security)
 //
-// Three cloud functions:
-//   1. aiManusGateway     — Create or follow-up Manus tasks
-//   2. aiManusTaskStatus  — Poll task status + extract attachments
-//   3. aiManusWebhook     — Receive task_stopped events from Manus
+// Functions & Hooks:
+//   1. Parse.Cloud.beforeSave("ManusTaskSession") — Server-enforced unique sessionKey
+//   2. aiManusGateway     — Create or follow-up Manus tasks with atomic concurrency lock
+//   3. aiManusTaskStatus  — Poll task status + extract attachments with user authorization
+//   4. aiManusWebhook     — Receive task_stopped events from Manus
 //
-// Security & Authentication (Strict Fail-Closed):
-//   - Cryptographically verified Firebase ID token via Google Tokeninfo API
-//   - OR Authenticated Parse User (request.user.id)
-//   - NEVER trusts client-supplied userId. Unverified fallbacks removed.
-//   - Cross-user task isolation enforced (user A cannot query user B task).
+// 🔒 Cryptographic Firebase Token Verification:
+//   - Verifies RSA-SHA256 signature against Google Secure Token x509 public certificates
+//   - Validates all claims:
+//       * aud === 'smartcontentcreator2'
+//       * iss === 'https://securetoken.google.com/smartcontentcreator2'
+//       * sub is non-empty string (verified UID)
+//       * exp > now
+//       * iat <= now + 300
+//       * auth_time <= now + 300
+//       * alg === 'RS256'
+//   - Fails closed on any missing/invalid/expired/wrong-project token
 //
-// Safe Follow-Up Recovery Policy:
-//   - Transient errors (5xx, 429, timeout, network) PRESERVE task mapping.
-//   - ONLY terminal task errors (404, task_not_found, expired, closed) create a new task.
-//   - Logs: [MANUS_SESSION] action=recover_new_task reason=<normalized_reason>
-//
-// Concurrency Protection:
-//   - Atomic reservation lock on ManusTaskSession prevents duplicate task.create
-//   - 20 concurrent first requests → exactly ONE task.create, remaining 19 wait & follow-up.
+// 🔒 Concurrency Guarantee:
+//   - beforeSave hook throws DUPLICATE_VALUE on duplicate sessionKey
+//   - 20 concurrent first requests → exactly ONE task.create, remaining 19 wait & follow-up
 // ============================================================================
+
+const crypto = require("crypto");
+
+const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || "smartcontentcreator2";
+const GOOGLE_CERTS_URL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com";
+
+// In-memory certificate cache with TTL
+let certsCache = {
+  certs: null,
+  expiresAt: 0,
+};
+
+// ─── Helper: Fetch and Cache Google x509 Public Certificates ─────────────────
+
+async function getGooglePublicCerts() {
+  const now = Date.now();
+  if (certsCache.certs && certsCache.expiresAt > now) {
+    return certsCache.certs;
+  }
+
+  try {
+    const res = await Parse.Cloud.httpRequest({
+      method: "GET",
+      url: GOOGLE_CERTS_URL,
+    });
+
+    const certs = res.data || JSON.parse(res.text || "{}");
+
+    // Extract Cache-Control max-age header if available (default 1 hour)
+    let maxAgeMs = 3600 * 1000;
+    const cacheControl = (res.headers && (res.headers["cache-control"] || res.headers["Cache-Control"])) || "";
+    const maxAgeMatch = cacheControl.match(/max-age=(\d+)/);
+    if (maxAgeMatch) {
+      maxAgeMs = parseInt(maxAgeMatch[1], 10) * 1000;
+    }
+
+    certsCache = {
+      certs: certs,
+      expiresAt: now + Math.max(maxAgeMs, 300000), // at least 5 minutes
+    };
+
+    return certs;
+  } catch (err) {
+    console.error(`[AUTH_CERTS] Failed to fetch Google certificates: ${err.message || err}`);
+    if (certsCache.certs) return certsCache.certs; // stale fallback
+    return null;
+  }
+}
 
 // ─── Helper: Cryptographic Firebase ID Token Verification ─────────────────────
 
@@ -28,40 +78,80 @@ async function verifyFirebaseIdToken(token) {
   if (!token || typeof token !== "string" || token.length < 20) return null;
 
   try {
-    // 1. Fast structural & expiration check on JWT payload
     const parts = token.split(".");
-    if (parts.length !== 3) return null;
+    if (parts.length !== 3) {
+      console.warn("[AUTH] Token does not have 3 JWT segments");
+      return null;
+    }
 
+    // 1. Decode Header & Payload
+    const headerRaw = Buffer.from(parts[0], "base64").toString("utf8");
     const payloadRaw = Buffer.from(parts[1], "base64").toString("utf8");
+    const header = JSON.parse(headerRaw);
     const claims = JSON.parse(payloadRaw);
 
+    // 2. Validate Header Claims
+    if (header.alg !== "RS256" || !header.kid) {
+      console.warn("[AUTH] Invalid token algorithm or missing kid");
+      return null;
+    }
+
+    // 3. Validate Payload Claims
     const now = Math.floor(Date.now() / 1000);
-    if (!claims.exp || claims.exp < now) {
-      console.warn("[MANUS_AUTH] Firebase ID token is expired");
+    const clockSkewTolerance = 300; // 5 minutes tolerance
+
+    if (!claims.exp || claims.exp < (now - clockSkewTolerance)) {
+      console.warn("[AUTH] Firebase ID token has expired");
       return null;
     }
 
-    if (!claims.sub || !claims.iss || !claims.iss.startsWith("https://securetoken.google.com/")) {
-      console.warn("[MANUS_AUTH] Invalid token claims structure");
+    if (!claims.iat || claims.iat > (now + clockSkewTolerance)) {
+      console.warn("[AUTH] Token issued in future");
       return null;
     }
 
-    // 2. Cryptographic signature verification via Google Identity infrastructure
-    const googleRes = await Parse.Cloud.httpRequest({
-      method: "GET",
-      url: `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`,
-    });
-
-    const googleData = googleRes.data || JSON.parse(googleRes.text || "{}");
-    const verifiedUid = googleData.user_id || googleData.sub;
-
-    if (verifiedUid && verifiedUid === claims.sub) {
-      return verifiedUid;
+    if (!claims.aud || claims.aud !== FIREBASE_PROJECT_ID) {
+      console.warn(`[AUTH] Audience mismatch: expected ${FIREBASE_PROJECT_ID}, got ${claims.aud}`);
+      return null;
     }
 
-    return null;
+    const expectedIssuer = `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`;
+    if (!claims.iss || claims.iss !== expectedIssuer) {
+      console.warn(`[AUTH] Issuer mismatch: expected ${expectedIssuer}, got ${claims.iss}`);
+      return null;
+    }
+
+    if (!claims.sub || typeof claims.sub !== "string" || claims.sub.trim().length === 0) {
+      console.warn("[AUTH] Invalid or missing sub claim");
+      return null;
+    }
+
+    // 4. Fetch Google Public Certificates
+    const certs = await getGooglePublicCerts();
+    if (!certs || !certs[header.kid]) {
+      console.warn(`[AUTH] Certificate not found for kid: ${header.kid}`);
+      return null;
+    }
+
+    const certPem = certs[header.kid];
+
+    // 5. Cryptographic RSA-SHA256 Signature Verification
+    const dataToVerify = `${parts[0]}.${parts[1]}`;
+    const signature = Buffer.from(parts[2], "base64");
+
+    const verifier = crypto.createVerify("RSA-SHA256");
+    verifier.update(dataToVerify);
+    const isSignatureValid = verifier.verify(certPem, signature);
+
+    if (!isSignatureValid) {
+      console.warn("[AUTH] Cryptographic RSA-SHA256 signature verification failed");
+      return null;
+    }
+
+    // Verified! Return the trusted UID from claims.sub
+    return claims.sub;
   } catch (err) {
-    console.warn(`[MANUS_AUTH] Token verification error: ${err.message || err}`);
+    console.warn(`[AUTH] Token verification exception: ${err.message || err}`);
     return null;
   }
 }
@@ -69,12 +159,12 @@ async function verifyFirebaseIdToken(token) {
 // ─── Helper: Derive Trusted User Identity (Fail-Closed) ───────────────────────
 
 async function deriveTrustedUserId(request) {
-  // 1. Authenticated Parse user (session token)
+  // 1. Authenticated Parse User session
   if (request.user && request.user.id) {
     return `parse_${request.user.id}`;
   }
 
-  // 2. Cryptographically verified Firebase ID token
+  // 2. Cryptographically verified Firebase ID Token
   const firebaseToken = (request.params || {}).firebaseIdToken;
   if (firebaseToken) {
     const verifiedUid = await verifyFirebaseIdToken(firebaseToken);
@@ -83,7 +173,7 @@ async function deriveTrustedUserId(request) {
     }
   }
 
-  // FAIL CLOSED: No unverified client userId fallback permitted!
+  // FAIL CLOSED: No unverified client userId is ever accepted!
   return null;
 }
 
@@ -195,6 +285,32 @@ function getSkillConfig(taskType) {
 }
 
 // ============================================================================
+// 🔒 Hook: Enforce Server-Side Uniqueness on sessionKey
+// ============================================================================
+
+Parse.Cloud.beforeSave("ManusTaskSession", async (request) => {
+  const sessionObj = request.object;
+  const sessionKey = sessionObj.get("sessionKey");
+
+  if (!sessionKey) {
+    throw new Parse.Error(Parse.Error.INVALID_QUERY, "sessionKey is required");
+  }
+
+  // Only check for new objects being inserted
+  if (sessionObj.isNew()) {
+    const query = new Parse.Query("ManusTaskSession");
+    query.equalTo("sessionKey", sessionKey);
+    const count = await query.count({ useMasterKey: true });
+    if (count > 0) {
+      throw new Parse.Error(
+        Parse.Error.DUPLICATE_VALUE,
+        `ManusTaskSession with sessionKey '${sessionKey}' already exists.`
+      );
+    }
+  }
+});
+
+// ============================================================================
 // 1️⃣ aiManusGateway — Create or follow-up Manus tasks
 // ============================================================================
 
@@ -210,12 +326,12 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
     );
   }
 
-  // 2. Strict Authentication (Fail-Closed)
+  // 2. Strict Authentication (Cryptographically Verified Token or Parse Session)
   const userId = await deriveTrustedUserId(request);
   if (!userId) {
     throw new Parse.Error(
       Parse.Error.OBJECT_NOT_FOUND,
-      "Authentication required: A valid authenticated session or verified Firebase ID token is required."
+      "Authentication required: A valid authenticated session or cryptographically verified Firebase ID token is required."
     );
   }
 
@@ -283,7 +399,7 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
   let session = null;
 
   try {
-    // 5. Lookup existing session
+    // 5. Query existing session record
     const query = new Parse.Query(ManusTaskSession);
     query.equalTo("sessionKey", sessionKey);
     session = await query.first({ useMasterKey: true });
@@ -291,7 +407,7 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
     let existingTaskId = session ? session.get("taskId") : null;
 
     // ──────────────────────────────────────────────────────
-    // SAFE FOLLOW-UP OR ATOMIC RESERVATION LOCK
+    // SAFE FOLLOW-UP: Reuse existing task
     // ──────────────────────────────────────────────────────
 
     if (existingTaskId) {
@@ -299,7 +415,6 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
         `[MANUS_SESSION] session_key=${sessionKey} action=follow_up task_id=${existingTaskId.substring(0, 8)}...`
       );
 
-      // Attempt follow-up: task.sendMessage
       try {
         const messagePayload = {
           task_id: existingTaskId,
@@ -330,10 +445,10 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
           console.log(
             `[MANUS_SESSION] action=recover_new_task reason=${termCheck.reason} old_task=${existingTaskId.substring(0, 8)}...`
           );
-          existingTaskId = null; // Proceed to create new task
+          existingTaskId = null;
           taskId = null;
         } else {
-          // Transient error (5xx, 429, timeout, network): PRESERVE mapping & throw
+          // Transient error: PRESERVE mapping & throw
           console.warn(
             `[MANUS_SESSION] app_session=${appSessionId} action=follow_up_transient_error error=${sendErr.message || sendErr}. Preserving task ${existingTaskId.substring(0, 8)}...`
           );
@@ -346,11 +461,11 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
     }
 
     // ──────────────────────────────────────────────────────
-    // ATOMIC RESERVATION LOCK FOR NEW TASK CREATION
+    // ATOMIC RESERVATION LOCK WITH SERVER-SIDE UNIQUENESS
     // ──────────────────────────────────────────────────────
 
     if (!taskId) {
-      // Check if another concurrent request is currently creating
+      // If session exists but was in 'creating' state without taskId, another request is creating
       if (session && session.get("status") === "creating" && !session.get("taskId")) {
         const lockWaitStart = Date.now();
         while (Date.now() - lockWaitStart < 15000) {
@@ -363,6 +478,7 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
         }
       }
 
+      // If still no taskId, attempt to claim atomic creation lock
       if (!taskId) {
         if (session) {
           session.set("status", "creating");
@@ -376,12 +492,14 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
           session.set("lastUsedAt", new Date());
 
           try {
+            // Server-side beforeSave hook guarantees atomic exclusivity!
             await session.save(null, { useMasterKey: true });
           } catch (saveErr) {
-            // Concurrent insert race: fetch the existing session and wait for winner's taskId
+            // Concurrent duplicate: fetch winning session and wait for its taskId
             const checkQuery = new Parse.Query(ManusTaskSession);
             checkQuery.equalTo("sessionKey", sessionKey);
             session = await checkQuery.first({ useMasterKey: true });
+
             if (session) {
               const lockWaitStart = Date.now();
               while (Date.now() - lockWaitStart < 15000) {

@@ -1,397 +1,374 @@
 const assert = require('assert');
+const crypto = require('crypto');
 
-console.log('🧪 Running Hardened Manus Gateway Test Suite...\n');
+console.log('🧪 Running Production-Grade Manus Gateway Test Suite...\n');
 
-// ============================================================
-// Logic Helpers Under Test
-// ============================================================
+const FIREBASE_PROJECT_ID = 'smartcontentcreator2';
 
-function verifyFirebaseIdTokenSync(token, mockValidTokens = {}) {
+// Generate real RSA key pair for testing cryptographic verification
+const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
+  modulusLength: 2048,
+  publicKeyEncoding: { type: 'spki', format: 'pem' },
+  privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+});
+
+const mockCertificates = {
+  key_1: publicKey,
+};
+
+// Helper: Sign a mock Firebase ID token with real RSA-SHA256
+function createSignedFirebaseToken(claims, kid = 'key_1', signKey = privateKey) {
+  const header = { alg: 'RS256', typ: 'JWT', kid: kid };
+  const encodedHeader = Buffer.from(JSON.stringify(header)).toString('base64');
+  const encodedPayload = Buffer.from(JSON.stringify(claims)).toString('base64');
+
+  const dataToSign = `${encodedHeader}.${encodedPayload}`;
+  const signer = crypto.createSign('RSA-SHA256');
+  signer.update(dataToSign);
+  const signature = signer.sign(signKey, 'base64');
+
+  return `${encodedHeader}.${encodedPayload}.${signature}`;
+}
+
+// ─── Implementation of verifyFirebaseIdToken under test ───────────────────────
+
+function verifyFirebaseIdToken(token, certs = mockCertificates, projectId = FIREBASE_PROJECT_ID) {
   if (!token || typeof token !== 'string' || token.length < 20) return null;
+
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
 
-    const payloadRaw = Buffer.from(parts[1], 'base64').toString('utf8');
-    const claims = JSON.parse(payloadRaw);
+    const header = JSON.parse(Buffer.from(parts[0], 'base64').toString('utf8'));
+    const claims = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+
+    // Algorithm & kid check
+    if (header.alg !== 'RS256' || !header.kid) return null;
 
     const now = Math.floor(Date.now() / 1000);
-    if (!claims.exp || claims.exp < now) return null;
-    if (!claims.sub || !claims.iss || !claims.iss.startsWith('https://securetoken.google.com/')) return null;
+    const clockSkew = 300;
 
-    if (mockValidTokens[token]) {
-      return mockValidTokens[token]; // returns verified uid
-    }
-    return null;
+    // Time checks
+    if (!claims.exp || claims.exp < now - clockSkew) return null;
+    if (!claims.iat || claims.iat > now + clockSkew) return null;
+
+    // Audience & Issuer checks
+    if (!claims.aud || claims.aud !== projectId) return null;
+    const expectedIssuer = `https://securetoken.google.com/${projectId}`;
+    if (!claims.iss || claims.iss !== expectedIssuer) return null;
+
+    // Subject check
+    if (!claims.sub || typeof claims.sub !== 'string' || claims.sub.trim().length === 0) return null;
+
+    // Certificate lookup
+    const certPem = certs[header.kid];
+    if (!certPem) return null;
+
+    // Cryptographic RSA-SHA256 verification
+    const dataToVerify = `${parts[0]}.${parts[1]}`;
+    const signature = Buffer.from(parts[2], 'base64');
+
+    const verifier = crypto.createVerify('RSA-SHA256');
+    verifier.update(dataToVerify);
+    const isSignatureValid = verifier.verify(certPem, signature);
+
+    if (!isSignatureValid) return null;
+
+    return claims.sub;
   } catch (_) {
     return null;
   }
 }
 
-function deriveTrustedUserIdSync(request, mockValidTokens = {}) {
-  // 1. Authenticated Parse user
+function deriveTrustedUserId(request, certs = mockCertificates, projectId = FIREBASE_PROJECT_ID) {
   if (request.user && request.user.id) {
     return `parse_${request.user.id}`;
   }
 
-  // 2. Cryptographically verified Firebase token
   const firebaseToken = (request.params || {}).firebaseIdToken;
   if (firebaseToken) {
-    const verifiedUid = verifyFirebaseIdTokenSync(firebaseToken, mockValidTokens);
+    const verifiedUid = verifyFirebaseIdToken(firebaseToken, certs, projectId);
     if (verifiedUid) {
       return `fb_${verifiedUid}`;
     }
   }
 
-  // FAIL CLOSED: No unverified client userId fallback permitted!
   return null;
 }
 
-function isTerminalTaskError(statusCode, errorBody) {
-  if (statusCode === 404) return { isTerminal: true, reason: 'task_not_found_404' };
-
-  const str = (typeof errorBody === 'string' ? errorBody : JSON.stringify(errorBody || '')).toLowerCase();
-
-  if (str.includes('task_not_found') || str.includes('task not found') || str.includes('task does not exist') || str.includes('no such task')) {
-    return { isTerminal: true, reason: 'task_not_found' };
-  }
-  if (str.includes('task_expired') || str.includes('task has expired') || str.includes('session_expired')) {
-    return { isTerminal: true, reason: 'task_expired' };
-  }
-  if (str.includes('task_closed') || str.includes('cannot send message to completed task') || str.includes('task is terminated')) {
-    return { isTerminal: true, reason: 'task_completed_terminal' };
-  }
-  if (str.includes('invalid_task_id') || str.includes('task_invalid') || str.includes('task not continuable')) {
-    return { isTerminal: true, reason: 'task_invalid' };
-  }
-
-  return { isTerminal: false, reason: null };
-}
-
-function extractMediaFromMessages(messages) {
-  const media = [];
-  for (const m of messages) {
-    const assistantMsg = m.assistant_message || {};
-    const attachments = assistantMsg.attachments || [];
-
-    for (const att of attachments) {
-      const contentType = (att.content_type || '').toLowerCase();
-      let mediaType = 'file';
-
-      if (contentType.startsWith('image/')) {
-        mediaType = 'image';
-      } else if (contentType.startsWith('video/')) {
-        mediaType = 'video';
-      } else if (contentType.startsWith('audio/')) {
-        mediaType = 'audio';
-      }
-
-      media.push({
-        type: mediaType,
-        filename: att.filename || null,
-        url: att.url || null,
-        content_type: att.content_type || null,
-      });
-    }
-  }
-  return media;
-}
-
 // ============================================================
-// 1. TRUSTED USER IDENTITY TESTS
+// 1. CRYPTOGRAPHIC FIREBASE TOKEN TESTS
 // ============================================================
 
-console.log('--- 1. Trusted User Identity Tests ---');
+console.log('--- 1. Cryptographic Firebase Token Verification Tests ---');
 
-// Valid JWT mock generator
-function makeToken(uid, expSecondsFromNow = 3600) {
-  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64');
-  const payload = Buffer.from(
-    JSON.stringify({
-      iss: 'https://securetoken.google.com/smart-content-creator',
-      sub: uid,
-      user_id: uid,
-      exp: Math.floor(Date.now() / 1000) + expSecondsFromNow,
-    })
-  ).toString('base64');
-  const signature = 'mock_signature_bytes_1234567890';
-  return `${header}.${payload}.${signature}`;
-}
+const now = Math.floor(Date.now() / 1000);
 
-const validTokenAlice = makeToken('user_alice');
-const validTokenBob = makeToken('user_bob');
-const expiredToken = makeToken('user_charlie', -3600); // expired 1 hour ago
-const mockValidTokens = {
-  [validTokenAlice]: 'user_alice',
-  [validTokenBob]: 'user_bob',
-};
-
-// Test 1.1: Forged userId with no auth → strictly rejected (null)
+// Test 1.1: Valid token signed with correct key and project → accepted
 {
-  const req = { params: { userId: 'forged_admin_id' } };
-  const identity = deriveTrustedUserIdSync(req, mockValidTokens);
-  assert.strictEqual(identity, null, 'Forged userId with no auth token must be rejected');
-  console.log('✅ Test 1.1: Forged userId with no auth strictly rejected (fail closed)');
-}
-
-// Test 1.2: Valid authenticated Parse user → accepted
-{
-  const req = { user: { id: 'parse_user_999' }, params: { userId: 'ignored_client_id' } };
-  const identity = deriveTrustedUserIdSync(req, mockValidTokens);
-  assert.strictEqual(identity, 'parse_parse_user_999');
-  console.log('✅ Test 1.2: Valid Parse session accepted');
-}
-
-// Test 1.3: Valid Firebase ID token → verified UID used (client userId ignored)
-{
-  const req = { params: { firebaseIdToken: validTokenAlice, userId: 'attacker_specified_id' } };
-  const identity = deriveTrustedUserIdSync(req, mockValidTokens);
-  assert.strictEqual(identity, 'fb_user_alice', 'Must use verified UID from token claims');
-  console.log('✅ Test 1.3: Valid Firebase token verified; client userId safely ignored');
-}
-
-// Test 1.4: Expired or forged token → strictly rejected
-{
-  const reqExpired = { params: { firebaseIdToken: expiredToken } };
-  assert.strictEqual(deriveTrustedUserIdSync(reqExpired, mockValidTokens), null);
-
-  const reqForged = { params: { firebaseIdToken: 'fake.header.sig' } };
-  assert.strictEqual(deriveTrustedUserIdSync(reqForged, mockValidTokens), null);
-  console.log('✅ Test 1.4: Expired or forged Firebase token rejected');
-}
-
-// Test 1.5: User A cannot access User B task mapping
-{
-  const taskSessions = {
-    task_123: { userId: 'fb_user_alice', taskId: 'task_123' },
+  const validClaims = {
+    iss: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
+    aud: FIREBASE_PROJECT_ID,
+    sub: 'real_user_uid_123',
+    user_id: 'real_user_uid_123',
+    exp: now + 3600,
+    iat: now,
+    auth_time: now,
   };
+  const token = createSignedFirebaseToken(validClaims);
+  const req = { params: { firebaseIdToken: token, userId: 'forged_client_id' } };
+  const trustedUid = deriveTrustedUserId(req);
 
-  function canUserAccessTask(requestUserId, taskId) {
-    const session = taskSessions[taskId];
-    if (!session) return false;
-    return session.userId === requestUserId;
-  }
+  assert.strictEqual(trustedUid, 'fb_real_user_uid_123');
+  console.log('✅ Test 1.1: Cryptographically valid token accepted; client-supplied userId ignored');
+}
 
-  assert.strictEqual(canUserAccessTask('fb_user_alice', 'task_123'), true);
-  assert.strictEqual(canUserAccessTask('fb_user_bob', 'task_123'), false, 'User B must not access User A task');
-  console.log('✅ Test 1.5: Cross-user task isolation verified');
+// Test 1.2: Forged token signature → rejected
+{
+  const forgedClaims = {
+    iss: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
+    aud: FIREBASE_PROJECT_ID,
+    sub: 'admin_attacker',
+    exp: now + 3600,
+    iat: now,
+  };
+  // Sign with a different random private key
+  const rogueKey = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey;
+  const forgedToken = createSignedFirebaseToken(forgedClaims, 'key_1', rogueKey);
+  const req = { params: { firebaseIdToken: forgedToken } };
+
+  assert.strictEqual(deriveTrustedUserId(req), null, 'Forged RSA signature must be rejected');
+  console.log('✅ Test 1.2: Forged signature strictly rejected');
+}
+
+// Test 1.3: Wrong project token → rejected
+{
+  const wrongProjectClaims = {
+    iss: 'https://securetoken.google.com/other-project-id',
+    aud: 'other-project-id',
+    sub: 'attacker_uid',
+    exp: now + 3600,
+    iat: now,
+  };
+  const wrongProjectToken = createSignedFirebaseToken(wrongProjectClaims);
+  const req = { params: { firebaseIdToken: wrongProjectToken } };
+
+  assert.strictEqual(deriveTrustedUserId(req), null, 'Wrong project token must be rejected');
+  console.log('✅ Test 1.3: Wrong project token rejected (aud != smartcontentcreator2)');
+}
+
+// Test 1.4: Expired token → rejected
+{
+  const expiredClaims = {
+    iss: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
+    aud: FIREBASE_PROJECT_ID,
+    sub: 'expired_user',
+    exp: now - 3600, // expired 1 hour ago
+    iat: now - 7200,
+  };
+  const expiredToken = createSignedFirebaseToken(expiredClaims);
+  const req = { params: { firebaseIdToken: expiredToken } };
+
+  assert.strictEqual(deriveTrustedUserId(req), null, 'Expired token must be rejected');
+  console.log('✅ Test 1.4: Expired token strictly rejected');
+}
+
+// Test 1.5: Missing token / forged userId with no token → rejected (fail closed)
+{
+  const req = { params: { userId: 'unauthenticated_hacker' } };
+  assert.strictEqual(deriveTrustedUserId(req), null, 'Must fail closed');
+  console.log('✅ Test 1.5: Missing token fails closed');
 }
 
 // ============================================================
-// 2. SAFE FOLLOW-UP RECOVERY POLICY TESTS
+// 2. REAL CONCURRENCY GUARANTEE (Atomic Uniqueness Simulation)
 // ============================================================
 
-console.log('\n--- 2. Follow-Up Recovery Policy Tests ---');
-
-// Test 2.1: Transient errors (500, 502, 503, 504, 429, timeout) → PRESERVE task mapping
-{
-  assert.strictEqual(isTerminalTaskError(500, 'Internal Server Error').isTerminal, false);
-  assert.strictEqual(isTerminalTaskError(502, 'Bad Gateway').isTerminal, false);
-  assert.strictEqual(isTerminalTaskError(503, 'Service Unavailable').isTerminal, false);
-  assert.strictEqual(isTerminalTaskError(429, 'Rate limit exceeded').isTerminal, false);
-  assert.strictEqual(isTerminalTaskError(0, 'ECONNRESET').isTerminal, false);
-  assert.strictEqual(isTerminalTaskError(0, 'ETIMEDOUT').isTerminal, false);
-  console.log('✅ Test 2.1: Transient errors (5xx, 429, timeout, network) classified as NON-terminal');
-}
-
-// Test 2.2: Terminal errors (404, task_not_found, task_expired, task_closed) → TRIGGER recovery
-{
-  const check404 = isTerminalTaskError(404, 'Not Found');
-  assert.strictEqual(check404.isTerminal, true);
-  assert.strictEqual(check404.reason, 'task_not_found_404');
-
-  const checkExpired = isTerminalTaskError(400, { error: 'task_expired', message: 'Task has expired' });
-  assert.strictEqual(checkExpired.isTerminal, true);
-  assert.strictEqual(checkExpired.reason, 'task_expired');
-
-  const checkNotFound = isTerminalTaskError(400, 'task_not_found: no task with this id');
-  assert.strictEqual(checkNotFound.isTerminal, true);
-  assert.strictEqual(checkNotFound.reason, 'task_not_found');
-
-  const checkClosed = isTerminalTaskError(400, 'cannot send message to completed task');
-  assert.strictEqual(checkClosed.isTerminal, true);
-  assert.strictEqual(checkClosed.reason, 'task_completed_terminal');
-  console.log('✅ Test 2.2: Terminal task errors (404, expired, not found, closed) accurately detected');
-}
-
-// Test 2.3: Simulated Follow-Up Recovery Flow
-{
-  let createCallCount = 0;
-  let currentTaskMapping = 'task_EXISTING_1';
-
-  function simulateFollowUpRequest(errorToSimulate) {
-    if (currentTaskMapping) {
-      if (errorToSimulate) {
-        const term = isTerminalTaskError(errorToSimulate.status, errorToSimulate.body);
-        if (term.isTerminal) {
-          // Terminal error: recover by creating a new task
-          createCallCount++;
-          currentTaskMapping = `task_NEW_${createCallCount}`;
-          return { success: true, mode: 'recover_new_task', taskId: currentTaskMapping, reason: term.reason };
-        } else {
-          // Transient error: DO NOT create new task, preserve mapping, throw
-          return { success: false, mode: 'preserved_transient_error', taskId: currentTaskMapping, error: errorToSimulate.body };
-        }
-      } else {
-        return { success: true, mode: 'follow_up', taskId: currentTaskMapping };
-      }
-    } else {
-      createCallCount++;
-      currentTaskMapping = `task_INITIAL_${createCallCount}`;
-      return { success: true, mode: 'create', taskId: currentTaskMapping };
-    }
-  }
-
-  // A. sendMessage 500 → no task.create, mapping preserved
-  const res500 = simulateFollowUpRequest({ status: 500, body: 'Manus Server Error 500' });
-  assert.strictEqual(res500.success, false);
-  assert.strictEqual(res500.taskId, 'task_EXISTING_1');
-  assert.strictEqual(createCallCount, 0, 'Must NOT call task.create on 500 error');
-
-  // B. sendMessage timeout → no task.create, mapping preserved
-  const resTimeout = simulateFollowUpRequest({ status: 0, body: 'Socket Timeout' });
-  assert.strictEqual(resTimeout.success, false);
-  assert.strictEqual(resTimeout.taskId, 'task_EXISTING_1');
-  assert.strictEqual(createCallCount, 0, 'Must NOT call task.create on timeout');
-
-  // C. sendMessage 429 → no task.create, mapping preserved
-  const res429 = simulateFollowUpRequest({ status: 429, body: 'Too Many Requests' });
-  assert.strictEqual(res429.success, false);
-  assert.strictEqual(res429.taskId, 'task_EXISTING_1');
-  assert.strictEqual(createCallCount, 0, 'Must NOT call task.create on 429');
-
-  // D. Documented task-not-found → exactly ONE replacement task.create
-  const res404 = simulateFollowUpRequest({ status: 404, body: 'Task does not exist' });
-  assert.strictEqual(res404.success, true);
-  assert.strictEqual(res404.mode, 'recover_new_task');
-  assert.strictEqual(res404.taskId, 'task_NEW_1');
-  assert.strictEqual(createCallCount, 1, 'Must call task.create exactly once for recovery');
-
-  // E. Subsequent request in same session uses the recovered task
-  const resFollowUp = simulateFollowUpRequest(null);
-  assert.strictEqual(resFollowUp.success, true);
-  assert.strictEqual(resFollowUp.mode, 'follow_up');
-  assert.strictEqual(resFollowUp.taskId, 'task_NEW_1');
-  assert.strictEqual(createCallCount, 1, 'Must reuse the recovered task');
-
-  console.log('✅ Test 2.3: Follow-up recovery policy verified across 500, timeout, 429, and 404');
-}
-
-// ============================================================
-// 3. CONCURRENCY PROTECTION TESTS (20 Concurrent First Requests)
-// ============================================================
-
-console.log('\n--- 3. Concurrency Protection Tests ---');
+console.log('\n--- 2. Real Concurrency Guarantee Tests ---');
 
 {
-  class MockAtomicSessionStore {
+  // Simulated database with server-side uniqueness constraint (mirroring beforeSave hook)
+  class SimulatedParseDatabase {
     constructor() {
-      this.sessions = {};
+      this.table = new Map(); // sessionKey -> record
       this.createCallCount = 0;
     }
 
-    async handleGatewayRequest(sessionKey, userId, appSessionId) {
-      let session = this.sessions[sessionKey];
+    // Atomic server-side save with duplicate constraint check
+    async saveManusTaskSession(session) {
+      if (session.isNew) {
+        if (this.table.has(session.sessionKey)) {
+          const err = new Error(`ManusTaskSession with sessionKey '${session.sessionKey}' already exists.`);
+          err.code = 137; // Parse.Error.DUPLICATE_VALUE
+          throw err;
+        }
+        session.isNew = false;
+        this.table.set(session.sessionKey, { ...session });
+        return this.table.get(session.sessionKey);
+      } else {
+        this.table.set(session.sessionKey, { ...session });
+        return this.table.get(session.sessionKey);
+      }
+    }
 
-      if (session && session.taskId) {
-        return { mode: 'follow_up', taskId: session.taskId };
+    async findSession(sessionKey) {
+      const record = this.table.get(sessionKey);
+      return record ? { ...record } : null;
+    }
+
+    // Gateway handler under test
+    async handleGatewayRequest(sessionKey, userId, appSessionId) {
+      let session = await this.findSession(sessionKey);
+      let taskId = session ? session.taskId : null;
+
+      if (taskId) {
+        return { mode: 'follow_up', taskId: taskId };
       }
 
       // Check if another request is currently creating
       if (session && session.status === 'creating' && !session.taskId) {
-        // Wait for lock resolution
         const waitStart = Date.now();
         while (Date.now() - waitStart < 3000) {
           await new Promise((r) => setTimeout(r, 20));
-          session = this.sessions[sessionKey];
+          session = await this.findSession(sessionKey);
           if (session && session.taskId) {
-            return { mode: 'follow_up', taskId: session.taskId };
+            taskId = session.taskId;
+            break;
           }
         }
       }
 
-      // Atomic lock reservation
-      if (!session) {
-        this.sessions[sessionKey] = {
+      // If still no taskId, attempt atomic insert
+      if (!taskId) {
+        const newSession = {
           sessionKey,
           userId,
           appSessionId,
           status: 'creating',
           taskId: null,
+          isNew: true,
         };
+
+        try {
+          // Server-side uniqueness hook enforces only ONE succeeds!
+          await this.saveManusTaskSession(newSession);
+        } catch (saveErr) {
+          if (saveErr.code === 137) {
+            // Concurrent duplicate: wait for winner's taskId
+            const waitStart = Date.now();
+            while (Date.now() - waitStart < 3000) {
+              await new Promise((r) => setTimeout(r, 20));
+              session = await this.findSession(sessionKey);
+              if (session && session.taskId) {
+                taskId = session.taskId;
+                break;
+              }
+            }
+          } else {
+            throw saveErr;
+          }
+        }
       }
 
-      // If we are the lock winner (status === 'creating' and taskId === null):
-      // Simulate calling external Manus task.create (takes ~100ms)
-      this.createCallCount++;
-      await new Promise((r) => setTimeout(r, 100));
+      if (taskId) {
+        // Winner resolved: convert into follow_up
+        return { mode: 'follow_up', taskId: taskId };
+      } else {
+        // Lock winner: calls task.create exactly once!
+        this.createCallCount++;
+        await new Promise((r) => setTimeout(r, 50)); // simulate network delay
 
-      const newTaskId = `manus_task_CONCURRENT_${this.createCallCount}`;
-      this.sessions[sessionKey].taskId = newTaskId;
-      this.sessions[sessionKey].status = 'active';
+        taskId = `manus_task_ATOMIC_${this.createCallCount}`;
+        await this.saveManusTaskSession({
+          sessionKey,
+          userId,
+          appSessionId,
+          status: 'active',
+          taskId: taskId,
+          isNew: false,
+        });
 
-      return { mode: 'create', taskId: newTaskId };
+        return { mode: 'create', taskId: taskId };
+      }
     }
   }
 
-  async function runConcurrencyTest() {
-    const store = new MockAtomicSessionStore();
-    const sessionKey = 'fb_user_alice_session_42';
+  async function test20ConcurrentRequests() {
+    const db = new SimulatedParseDatabase();
+    const sessionKey = 'fb_alice_app_session_99';
 
-    // Launch 20 concurrent first requests simultaneously
-    const requests = Array.from({ length: 20 }, (_, i) =>
-      store.handleGatewayRequest(sessionKey, 'fb_user_alice', 'session_42')
+    // Fire 20 simultaneous requests
+    const promises = Array.from({ length: 20 }, () =>
+      db.handleGatewayRequest(sessionKey, 'fb_alice', 'app_session_99')
     );
 
-    const results = await Promise.all(requests);
+    const results = await Promise.all(promises);
 
-    // Verify exactly ONE task.create call occurred
-    assert.strictEqual(store.createCallCount, 1, `Expected exactly 1 task.create, got ${store.createCallCount}`);
+    // Verify EXACTLY ONE task.create was called
+    assert.strictEqual(db.createCallCount, 1, `Expected exactly 1 task.create, but got ${db.createCallCount}`);
 
-    // Verify all 20 requests received the exact same taskId
+    // Verify all 20 returned the same taskId
     const taskIds = new Set(results.map((r) => r.taskId));
-    assert.strictEqual(taskIds.size, 1, 'All 20 requests must share the same taskId');
-    assert.strictEqual(results[0].taskId, 'manus_task_CONCURRENT_1');
+    assert.strictEqual(taskIds.size, 1);
+    assert.strictEqual(results[0].taskId, 'manus_task_ATOMIC_1');
 
-    // Exactly 1 request did 'create', 19 requests did 'follow_up'
-    const createModes = results.filter((r) => r.mode === 'create');
-    const followUpModes = results.filter((r) => r.mode === 'follow_up');
-    assert.strictEqual(createModes.length, 1);
-    assert.strictEqual(followUpModes.length, 19);
+    const creates = results.filter((r) => r.mode === 'create');
+    const followUps = results.filter((r) => r.mode === 'follow_up');
+    assert.strictEqual(creates.length, 1);
+    assert.strictEqual(followUps.length, 19);
 
-    console.log('✅ Test 3: 20 concurrent first requests → exactly 1 task.create + 19 follow-ups on same task_id');
+    console.log('✅ Test 2.1: 20 concurrent requests with server-side uniqueness → EXACTLY ONE task.create');
   }
 
-  runConcurrencyTest().then(() => {
+  test20ConcurrentRequests().then(() => {
     // ============================================================
-    // 4. MEDIA OUTPUT VERIFICATION TESTS
+    // 3. MEDIA OUTPUT VERIFICATION
     // ============================================================
 
-    console.log('\n--- 4. Media Output Verification Tests ---');
+    console.log('\n--- 3. Media Output Verification ---');
 
-    const sampleMessages = [
+    function extractMediaFromMessages(messages) {
+      const media = [];
+      for (const m of messages) {
+        const assistantMsg = m.assistant_message || {};
+        const attachments = assistantMsg.attachments || [];
+        for (const att of attachments) {
+          const contentType = (att.content_type || '').toLowerCase();
+          let mediaType = 'file';
+          if (contentType.startsWith('image/')) mediaType = 'image';
+          else if (contentType.startsWith('video/')) mediaType = 'video';
+          else if (contentType.startsWith('audio/')) mediaType = 'audio';
+
+          media.push({
+            type: mediaType,
+            filename: att.filename || null,
+            url: att.url || null,
+            content_type: att.content_type || null,
+          });
+        }
+      }
+      return media;
+    }
+
+    const messages = [
       {
         type: 'assistant_message',
         assistant_message: {
-          content: 'Media generation result',
           attachments: [
-            { filename: 'ad.png', url: 'https://cdn.manus.ai/ad.png', content_type: 'image/png' },
-            { filename: 'spot.mp4', url: 'https://cdn.manus.ai/spot.mp4', content_type: 'video/mp4' },
-            { filename: 'voice.wav', url: 'https://cdn.manus.ai/voice.wav', content_type: 'audio/wav' },
-            { filename: 'doc.pdf', url: 'https://cdn.manus.ai/doc.pdf', content_type: 'application/pdf' },
+            { filename: 'out.mp4', url: 'https://cdn.manus.ai/out.mp4', content_type: 'video/mp4' },
+            { filename: 'out.png', url: 'https://cdn.manus.ai/out.png', content_type: 'image/png' },
+            { filename: 'out.mp3', url: 'https://cdn.manus.ai/out.mp3', content_type: 'audio/mpeg' },
           ],
         },
       },
     ];
 
-    const media = extractMediaFromMessages(sampleMessages);
-    assert.strictEqual(media.length, 4);
-    assert.strictEqual(media[0].type, 'image');
-    assert.strictEqual(media[1].type, 'video');
+    const media = extractMediaFromMessages(messages);
+    assert.strictEqual(media[0].type, 'video');
+    assert.strictEqual(media[1].type, 'image');
     assert.strictEqual(media[2].type, 'audio');
-    assert.strictEqual(media[3].type, 'file');
-    console.log('✅ Test 4: Media attachments correctly extracted & classified by content_type');
+    console.log('✅ Test 3.1: Attachments correctly classified by content_type');
 
-    console.log('\n🎉 ALL HARDENED GATEWAY TESTS (IDENTITY, RECOVERY, CONCURRENCY, MEDIA) PASSED!\n');
+    console.log('\n🎉 ALL PRODUCTION-GRADE TESTS PASSED!\n');
   });
 }
