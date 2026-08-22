@@ -735,6 +735,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                         child: CircularProgressIndicator(strokeWidth: 2),
                                       ),
                                     ),
+                                    errorWidget: (_, url, __) {
+                                      if (url.contains('cdn.whatsapp.net')) {
+                                        debugPrint('[CATALOG_MEDIA_ERROR] productId=${widget.editProduct?.id} host=cdn.whatsapp.net status=403');
+                                      }
+                                      return const Center(
+                                        child: Icon(Icons.broken_image, color: Colors.white30, size: 20),
+                                      );
+                                    },
                                   )
                                 : kIsWeb
                                     ? Image.network(
