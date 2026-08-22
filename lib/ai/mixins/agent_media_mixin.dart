@@ -448,6 +448,7 @@ $description
         final updatedMessage = (latestMsg ?? placeholder).copyWith(
           content: response,
           videoUrl: videoUrl,
+          attachments: finalStatus.chatAttachments,
           state: MessageState.completed,
           isNew: true,
           clearAgentResult: false,
@@ -460,6 +461,7 @@ $description
         await agent.updateMessage(messageId, placeholder.copyWith(
           content: "🎬 تم إنشاء المحتوى بنجاح!",
           responseImageUrl: imageUrl,
+          attachments: finalStatus.chatAttachments,
           state: MessageState.completed,
           isNew: true,
         ), dbId: dbId);

@@ -49,6 +49,7 @@ class ChatTaskDistributor extends GetxService {
           return ChatMessage.assistant(
             content: "إليك النتيجة بعد التعديل:",
             type: 'generated_image',
+            attachments: result.chatAttachments,
             productContext: _state.lastAnalyzedProduct.value,
           ).copyWith(
             responseImageUrl: result.firstImageUrl,
@@ -106,6 +107,7 @@ class ChatTaskDistributor extends GetxService {
             content: "إليك الفيديو الذي حولناه من الصورة:",
             type: 'video',
             videoUrl: result.firstVideoUrl,
+            attachments: result.chatAttachments,
             productContext: _state.lastAnalyzedProduct.value,
           ).copyWith(state: MessageState.completed);
         } else {
@@ -160,11 +162,12 @@ class ChatTaskDistributor extends GetxService {
         );
 
         if (result.isCompleted && result.hasVideos) {
-          _updateStatus("تم الإنتاج السينمائي بنجاح! 🌟", 1.0);
+          _updateStatus("تم إنتاج الفيديو بنجاح! 🍿", 1.0);
           return ChatMessage.assistant(
-            content: "إليك المشهد الذي أنتجناه من النص:",
+            content: "إليك الفيديو السينمائي الذي تم توليده:",
             type: 'video',
             videoUrl: result.firstVideoUrl,
+            attachments: result.chatAttachments,
             productContext: _state.lastAnalyzedProduct.value,
           ).copyWith(state: MessageState.completed);
         } else {

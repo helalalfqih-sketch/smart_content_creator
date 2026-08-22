@@ -1,3 +1,4 @@
+import 'chat_attachment.dart';
 
 enum ProviderType {
   gemini,      // Google AI Studio (مجاني / مفتاح المستخدم)
@@ -377,15 +378,17 @@ class AiResult {
   final String? productName;
   final List<String> tags;
   final String provider;
+  final List<ChatAttachment> attachments;
 
   AiResult({
     required this.description,
     this.productName,
     this.tags = const [],
     required this.provider,
+    this.attachments = const [],
   });
 
   @override
   String toString() =>
-      'AiResult(provider: $provider, desc: $description, tags: $tags)';
-}
+      'AiResult(provider: $provider, desc: $description, tags: $tags, attachments: ${attachments.length})';
+}

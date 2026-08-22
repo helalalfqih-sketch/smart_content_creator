@@ -1,9 +1,10 @@
 import 'package:get/get.dart';
 import '../../services/db_service.dart';
-import '../models/chat_message.dart'; // Using the ChatMessage from core models
+import '../models/chat_message.dart';
+import '../models/chat_attachment.dart';
 import 'dart:io';
 import '../../controllers/auth_controller.dart';
-import 'package:flutter/foundation.dart'; // For debugPrint
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import '../../ai/core/agent_models.dart';
 import 'package:path_provider/path_provider.dart';
@@ -20,6 +21,40 @@ class ChatRepository {
   // Getter لحماية القائمة من التعديل المباشر من الخارج (محمي بـ RxList للسماح بالاستماع)
   RxList<ChatMessage> get history => _history;
 
+  /// 💾 حفظ وتكرار الملفات محلياً في مجلد مخصص للجلسات لضمان بقائها بعد إغلاق التطبيق
+  Future<List<ChatAttachment>> _persistAttachmentsLocally(List<ChatAttachment> attachments) async {
+    if (attachments.isEmpty) return attachments;
+
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final chatMediaDir = Directory('${appDir.path}/chat_media');
+      if (!await chatMediaDir.exists()) {
+        await chatMediaDir.create(recursive: true);
+      }
+
+      final List<ChatAttachment> persisted = [];
+      for (final att in attachments) {
+        if (att.localPath != null && att.localPath!.isNotEmpty) {
+          final file = File(att.localPath!);
+          // إذا كان الملف موجوداً ولم يتم نسخه بعد لمجلد chat_media
+          if (await file.exists() && !att.localPath!.startsWith(chatMediaDir.path)) {
+            final fileName = "${DateTime.now().millisecondsSinceEpoch}_${p.basename(file.path)}";
+            final newPath = '${chatMediaDir.path}/$fileName';
+            final newFile = await file.copy(newPath);
+            persisted.add(att.copyWith(localPath: newFile.path));
+            debugPrint("📸 Persisted attachment (${att.type.name}) to: ${newFile.path}");
+            continue;
+          }
+        }
+        persisted.add(att);
+      }
+      return persisted;
+    } catch (e) {
+      debugPrint("⚠️ Failed to persist attachments locally: $e");
+      return attachments;
+    }
+  }
+
   /// ✅ إضافة رسالة جديدة وحفظها فوراً (تعيد المعرف الرقمي من قاعدة البيانات)
   Future<int?> addMessage(ChatMessage msg, {int? sessionId}) async {
     // 1. التحديث الفوري للواجهة (Optimistic UI)
@@ -28,64 +63,42 @@ class ChatRepository {
 
     // 2. الحفظ في الخلفية (Fire & Forget)
     try {
-      // نستخدم logChatMessage الموجود في DBService
-      // بما أن ChatMessage يحتوي على دور (role) ومحتوى (content)
-      // سنقسم الرسالة حسب الدور إذا لزم الأمر أو نحفظها كما هي
-      // ملاحظة: logChatMessage في DBService مصمم لحفظ (userMessage, aiResponse) معاً
-      // ولكن يمكن استخدامه لحفظ رسائل منفردة عن طريق ترك أحدهما فارغاً أو تعديله
-
       final auth = Get.find<AuthController>();
       final userId = auth.user?['id']?.toString();
       final firebaseUid = auth.firebaseUid;
 
-      // 🧠 تجهيز بيانات الـ metadata (الأزرار والتوصيات)
-      String? metaData;
-      if (msg.actions != null ||
-          msg.recommendations != null ||
-          msg.videoThumbnail != null ||
-          msg.agentResult != null ||
-          msg.productContext != null) {
-        metaData = jsonEncode({
-          if (msg.actions != null) 'actions': msg.actions,
-          if (msg.recommendations != null)
-            'recommendations': msg.recommendations,
-          if (msg.videoThumbnail != null) 'video_thumbnail': msg.videoThumbnail,
-          if (msg.videoAuthor != null) 'video_author': msg.videoAuthor,
-          if (msg.agentResult != null)
-            'agent_result': msg.agentResult!.toJson(),
-          if (msg.productContext != null) 'product_context': msg.productContext,
-        });
-      }
+      // حفظ المرفقات محلياً
+      final persistedAttachments = await _persistAttachmentsLocally(msg.attachments);
 
-      String? savedPath = msg.mediaPath;
-      if (msg.role == 'user' && msg.mediaPath != null) {
-        try {
-          final file = File(msg.mediaPath!);
-          if (await file.exists()) {
-            final appDir = await getApplicationDocumentsDirectory();
-            final chatMediaDir = Directory('${appDir.path}/chat_media');
-            if (!await chatMediaDir.exists()) {
-              await chatMediaDir.create(recursive: true);
-            }
-            final fileName = p.basename(file.path);
-            final newFile = await file.copy('${chatMediaDir.path}/$fileName');
-            savedPath = newFile.path;
-            debugPrint("📸 Persisted user image to: $savedPath");
-          }
-        } catch (e) {
-          debugPrint("⚠️ Failed to persist user image: $e");
-        }
-      }
+      // 🧠 تجهيز بيانات الـ metadata (المرفقات الموحدة + الأزرار والتوصيات)
+      String? metaData;
+      metaData = jsonEncode({
+        if (persistedAttachments.isNotEmpty)
+          'attachments': persistedAttachments.map((a) => a.toJson()).toList(),
+        if (msg.actions != null) 'actions': msg.actions,
+        if (msg.recommendations != null)
+          'recommendations': msg.recommendations,
+        if (msg.videoThumbnail != null) 'video_thumbnail': msg.videoThumbnail,
+        if (msg.videoAuthor != null) 'video_author': msg.videoAuthor,
+        if (msg.agentResult != null)
+          'agent_result': msg.agentResult!.toJson(),
+        if (msg.productContext != null) 'product_context': msg.productContext,
+      });
+
+      final firstAtt = persistedAttachments.firstOrNull;
+      final savedMediaPath = firstAtt?.localPath ?? firstAtt?.remoteUrl ?? msg.mediaPath;
+      final firstVid = persistedAttachments.where((a) => a.isVideo).firstOrNull;
+      final savedVideoUrl = firstVid?.remoteUrl ?? firstVid?.localPath ?? msg.videoUrl;
 
       if (msg.role == 'user') {
         dbId = await _db.logChatMessage(
-          msg.provider ?? 'gemini',
+          msg.provider ?? 'manus',
           msg.content,
           '',
           sessionId: sessionId,
           messageType: msg.type,
-          mediaPath: savedPath,
-          videoUrl: msg.videoUrl,
+          mediaPath: savedMediaPath,
+          videoUrl: savedVideoUrl,
           state: msg.state.name,
           userId: userId,
           firebaseUid: firebaseUid,
@@ -94,13 +107,13 @@ class ChatRepository {
         );
       } else {
         dbId = await _db.logChatMessage(
-          msg.provider ?? 'gemini',
+          msg.provider ?? 'manus',
           '',
           msg.content,
           sessionId: sessionId,
           messageType: msg.type,
-          mediaPath: msg.mediaPath,
-          videoUrl: msg.videoUrl,
+          mediaPath: savedMediaPath,
+          videoUrl: savedVideoUrl,
           state: msg.state.name,
           userId: userId,
           firebaseUid: firebaseUid,
@@ -115,8 +128,9 @@ class ChatRepository {
         if (index != -1) {
           final savedMsg = msg.copyWith(
             id: "${dbId}_${msg.role == 'user' ? 'u' : 'a'}",
-            mediaPath: savedPath,
-            image: savedPath != null ? File(savedPath) : msg.image,
+            attachments: persistedAttachments,
+            mediaPath: savedMediaPath,
+            videoUrl: savedVideoUrl,
           );
           _history[index] = savedMsg;
           _history.refresh();
@@ -141,9 +155,11 @@ class ChatRepository {
         final userText = m['user_message'] as String? ?? '';
         final aiText = m['ai_response'] as String? ?? '';
         final mediaPath = m['media_path'] as String?;
+        final videoUrl = m['video_url'] as String?;
         final msgType = m['message_type'] ?? 'text';
 
-        // 🧠 استعادة البيانات الإضافية (الأزرار والتوصيات) من meta_data
+        // 🧠 استعادة البيانات الإضافية والمرفقات من meta_data
+        List<ChatAttachment> extractedAttachments = [];
         List<Map<String, dynamic>>? extractedActions;
         List<Map<String, dynamic>>? extractedRecs;
         String? thumb;
@@ -155,6 +171,12 @@ class ChatRepository {
         if (rawMeta != null && rawMeta.isNotEmpty) {
           try {
             final Map<String, dynamic> meta = jsonDecode(rawMeta);
+
+            if (meta['attachments'] != null && meta['attachments'] is List) {
+              extractedAttachments = (meta['attachments'] as List)
+                  .map((item) => ChatAttachment.fromJson(Map<String, dynamic>.from(item as Map)))
+                  .toList();
+            }
 
             if (meta['actions'] != null && meta['actions'] is List) {
               extractedActions = (meta['actions'] as List).map((item) {
@@ -177,28 +199,42 @@ class ChatRepository {
                   Map<String, dynamic>.from(meta['agent_result']));
             }
 
-            // Fallback to metadata if column is somehow missing
             extractedProductContext ??= meta['product_context'];
           } catch (e) {
             debugPrint("⚠️ Metadata parse error in session $sessionId: $e");
           }
         }
 
+        // Fallback إذا لم توجد مرفقات في meta_data القديمة
+        if (extractedAttachments.isEmpty) {
+          if (mediaPath != null && mediaPath.isNotEmpty) {
+            final f = File(mediaPath);
+            if (f.existsSync()) {
+              extractedAttachments.add(ChatAttachment.fromLocalFile(file: f));
+            } else {
+              extractedAttachments.add(ChatAttachment.fromRemote(url: mediaPath));
+            }
+          }
+          if (videoUrl != null && videoUrl.isNotEmpty) {
+            extractedAttachments.add(ChatAttachment.fromRemote(
+              url: videoUrl,
+              contentType: 'video/mp4',
+              thumbnailUrl: thumb,
+            ));
+          }
+        }
+
         // 1. User Message Piece
-        // 📸 Fix: Load user message if it has text OR if it has media (without AI response in same row)
-        if (userText.isNotEmpty || (mediaPath != null && aiText.isEmpty)) {
-          final String? finalVideoUrl = m['video_url'] ?? mediaPath;
+        if (userText.isNotEmpty || (extractedAttachments.isNotEmpty && aiText.isEmpty) || (mediaPath != null && aiText.isEmpty)) {
+          final String? finalVideoUrl = videoUrl ?? mediaPath;
 
           messages.add(ChatMessage(
             id: "${m['id']}_u",
             role: 'user',
             content: userText,
-            // 🎬 Logic: If media exists, it belongs to the user input in this row
-            type: mediaPath != null
-                ? (msgType == 'video' ? 'video' : 'image')
-                : 'text',
+            attachments: extractedAttachments,
+            type: msgType,
             mediaPath: mediaPath,
-            image: mediaPath != null ? File(mediaPath) : null,
             videoUrl: msgType == 'video' ? finalVideoUrl : null,
             state: MessageState.values.firstWhere(
                 (e) => e.name == m['state'],
@@ -211,32 +247,21 @@ class ChatRepository {
 
         // 2. Assistant Message Piece
         if (aiText.isNotEmpty) {
-          // If it started with user text, this is a response row, usually text unless it's a specific generation
           final effectiveType =
               userText.isNotEmpty && msgType == 'text' ? 'text' : msgType;
 
-          // 🎬 Robust Video Link Extraction
           final isVideo = effectiveType == 'video' || effectiveType == 'generated_video';
-          final String? rawVideoUrl = m['video_url'];
-          final String? finalVideoUrl = (rawVideoUrl != null && rawVideoUrl.toString().isNotEmpty) 
-              ? rawVideoUrl.toString() 
+          final String? finalVideoUrl = (videoUrl != null && videoUrl.isNotEmpty) 
+              ? videoUrl 
               : mediaPath;
-
-          if (isVideo) {
-            debugPrint("🎬 DB VIDEO DEBUG (Session $sessionId): ID=${m['id']}, type=$effectiveType, url=$finalVideoUrl, media=$mediaPath");
-          }
 
           messages.add(ChatMessage(
             id: "${m['id']}_a",
             role: 'assistant',
             content: aiText,
+            attachments: extractedAttachments,
             type: effectiveType,
             mediaPath: userText.isEmpty ? mediaPath : null,
-            image: userText.isEmpty &&
-                    mediaPath != null &&
-                    (msgType == 'image' || msgType == 'generated_image')
-                ? File(mediaPath)
-                : null,
             videoUrl: isVideo ? finalVideoUrl : null,
             state: MessageState.values.firstWhere(
                 (e) => e.name == m['state'],
@@ -256,7 +281,7 @@ class ChatRepository {
 
       _history.assignAll(converted); // 🚀 Atomic update
       debugPrint(
-          "✅ Session $sessionId loaded with ${_history.length} messages (Actions preserved).");
+          "✅ Session $sessionId loaded with ${_history.length} messages.");
     } catch (e) {
       debugPrint("⚠️ Error loading session: $e");
     }
@@ -272,7 +297,7 @@ class ChatRepository {
     // 1. التحديث في الذاكرة
     int index = _history.indexWhere((m) => m.id == messageId);
     
-    // 🕵️ Fallback: إذا لم نجد الهوية المؤقتة، نبحث بالهوية الدائمة (الرقمية) من قاعدة البيانات
+    // 🕵️ Fallback: إذا لم نجد الهوية المؤقتة، نبحث بالهوية الدائمة
     if (index == -1 && dbId != null) {
       index = _history.indexWhere((m) => m.id == "${dbId}_a" || m.id == "${dbId}_u");
     }
@@ -283,7 +308,6 @@ class ChatRepository {
       debugPrint("✅ ChatRepo: Message $messageId (dbId: $dbId) updated in memory at index $index");
     } else {
       debugPrint("⚠️ ChatRepo: Could not find message $messageId or dbId $dbId to update.");
-      // Fallback: If not found by ID, maybe it's the last assistant message?
       if (_history.isNotEmpty && _history.last.role == 'assistant') {
          _history[_history.length - 1] = updatedMsg;
          _history.refresh();
@@ -295,13 +319,14 @@ class ChatRepository {
     if (dbId != null) {
       try {
         String? metaData;
-        if (updatedMsg.actions != null || updatedMsg.videoThumbnail != null || updatedMsg.agentResult != null) {
-          metaData = jsonEncode({
-            if (updatedMsg.actions != null) 'actions': updatedMsg.actions,
-            if (updatedMsg.videoThumbnail != null) 'video_thumbnail': updatedMsg.videoThumbnail,
-            if (updatedMsg.agentResult != null) 'agent_result': updatedMsg.agentResult!.toJson(),
-          });
-        }
+        metaData = jsonEncode({
+          if (updatedMsg.attachments.isNotEmpty)
+            'attachments': updatedMsg.attachments.map((a) => a.toJson()).toList(),
+          if (updatedMsg.actions != null) 'actions': updatedMsg.actions,
+          if (updatedMsg.videoThumbnail != null) 'video_thumbnail': updatedMsg.videoThumbnail,
+          if (updatedMsg.agentResult != null) 'agent_result': updatedMsg.agentResult!.toJson(),
+          if (updatedMsg.productContext != null) 'product_context': updatedMsg.productContext,
+        });
 
         await _db.updateRecord('chat_history', {
           'ai_response': updatedMsg.role == 'assistant' ? updatedMsg.content : '',

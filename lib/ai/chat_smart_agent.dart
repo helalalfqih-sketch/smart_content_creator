@@ -429,6 +429,7 @@ class ChatSmartAgent extends GetxService
         await updateMessage(messageId, placeholder.copyWith(
           content: "✨ تمت عملية التوليد بنجاح! إليك ما قمت بإنشائه لـ: **$prompt**",
           responseImageUrl: imageUrl,
+          attachments: finalStatus.chatAttachments,
           state: MessageState.completed,
           isNew: true,
         ), dbId: dbId);
@@ -437,6 +438,7 @@ class ChatSmartAgent extends GetxService
         // Completed but no image — show text response
         await updateMessage(messageId, placeholder.copyWith(
           content: finalStatus.data ?? "✨ تمت العملية بنجاح!",
+          attachments: finalStatus.chatAttachments,
           state: MessageState.completed,
           isNew: true,
         ), dbId: dbId);

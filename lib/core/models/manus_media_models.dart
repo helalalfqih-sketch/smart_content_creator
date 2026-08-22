@@ -1,3 +1,5 @@
+import 'chat_attachment.dart';
+
 /// 🎬 ManusMediaItem — Single media attachment from Manus task
 /// Maps to assistant_message.attachments[] fields
 class ManusMediaItem {
@@ -25,6 +27,17 @@ class ManusMediaItem {
   bool get isImage => type == 'image';
   bool get isVideo => type == 'video';
   bool get isAudio => type == 'audio';
+  bool get isFile => type == 'file';
+
+  /// تحويل إلى كائن ChatAttachment الموحد
+  ChatAttachment toChatAttachment() {
+    return ChatAttachment.fromRemote(
+      url: url ?? '',
+      filename: filename,
+      contentType: contentType,
+      source: 'manus_generated',
+    );
+  }
 }
 
 /// 🤖 ManusTaskStatus — Polling result from aiManusTaskStatus
@@ -103,6 +116,10 @@ class ManusTaskStatus {
 
   /// Get first video URL
   String? get firstVideoUrl => media.where((m) => m.isVideo).firstOrNull?.url;
+
+  /// تحويل كافة المرفقات إلى ChatAttachment
+  List<ChatAttachment> get chatAttachments =>
+      media.map((m) => m.toChatAttachment()).toList();
 }
 
 /// 🚀 ManusGatewayResponse — Initial response from aiManusGateway
@@ -144,4 +161,7 @@ class ManusGatewayResponse {
   }
 
   String? get conversationMode => meta['conversation_mode']?.toString();
+
+  List<ChatAttachment> get chatAttachments =>
+      media.map((m) => m.toChatAttachment()).toList();
 }
