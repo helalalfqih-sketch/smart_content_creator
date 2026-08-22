@@ -13,6 +13,7 @@ import '../../theme/app_theme.dart';
 import '../../services/secure_storage_service.dart';
 import '../../core/storage/app_storage_service.dart';
 import 'widgets/product_card.dart';
+import 'widgets/catalog_product_image.dart';
 import 'product_form_screen.dart';
 import '../../services/facebook_page_service.dart';
 import '../../controllers/settings_controller.dart';
@@ -975,39 +976,25 @@ class ProductCatalogScreen extends StatelessWidget {
                                       width: 1.5,
                                     ),
                                   ),
-                                  child: photoUrl.startsWith('http')
-                                      ? CachedNetworkImage(
-                                          imageUrl: photoUrl,
-                                          fit: BoxFit.cover,
-                                          placeholder: (context, url) => const Center(
-                                            child: SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(strokeWidth: 2),
-                                            ),
-                                          ),
-                                          errorWidget: (context, url, error) => Container(
-                                            color: const Color(0xFF1E1E2F),
-                                            child: const Icon(Icons.broken_image, color: Colors.white30),
-                                          ),
-                                        )
-                                      : kIsWeb
-                                          ? Image.network(
-                                              photoUrl,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) => Container(
-                                                color: const Color(0xFF1E1E2F),
-                                                child: const Icon(Icons.broken_image, color: Colors.white30),
-                                              ),
-                                            )
-                                          : Image.file(
-                                              File(photoUrl),
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (context, error, stackTrace) => Container(
-                                                color: const Color(0xFF1E1E2F),
-                                                child: const Icon(Icons.broken_image, color: Colors.white30),
-                                              ),
-                                            ),
+                                  child: CatalogProductImage(
+                                    imageUrl: photoUrl,
+                                    width: 90,
+                                    height: 90,
+                                    memCacheWidth: 180,
+                                    memCacheHeight: 180,
+                                    fit: BoxFit.cover,
+                                    placeholderWidget: const Center(
+                                      child: SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      ),
+                                    ),
+                                    errorWidget: Container(
+                                      color: const Color(0xFF1E1E2F),
+                                      child: const Icon(Icons.broken_image, color: Colors.white30),
+                                    ),
+                                  ),
                                 ),
                               ),
                               Positioned(

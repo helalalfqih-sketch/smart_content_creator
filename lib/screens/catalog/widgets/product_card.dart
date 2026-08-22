@@ -1,9 +1,6 @@
-import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:shimmer/shimmer.dart';
+import 'catalog_product_image.dart';
 import '../../../models/catalog_product_model.dart';
 import '../../../controllers/auth_controller.dart';
 
@@ -28,9 +25,6 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasImage = product.imageLink.isNotEmpty;
-    final isNetwork = hasImage && product.imageLink.startsWith('http');
-
     return GestureDetector(
       onTap: onEdit,
       child: Container(
@@ -50,42 +44,16 @@ class ProductCard extends StatelessWidget {
             Expanded(
               child: Stack(
                 children: [
-                  ClipRRect(
+                  CatalogProductImage(
+                    imageUrl: product.imageLink,
+                    productId: product.id,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    memCacheWidth: 350,
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: double.infinity,
-                      child: hasImage
-                          ? (isNetwork
-                              ? CachedNetworkImage(
-                                  imageUrl: product.imageLink,
-                                  fit: BoxFit.cover,
-                                  placeholder: (context, url) => Shimmer.fromColors(
-                                    baseColor: const Color(0xFF1A1A2E),
-                                    highlightColor: const Color(0xFF2E2E4A),
-                                    child: Container(color: const Color(0xFF1A1A2E)),
-                                  ),
-                                  errorWidget: (context, url, error) {
-                                    if (url.contains('cdn.whatsapp.net')) {
-                                      debugPrint('[CATALOG_MEDIA_ERROR] productId=${product.id} host=cdn.whatsapp.net status=403');
-                                    }
-                                    return _placeholder();
-                                  },
-                                )
-                              : kIsWeb
-                                  ? Image.network(
-                                      product.imageLink,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => _placeholder(),
-                                    )
-                                  : Image.file(
-                                      File(product.imageLink),
-                                      fit: BoxFit.cover,
-                                      cacheWidth: 350, // 📷 تحديد حجم العرض المحلي لتخفيف استهلاك RAM
-                                      errorBuilder: (_, __, ___) => _placeholder(),
-                                    ))
-                          : _placeholder(),
-                    ),
+                    placeholderWidget: _placeholder(),
+                    errorWidget: _placeholder(),
                   ),
                   // شارة المزامنة والحالة
                   Positioned(

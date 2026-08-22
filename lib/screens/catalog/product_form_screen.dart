@@ -18,6 +18,7 @@ import '../../services/unified_ai_service.dart';
 import '../../services/secure_storage_service.dart';
 import '../../services/product_matching_service.dart';
 import '../../theme/app_theme.dart';
+import 'widgets/catalog_product_image.dart';
 
 /// 📝 شاشة نموذج إضافة وتعديل المنتج مع دمج نظام المطابقة الذكي
 class ProductFormScreen extends StatefulWidget {
@@ -706,7 +707,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   const SizedBox(width: 10),
                   ...List.generate(ctrl.pickedImages.length, (i) {
                     final path = ctrl.pickedImages[i];
-                    final isNetwork = path.startsWith('http');
                     return Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -722,44 +722,25 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                   : Colors.white.withValues(alpha: 0.2),
                             ),
                           ),
-                          child: ClipRRect(
+                          child: CatalogProductImage(
+                            imageUrl: path,
+                            productId: widget.editProduct?.id,
+                            fit: BoxFit.cover,
+                            width: 90,
+                            height: 90,
+                            memCacheWidth: 180,
+                            memCacheHeight: 180,
                             borderRadius: BorderRadius.circular(11),
-                            child: isNetwork
-                                ? CachedNetworkImage(
-                                    imageUrl: path,
-                                    fit: BoxFit.cover,
-                                    placeholder: (_, __) => const Center(
-                                      child: SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
-                                      ),
-                                    ),
-                                    errorWidget: (_, url, __) {
-                                      if (url.contains('cdn.whatsapp.net')) {
-                                        debugPrint('[CATALOG_MEDIA_ERROR] productId=${widget.editProduct?.id} host=cdn.whatsapp.net status=403');
-                                      }
-                                      return const Center(
-                                        child: Icon(Icons.broken_image, color: Colors.white30, size: 20),
-                                      );
-                                    },
-                                  )
-                                : kIsWeb
-                                    ? Image.network(
-                                        path,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => const Center(
-                                          child: Icon(Icons.broken_image, color: Colors.white30),
-                                        ),
-                                      )
-                                    : Image.file(
-                                        File(path),
-                                        fit: BoxFit.cover,
-                                        cacheWidth: 150,
-                                        errorBuilder: (_, __, ___) => const Center(
-                                          child: Icon(Icons.broken_image, color: Colors.white30),
-                                        ),
-                                      ),
+                            placeholderWidget: const Center(
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                            errorWidget: const Center(
+                              child: Icon(Icons.broken_image, color: Colors.white30),
+                            ),
                           ),
                         ),
                         if (i == 0)
@@ -1176,48 +1157,26 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 child: Row(
                   children: [
                     if (existingProduct.imageLink.isNotEmpty)
-                      ClipRRect(
+                      CatalogProductImage(
+                        imageUrl: existingProduct.imageLink,
+                        productId: existingProduct.id,
+                        width: 50,
+                        height: 50,
+                        memCacheWidth: 100,
+                        memCacheHeight: 100,
                         borderRadius: BorderRadius.circular(8),
-                        child: existingProduct.imageLink.startsWith('http')
-                            ? CachedNetworkImage(
-                                imageUrl: existingProduct.imageLink,
-                                width: 50,
-                                height: 50,
-                                fit: BoxFit.cover,
-                                placeholder: (_, __) => Container(
-                                  width: 50,
-                                  height: 50,
-                                  color: Colors.white.withValues(alpha: 0.05),
-                                  child: const Icon(Icons.image, color: Colors.white24, size: 20),
-                                ),
-                                errorWidget: (_, url, __) {
-                                  if (url.contains('cdn.whatsapp.net')) {
-                                    debugPrint('[CATALOG_MEDIA_ERROR] productId=${existingProduct.id} host=cdn.whatsapp.net status=403');
-                                  }
-                                  return Container(
-                                    width: 50,
-                                    height: 50,
-                                    color: Colors.white.withValues(alpha: 0.05),
-                                    child: const Icon(Icons.broken_image, color: Colors.white30, size: 20),
-                                  );
-                                },
-                              )
-                            : kIsWeb
-                                ? Image.network(
-                                    existingProduct.imageLink,
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white30, size: 20),
-                                  )
-                                : Image.file(
-                                    File(existingProduct.imageLink),
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.cover,
-                                    cacheWidth: 100,
-                                    errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.white30, size: 20),
-                                  ),
+                        placeholderWidget: Container(
+                          width: 50,
+                          height: 50,
+                          color: Colors.white.withValues(alpha: 0.05),
+                          child: const Icon(Icons.image, color: Colors.white24, size: 20),
+                        ),
+                        errorWidget: Container(
+                          width: 50,
+                          height: 50,
+                          color: Colors.white.withValues(alpha: 0.05),
+                          child: const Icon(Icons.broken_image, color: Colors.white30, size: 20),
+                        ),
                       ),
                     const SizedBox(width: 12),
                     Expanded(
