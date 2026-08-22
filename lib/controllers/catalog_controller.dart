@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
+import 'package:archive/archive.dart';
 import 'package:http/http.dart' as http;
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
@@ -909,6 +910,54 @@ class CatalogController extends GetxController {
     uploadedVideoUrl.value = '';
   }
 
+  /// 🛡️ يصحح ملفات الـ Excel التي تحتوي على روابط داخلية غير قياسية (/xl/worksheets/)
+  /// أو خلايا inlineStr فارغة بدون وسوم `<t>` لمنع حدوث Null Check / Bad State داخل حزمة excel
+  Uint8List _sanitizeExcelBytes(Uint8List originalBytes) {
+    try {
+      final archive = ZipDecoder().decodeBytes(originalBytes);
+      final newArchive = Archive();
+
+      for (final file in archive.files) {
+        if (file.isFile) {
+          List<int> content = file.content as List<int>;
+
+          // 1. تصحيح علاقات المسارات بإزالة البادئة /xl/ أو /
+          if (file.name == 'xl/_rels/workbook.xml.rels' || file.name.endsWith('.rels')) {
+            String text = utf8.decode(content, allowMalformed: true);
+            text = text.replaceAll('Target="/xl/', 'Target="');
+            text = text.replaceAll('Target="xl/', 'Target="');
+            text = text.replaceAll('Target="/', 'Target="');
+            content = utf8.encode(text);
+          }
+
+          // 2. تصحيح خلايا inlineStr الفارغة لمنع الانهيار الداخلي
+          if (file.name.startsWith('xl/worksheets/') && file.name.endsWith('.xml')) {
+            String text = utf8.decode(content, allowMalformed: true);
+            text = text.replaceAllMapped(
+              RegExp(r'<c([^>]*?)t="inlineStr"([^>]*?)>\s*</c>'),
+              (m) => '<c${m.group(1)}t="inlineStr"${m.group(2)}><is><t></t></is></c>',
+            );
+            text = text.replaceAllMapped(
+              RegExp(r'<c([^>]*?)t="inlineStr"([^>]*?)\s*/>'),
+              (m) => '<c${m.group(1)}t="inlineStr"${m.group(2)}><is><t></t></is></c>',
+            );
+            text = text.replaceAll('<is/>', '<is><t></t></is>');
+            text = text.replaceAll('<is></is>', '<is><t></t></is>');
+            content = utf8.encode(text);
+          }
+
+          newArchive.addFile(ArchiveFile(file.name, content.length, content));
+        }
+      }
+
+      final encoded = ZipEncoder().encode(newArchive);
+      return encoded != null ? Uint8List.fromList(encoded) : originalBytes;
+    } catch (e) {
+      debugPrint('⚠️ sanitizeExcelBytes warning: $e');
+      return originalBytes;
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // 📂 استيراد منتجات من Excel (.xlsx)
   // ---------------------------------------------------------------------------
@@ -925,7 +974,8 @@ class CatalogController extends GetxController {
       final path = result.files.first.path;
       if (path == null) return;
 
-      final bytes = File(path).readAsBytesSync();
+      final rawBytes = File(path).readAsBytesSync();
+      final bytes = _sanitizeExcelBytes(rawBytes);
       final excel = Excel.decodeBytes(bytes);
 
       int imported = 0;
