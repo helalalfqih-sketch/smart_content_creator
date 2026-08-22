@@ -196,10 +196,18 @@ class ManusAiService extends GetxService {
     try {
       final url = Uri.parse('$_parseBaseUrl/functions/aiManusTaskStatus');
 
+      String? idToken;
+      try {
+        idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+      } catch (_) {}
+
       final response = await http.post(
         url,
         headers: _headers,
-        body: json.encode({'task_id': taskId}),
+        body: json.encode({
+          'task_id': taskId,
+          if (idToken != null) 'firebaseIdToken': idToken,
+        }),
       ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
@@ -258,6 +266,11 @@ class ManusAiService extends GetxService {
   }) async {
     final url = Uri.parse('$_parseBaseUrl/functions/aiManusGateway');
 
+    String? idToken;
+    try {
+      idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+    } catch (_) {}
+
     final payload = <String, dynamic>{
       'prompt': request.prompt,
       'systemPersona': request.systemPersona,
@@ -269,8 +282,9 @@ class ManusAiService extends GetxService {
       'templateInputs': request.templateInputs,
       'taskType': taskType,
       'metadata': request.metadata,
-      // Session continuity
+      // Session continuity & trusted identity
       if (request.appSessionId != null) 'appSessionId': request.appSessionId,
+      if (idToken != null) 'firebaseIdToken': idToken,
       if (_currentUserId != null) 'userId': _currentUserId,
       // Merge extra payload (images, mimeType, etc.)
       ...?extraPayload,

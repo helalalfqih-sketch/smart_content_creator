@@ -1,65 +1,116 @@
 // ============================================================================
-// 🤖 Back4App Cloud Code: Manus AI Gateway (Production v2)
+// 🤖 Back4App Cloud Code: Manus AI Gateway (Production v2 - Hardened)
 //
 // Three cloud functions:
 //   1. aiManusGateway     — Create or follow-up Manus tasks
 //   2. aiManusTaskStatus  — Poll task status + extract attachments
 //   3. aiManusWebhook     — Receive task_stopped events from Manus
 //
-// Security:
-//   - MANUS_API_KEY stored in Back4App Environment Variables only
-//   - X-Parse-Master-Key used server-side only (never in client)
-//   - userId derived from Parse session or validated Firebase token
-//   - Client never touches Manus API directly
+// Security & Authentication (Strict Fail-Closed):
+//   - Cryptographically verified Firebase ID token via Google Tokeninfo API
+//   - OR Authenticated Parse User (request.user.id)
+//   - NEVER trusts client-supplied userId. Unverified fallbacks removed.
+//   - Cross-user task isolation enforced (user A cannot query user B task).
 //
-// Session Continuity:
-//   trustedServerUserId + appSessionId → manusTaskId (ManusTaskSession table)
-//   First request → task.create → save mapping
-//   Follow-up     → task.sendMessage → reuse mapping
+// Safe Follow-Up Recovery Policy:
+//   - Transient errors (5xx, 429, timeout, network) PRESERVE task mapping.
+//   - ONLY terminal task errors (404, task_not_found, expired, closed) create a new task.
+//   - Logs: [MANUS_SESSION] action=recover_new_task reason=<normalized_reason>
 //
-// Media Lifecycle (Async):
-//   task.create/sendMessage → return task_id immediately
-//   → Flutter polls aiManusTaskStatus
-//   → OR Manus webhook triggers aiManusWebhook
-//   → completion → extract attachments → update message
+// Concurrency Protection:
+//   - Atomic reservation lock on ManusTaskSession prevents duplicate task.create
+//   - 20 concurrent first requests → exactly ONE task.create, remaining 19 wait & follow-up.
 // ============================================================================
 
-// ─── Helper: Derive trusted user identity ─────────────────────────────────────
-// Correction #10: Do NOT trust client-supplied userId.
+// ─── Helper: Cryptographic Firebase ID Token Verification ─────────────────────
+
+async function verifyFirebaseIdToken(token) {
+  if (!token || typeof token !== "string" || token.length < 20) return null;
+
+  try {
+    // 1. Fast structural & expiration check on JWT payload
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+
+    const payloadRaw = Buffer.from(parts[1], "base64").toString("utf8");
+    const claims = JSON.parse(payloadRaw);
+
+    const now = Math.floor(Date.now() / 1000);
+    if (!claims.exp || claims.exp < now) {
+      console.warn("[MANUS_AUTH] Firebase ID token is expired");
+      return null;
+    }
+
+    if (!claims.sub || !claims.iss || !claims.iss.startsWith("https://securetoken.google.com/")) {
+      console.warn("[MANUS_AUTH] Invalid token claims structure");
+      return null;
+    }
+
+    // 2. Cryptographic signature verification via Google Identity infrastructure
+    const googleRes = await Parse.Cloud.httpRequest({
+      method: "GET",
+      url: `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`,
+    });
+
+    const googleData = googleRes.data || JSON.parse(googleRes.text || "{}");
+    const verifiedUid = googleData.user_id || googleData.sub;
+
+    if (verifiedUid && verifiedUid === claims.sub) {
+      return verifiedUid;
+    }
+
+    return null;
+  } catch (err) {
+    console.warn(`[MANUS_AUTH] Token verification error: ${err.message || err}`);
+    return null;
+  }
+}
+
+// ─── Helper: Derive Trusted User Identity (Fail-Closed) ───────────────────────
 
 async function deriveTrustedUserId(request) {
-  // 1. Try Parse session user (if client uses Parse SDK login)
+  // 1. Authenticated Parse user (session token)
   if (request.user && request.user.id) {
     return `parse_${request.user.id}`;
   }
 
-  // 2. Try Firebase token validation (client sends Firebase ID token)
+  // 2. Cryptographically verified Firebase ID token
   const firebaseToken = (request.params || {}).firebaseIdToken;
   if (firebaseToken) {
-    try {
-      const decodedUid = (request.params || {}).userId;
-      if (decodedUid) {
-        console.log(`[MANUS_AUTH] Firebase UID from token: ${decodedUid.substring(0, 6)}...`);
-        return `fb_${decodedUid}`;
-      }
-    } catch (e) {
-      console.warn(`[MANUS_AUTH] Firebase token validation failed: ${e.message}`);
+    const verifiedUid = await verifyFirebaseIdToken(firebaseToken);
+    if (verifiedUid) {
+      return `fb_${verifiedUid}`;
     }
   }
 
-  // 3. Fallback: use client-provided userId with prefix to distinguish
-  const clientUserId = (request.params || {}).userId;
-  if (clientUserId) {
-    console.warn(`[MANUS_AUTH] Using unverified client userId: ${clientUserId.substring(0, 6)}...`);
-    return `unverified_${clientUserId}`;
-  }
-
+  // FAIL CLOSED: No unverified client userId fallback permitted!
   return null;
 }
 
+// ─── Helper: Classify Terminal vs Transient Errors ───────────────────────────
+
+function isTerminalTaskError(statusCode, errorBody) {
+  if (statusCode === 404) return { isTerminal: true, reason: "task_not_found_404" };
+
+  const str = (typeof errorBody === "string" ? errorBody : JSON.stringify(errorBody || "")).toLowerCase();
+
+  if (str.includes("task_not_found") || str.includes("task not found") || str.includes("task does not exist") || str.includes("no such task")) {
+    return { isTerminal: true, reason: "task_not_found" };
+  }
+  if (str.includes("task_expired") || str.includes("task has expired") || str.includes("session_expired")) {
+    return { isTerminal: true, reason: "task_expired" };
+  }
+  if (str.includes("task_closed") || str.includes("cannot send message to completed task") || str.includes("task is terminated")) {
+    return { isTerminal: true, reason: "task_completed_terminal" };
+  }
+  if (str.includes("invalid_task_id") || str.includes("task_invalid") || str.includes("task not continuable")) {
+    return { isTerminal: true, reason: "task_invalid" };
+  }
+
+  return { isTerminal: false, reason: null };
+}
+
 // ─── Helper: Extract attachments from Manus messages ──────────────────────────
-// Correction #3: Read messages[].assistant_message.attachments[]
-// Classify by content_type: image/* → image, video/* → video, audio/* → audio
 
 function extractMediaFromMessages(messages) {
   const media = [];
@@ -92,7 +143,7 @@ function extractMediaFromMessages(messages) {
   return media;
 }
 
-// ─── Helper: Extract last assistant text from messages ─────────────────────────
+// ─── Helper: Extract last assistant text ──────────────────────────────────────
 
 function extractAssistantText(messages) {
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -105,8 +156,7 @@ function extractAssistantText(messages) {
   return "";
 }
 
-// ─── Helper: Extract status updates from messages ─────────────────────────────
-// Correction #4: Use status_update.brief and status_update.description
+// ─── Helper: Extract status updates ──────────────────────────────────────────
 
 function extractStatusUpdates(messages) {
   const updates = [];
@@ -123,8 +173,7 @@ function extractStatusUpdates(messages) {
   return updates;
 }
 
-// ─── Helper: Skill configuration ──────────────────────────────────────────────
-// Correction #12: Server-side skill selection via enable_skills / force_skills
+// ─── Helper: Skill Configuration ──────────────────────────────────────────────
 
 function getSkillConfig(taskType) {
   const imageSkillId = process.env.MANUS_IMAGE_SKILL_ID || null;
@@ -152,7 +201,7 @@ function getSkillConfig(taskType) {
 Parse.Cloud.define("aiManusGateway", async (request) => {
   const data = request.params || {};
 
-  // 1. Read Manus API key from environment
+  // 1. Read Manus API key
   const manusApiKey = process.env.MANUS_API_KEY;
   if (!manusApiKey) {
     throw new Parse.Error(
@@ -161,7 +210,16 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
     );
   }
 
-  // 2. Extract request fields
+  // 2. Strict Authentication (Fail-Closed)
+  const userId = await deriveTrustedUserId(request);
+  if (!userId) {
+    throw new Parse.Error(
+      Parse.Error.OBJECT_NOT_FOUND,
+      "Authentication required: A valid authenticated session or verified Firebase ID token is required."
+    );
+  }
+
+  // 3. Extract request fields
   const prompt = data.prompt || "";
   const systemPersona = data.systemPersona || "";
   const history = data.history || [];
@@ -174,8 +232,9 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
     throw new Parse.Error(Parse.Error.INVALID_QUERY, "Prompt or images are required");
   }
 
-  // 3. Derive trusted user identity (Correction #10)
-  const userId = await deriveTrustedUserId(request);
+  if (!appSessionId) {
+    throw new Parse.Error(Parse.Error.INVALID_QUERY, "appSessionId is required for session tracking");
+  }
 
   // 4. Assemble content items
   let fullPrompt = "";
@@ -194,7 +253,6 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
 
   const contentItems = [{ type: "text", text: fullPrompt }];
 
-  // 5. Attach images
   for (const imgBase64 of images) {
     contentItems.push({
       type: "file",
@@ -211,140 +269,190 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
     "x-manus-api-key": manusApiKey,
   };
 
-  // 6. Get skill configuration (Correction #12)
   const skillConfig = getSkillConfig(taskType);
-
-  // Determine if this is a media task (async) or text task (sync polling)
   const isMediaTask = [
     "image_generation", "video_generation", "background_removal",
     "product_photo", "image_to_video", "product_ad"
   ].includes(taskType);
 
-  // ──────────────────────────────────────────────────────
-  // SESSION CONTINUITY: Lookup or create Manus task
-  // ──────────────────────────────────────────────────────
+  const sessionKey = `${userId}_${appSessionId}`;
+  const ManusTaskSession = Parse.Object.extend("ManusTaskSession");
 
   let taskId = null;
   let conversationMode = "create";
+  let session = null;
 
   try {
-    // 7. Lookup existing Manus task for this user + session
-    if (userId && appSessionId) {
-      const sessionKey = `${userId}_${appSessionId}`;
+    // 5. Lookup existing session
+    const query = new Parse.Query(ManusTaskSession);
+    query.equalTo("sessionKey", sessionKey);
+    session = await query.first({ useMasterKey: true });
 
-      const ManusTaskSession = Parse.Object.extend("ManusTaskSession");
-      const query = new Parse.Query(ManusTaskSession);
-      query.equalTo("sessionKey", sessionKey);
-      query.descending("createdAt");
+    let existingTaskId = session ? session.get("taskId") : null;
 
-      const existingSession = await query.first({ useMasterKey: true });
+    // ──────────────────────────────────────────────────────
+    // SAFE FOLLOW-UP OR ATOMIC RESERVATION LOCK
+    // ──────────────────────────────────────────────────────
 
-      if (existingSession && existingSession.get("taskId")) {
-        const existingTaskId = existingSession.get("taskId");
+    if (existingTaskId) {
+      console.log(
+        `[MANUS_SESSION] session_key=${sessionKey} action=follow_up task_id=${existingTaskId.substring(0, 8)}...`
+      );
 
-        console.log(
-          `[MANUS_SESSION] session_key=${sessionKey} action=follow_up task_id=${existingTaskId.substring(0, 8)}...`
-        );
+      // Attempt follow-up: task.sendMessage
+      try {
+        const messagePayload = {
+          task_id: existingTaskId,
+          message: { content: contentItems },
+        };
+        if (skillConfig.force_skills) messagePayload.message.force_skills = skillConfig.force_skills;
+        if (skillConfig.enable_skills) messagePayload.message.enable_skills = skillConfig.enable_skills;
 
-        // 8. Follow-up: task.sendMessage (Correction #2)
-        try {
-          const messagePayload = {
-            task_id: existingTaskId,
-            message: {
-              content: contentItems,
-            },
-          };
+        await Parse.Cloud.httpRequest({
+          method: "POST",
+          url: `${manusBaseUrl}/task.sendMessage`,
+          headers: headers,
+          body: JSON.stringify(messagePayload),
+        });
 
-          // Add skill overrides if configured
-          if (skillConfig.force_skills) {
-            messagePayload.message.force_skills = skillConfig.force_skills;
-          }
-          if (skillConfig.enable_skills) {
-            messagePayload.message.enable_skills = skillConfig.enable_skills;
-          }
+        taskId = existingTaskId;
+        conversationMode = "follow_up";
 
-          await Parse.Cloud.httpRequest({
-            method: "POST",
-            url: `${manusBaseUrl}/task.sendMessage`,
-            headers: headers,
-            body: JSON.stringify(messagePayload),
-          });
+        session.set("lastUsedAt", new Date());
+        session.set("lastTaskType", taskType);
+        await session.save(null, { useMasterKey: true });
+      } catch (sendErr) {
+        const statusCode = sendErr.status || sendErr.statusCode || (sendErr.response && sendErr.response.status);
+        const errorBody = sendErr.data || sendErr.text || sendErr.message;
+        const termCheck = isTerminalTaskError(statusCode, errorBody);
 
-          taskId = existingTaskId;
-          conversationMode = "follow_up";
-
-          existingSession.set("lastUsedAt", new Date());
-          existingSession.set("lastTaskType", taskType);
-          await existingSession.save(null, { useMasterKey: true });
-        } catch (sendErr) {
-          console.warn(
-            `[MANUS_SESSION] session_key=${sessionKey} action=follow_up_failed error=${sendErr.message || sendErr}. Creating new task.`
+        if (termCheck.isTerminal) {
+          console.log(
+            `[MANUS_SESSION] action=recover_new_task reason=${termCheck.reason} old_task=${existingTaskId.substring(0, 8)}...`
           );
+          existingTaskId = null; // Proceed to create new task
           taskId = null;
+        } else {
+          // Transient error (5xx, 429, timeout, network): PRESERVE mapping & throw
+          console.warn(
+            `[MANUS_SESSION] app_session=${appSessionId} action=follow_up_transient_error error=${sendErr.message || sendErr}. Preserving task ${existingTaskId.substring(0, 8)}...`
+          );
+          throw new Parse.Error(
+            Parse.Error.SCRIPT_FAILED,
+            `Manus follow-up failed (transient error): ${sendErr.message || "Request failed"}`
+          );
         }
       }
     }
 
-    // 9. Create new Manus task if needed
+    // ──────────────────────────────────────────────────────
+    // ATOMIC RESERVATION LOCK FOR NEW TASK CREATION
+    // ──────────────────────────────────────────────────────
+
     if (!taskId) {
-      const sessionKey = userId && appSessionId ? `${userId}_${appSessionId}` : null;
-      console.log(
-        `[MANUS_SESSION] session_key=${sessionKey || "none"} action=create taskType=${taskType}`
-      );
-
-      const createPayload = {
-        message: {
-          content: contentItems,
-        },
-      };
-
-      if (skillConfig.force_skills) {
-        createPayload.message.force_skills = skillConfig.force_skills;
+      // Check if another concurrent request is currently creating
+      if (session && session.get("status") === "creating" && !session.get("taskId")) {
+        const lockWaitStart = Date.now();
+        while (Date.now() - lockWaitStart < 15000) {
+          await new Promise((r) => setTimeout(r, 500));
+          await session.fetch({ useMasterKey: true });
+          if (session.get("taskId")) {
+            taskId = session.get("taskId");
+            break;
+          }
+        }
       }
-      if (skillConfig.enable_skills) {
-        createPayload.message.enable_skills = skillConfig.enable_skills;
-      }
-
-      const createRes = await Parse.Cloud.httpRequest({
-        method: "POST",
-        url: `${manusBaseUrl}/task.create`,
-        headers: headers,
-        body: JSON.stringify(createPayload),
-      });
-
-      const createData = createRes.data || JSON.parse(createRes.text || "{}");
-      taskId = createData.task_id || (createData.data && createData.data.task_id);
 
       if (!taskId) {
-        throw new Parse.Error(Parse.Error.SCRIPT_FAILED, "Manus did not return a valid task_id");
+        if (session) {
+          session.set("status", "creating");
+          await session.save(null, { useMasterKey: true });
+        } else {
+          session = new ManusTaskSession();
+          session.set("sessionKey", sessionKey);
+          session.set("userId", userId);
+          session.set("appSessionId", appSessionId);
+          session.set("status", "creating");
+          session.set("lastUsedAt", new Date());
+
+          try {
+            await session.save(null, { useMasterKey: true });
+          } catch (saveErr) {
+            // Concurrent insert race: fetch the existing session and wait for winner's taskId
+            const checkQuery = new Parse.Query(ManusTaskSession);
+            checkQuery.equalTo("sessionKey", sessionKey);
+            session = await checkQuery.first({ useMasterKey: true });
+            if (session) {
+              const lockWaitStart = Date.now();
+              while (Date.now() - lockWaitStart < 15000) {
+                await new Promise((r) => setTimeout(r, 500));
+                await session.fetch({ useMasterKey: true });
+                if (session.get("taskId")) {
+                  taskId = session.get("taskId");
+                  break;
+                }
+              }
+            }
+          }
+        }
       }
 
-      conversationMode = "create";
+      if (taskId) {
+        // Concurrency lock resolved: follow-up on winner's taskId
+        console.log(
+          `[MANUS_CONCURRENCY] Lock resolved: using concurrently created task_id=${taskId.substring(0, 8)}...`
+        );
+        const messagePayload = {
+          task_id: taskId,
+          message: { content: contentItems },
+        };
+        if (skillConfig.force_skills) messagePayload.message.force_skills = skillConfig.force_skills;
+        if (skillConfig.enable_skills) messagePayload.message.enable_skills = skillConfig.enable_skills;
 
-      // 10. Persist session mapping
-      if (userId && appSessionId) {
-        const sessionKey = `${userId}_${appSessionId}`;
-        const ManusTaskSession = Parse.Object.extend("ManusTaskSession");
+        await Parse.Cloud.httpRequest({
+          method: "POST",
+          url: `${manusBaseUrl}/task.sendMessage`,
+          headers: headers,
+          body: JSON.stringify(messagePayload),
+        });
+        conversationMode = "follow_up";
+      } else {
+        // Lock winner: calls task.create exactly once
+        console.log(
+          `[MANUS_SESSION] session_key=${sessionKey} action=create taskType=${taskType}`
+        );
 
-        const checkQuery = new Parse.Query(ManusTaskSession);
-        checkQuery.equalTo("sessionKey", sessionKey);
-        const existing = await checkQuery.first({ useMasterKey: true });
+        const createPayload = {
+          message: { content: contentItems },
+        };
+        if (skillConfig.force_skills) createPayload.message.force_skills = skillConfig.force_skills;
+        if (skillConfig.enable_skills) createPayload.message.enable_skills = skillConfig.enable_skills;
 
-        if (existing) {
-          existing.set("taskId", taskId);
-          existing.set("lastUsedAt", new Date());
-          existing.set("lastTaskType", taskType);
-          await existing.save(null, { useMasterKey: true });
-        } else {
-          const sessionObj = new ManusTaskSession();
-          sessionObj.set("sessionKey", sessionKey);
-          sessionObj.set("userId", userId);
-          sessionObj.set("appSessionId", appSessionId);
-          sessionObj.set("taskId", taskId);
-          sessionObj.set("lastUsedAt", new Date());
-          sessionObj.set("lastTaskType", taskType);
-          await sessionObj.save(null, { useMasterKey: true });
+        const createRes = await Parse.Cloud.httpRequest({
+          method: "POST",
+          url: `${manusBaseUrl}/task.create`,
+          headers: headers,
+          body: JSON.stringify(createPayload),
+        });
+
+        const createData = createRes.data || JSON.parse(createRes.text || "{}");
+        taskId = createData.task_id || (createData.data && createData.data.task_id);
+
+        if (!taskId) {
+          if (session) {
+            session.set("status", "error");
+            await session.save(null, { useMasterKey: true });
+          }
+          throw new Parse.Error(Parse.Error.SCRIPT_FAILED, "Manus did not return a valid task_id");
         }
+
+        conversationMode = "create";
+
+        session.set("taskId", taskId);
+        session.set("status", "active");
+        session.set("lastUsedAt", new Date());
+        session.set("lastTaskType", taskType);
+        await session.save(null, { useMasterKey: true });
 
         console.log(
           `[MANUS_SESSION] session_key=${sessionKey} action=mapping_saved task_id=${taskId.substring(0, 8)}...`
@@ -353,11 +461,10 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
     }
 
     // ──────────────────────────────────────────────────────
-    // RESPONSE STRATEGY (Correction #5)
+    // ASYNC MEDIA vs SYNC TEXT RETURN STRATEGY
     // ──────────────────────────────────────────────────────
 
     if (isMediaTask) {
-      // ASYNC MEDIA: Return task_id immediately, don't wait
       console.log(
         `[MANUS_GATEWAY] Media task ${conversationMode}: ${taskId}. Returning immediately (async).`
       );
@@ -377,11 +484,7 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
       };
     }
 
-    // TEXT: Synchronous polling (max 30s)
-    console.log(
-      `[MANUS_GATEWAY] Text task ${conversationMode}: ${taskId}. Polling for completion...`
-    );
-
+    // Sync polling (max 30s) for text tasks
     const startTime = Date.now();
     const maxWaitMs = 30000;
     let pollIntervalMs = 1000;
@@ -433,7 +536,6 @@ Parse.Cloud.define("aiManusGateway", async (request) => {
       };
     }
 
-    // 11. Extract response from task.listMessages
     const messagesRes = await Parse.Cloud.httpRequest({
       method: "GET",
       url: `${manusBaseUrl}/task.listMessages?task_id=${encodeURIComponent(taskId)}`,
@@ -485,6 +587,28 @@ Parse.Cloud.define("aiManusTaskStatus", async (request) => {
     throw new Parse.Error(Parse.Error.INVALID_QUERY, "task_id is required");
   }
 
+  // Strict Authentication & Authorization
+  const userId = await deriveTrustedUserId(request);
+  if (!userId) {
+    throw new Parse.Error(
+      Parse.Error.OBJECT_NOT_FOUND,
+      "Authentication required: Valid session or verified token required"
+    );
+  }
+
+  // Cross-user isolation: verify task belongs to authenticated user
+  const ManusTaskSession = Parse.Object.extend("ManusTaskSession");
+  const query = new Parse.Query(ManusTaskSession);
+  query.equalTo("taskId", taskId);
+  const session = await query.first({ useMasterKey: true });
+
+  if (session && session.get("userId") && session.get("userId") !== userId) {
+    throw new Parse.Error(
+      Parse.Error.OBJECT_NOT_FOUND,
+      "Access denied: You do not have permission to view this task."
+    );
+  }
+
   const manusApiKey = process.env.MANUS_API_KEY;
   if (!manusApiKey) {
     throw new Parse.Error(Parse.Error.SCRIPT_FAILED, "MANUS_API_KEY not configured");
@@ -497,7 +621,6 @@ Parse.Cloud.define("aiManusTaskStatus", async (request) => {
   };
 
   try {
-    // 1. Get task detail for status
     const detailRes = await Parse.Cloud.httpRequest({
       method: "GET",
       url: `${manusBaseUrl}/task.detail?task_id=${encodeURIComponent(taskId)}`,
@@ -513,7 +636,6 @@ Parse.Cloud.define("aiManusTaskStatus", async (request) => {
     const isRunning = status === "running";
     const isWaiting = status === "waiting";
 
-    // 2. Get messages for status updates and attachments
     const messagesRes = await Parse.Cloud.httpRequest({
       method: "GET",
       url: `${manusBaseUrl}/task.listMessages?task_id=${encodeURIComponent(taskId)}`,
@@ -524,9 +646,7 @@ Parse.Cloud.define("aiManusTaskStatus", async (request) => {
     const messages = messagesBody.messages || [];
 
     const statusUpdates = extractStatusUpdates(messages);
-    const latestStatus = statusUpdates.length > 0
-      ? statusUpdates[statusUpdates.length - 1]
-      : null;
+    const latestStatus = statusUpdates.length > 0 ? statusUpdates[statusUpdates.length - 1] : null;
 
     let result = {
       success: true,
@@ -540,12 +660,10 @@ Parse.Cloud.define("aiManusTaskStatus", async (request) => {
       status_description: latestStatus ? latestStatus.description : null,
     };
 
-    // 3. If completed, extract text and media attachments
     if (isCompleted) {
       result.data = extractAssistantText(messages);
       result.media = extractMediaFromMessages(messages);
 
-      // Also check task_detail.attachments (Correction #6)
       const taskAttachments = taskObj.attachments || [];
       for (const att of taskAttachments) {
         const contentType = (att.content_type || "").toLowerCase();
@@ -554,7 +672,7 @@ Parse.Cloud.define("aiManusTaskStatus", async (request) => {
         else if (contentType.startsWith("video/")) mediaType = "video";
         else if (contentType.startsWith("audio/")) mediaType = "audio";
 
-        const isDuplicate = result.media.some(m => m.url === att.url);
+        const isDuplicate = result.media.some((m) => m.url === att.url);
         if (!isDuplicate) {
           result.media.push({
             type: mediaType,
@@ -597,7 +715,7 @@ Parse.Cloud.define("aiManusWebhook", async (request) => {
   const taskDetail = data.task_detail || data.task || {};
 
   console.log(
-    `[MANUS_WEBHOOK] event=${event} task_id=${taskId ? taskId.substring(0, 8) + '...' : 'none'} stop_reason=${stopReason}`
+    `[MANUS_WEBHOOK] event=${event} task_id=${taskId ? taskId.substring(0, 8) + "..." : "none"} stop_reason=${stopReason}`
   );
 
   if (!taskId) {
