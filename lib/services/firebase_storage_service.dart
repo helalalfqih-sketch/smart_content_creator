@@ -126,8 +126,8 @@ class FirebaseStorageService extends GetxService {
     required String csvContent,
   }) async {
     try {
-      final filePath = 'catalogs/global/catalog.csv';
-      debugPrint('🚀 Uploading global catalog CSV feed to: $filePath');
+      final filePath = 'catalogs/$uid/catalog.csv';
+      debugPrint('🚀 Uploading catalog CSV feed to: $filePath');
 
       final ref = _storage.ref().child(filePath);
       final uploadTask = await ref.putData(
