@@ -825,12 +825,107 @@ class AIOrchestrator extends GetxService {
 
   /// فحص إذا كان النص يطلب توليد صور بشكل صريح
   bool _containsImageGenRequest(String text) {
-    return AIConstants.imageGenKeywords.any((k) => text.contains(k));
+    if (text.isEmpty) return false;
+    // 1. Direct keyword match (normalized)
+    if (AIConstants.imageGenKeywords.any((k) => text.contains(_normalizeArabic(k)))) {
+      return true;
+    }
+
+    // 2. Flexible Pattern: (creation/action verb) + (image noun)
+    final hasImageNoun = text.contains('صوره') ||
+        text.contains('صورة') ||
+        text.contains('صور') ||
+        text.contains('image') ||
+        text.contains('photo') ||
+        text.contains('picture') ||
+        text.contains('pic');
+
+    if (hasImageNoun) {
+      const actionVerbs = [
+        'انش',
+        'اصنع',
+        'صنع',
+        'اعمل',
+        'عمل',
+        'ولد',
+        'توليد',
+        'صمم',
+        'تصميم',
+        'ارسم',
+        'رسم',
+        'سوي',
+        'سو',
+        'كون',
+        'تكوين',
+        'اريد',
+        'ابغي',
+        'ابغى',
+        'ابي',
+        'اعطني',
+        'هات',
+        'تخيل',
+        'create',
+        'generate',
+        'make',
+        'draw',
+        'design',
+        'render'
+      ];
+      if (actionVerbs.any((v) => text.contains(v))) return true;
+    }
+
+    return false;
   }
 
   /// فحص إذا كان النص يطلب توليد فيديو بشكل صريح
   bool _containsVideoGenRequest(String text) {
-    return AIConstants.videoGenKeywords.any((k) => text.contains(k));
+    if (text.isEmpty) return false;
+    // 1. Direct keyword match (normalized)
+    if (AIConstants.videoGenKeywords.any((k) => text.contains(_normalizeArabic(k)))) {
+      return true;
+    }
+
+    // 2. Flexible Pattern: (creation/action verb) + (video noun)
+    final hasVideoNoun = text.contains('فيديو') ||
+        text.contains('فديو') ||
+        text.contains('ريلز') ||
+        text.contains('مقطع') ||
+        text.contains('video') ||
+        text.contains('reel') ||
+        text.contains('clip');
+
+    if (hasVideoNoun) {
+      const actionVerbs = [
+        'انش',
+        'اصنع',
+        'صنع',
+        'اعمل',
+        'عمل',
+        'ولد',
+        'توليد',
+        'صمم',
+        'تصميم',
+        'سوي',
+        'سو',
+        'كون',
+        'تكوين',
+        'اريد',
+        'ابغي',
+        'ابغى',
+        'ابي',
+        'اعطني',
+        'هات',
+        'تحريك',
+        'حرك',
+        'create',
+        'generate',
+        'make',
+        'animate'
+      ];
+      if (actionVerbs.any((v) => text.contains(v))) return true;
+    }
+
+    return false;
   }
 
   /// 🧭 المحدد الحتمي لنمط التنفيذ بدون أي استدعاء خارجي للـ LLM

@@ -100,7 +100,12 @@ mixin AIHelpersMixin {
   /// 🎬 Check if image generation request (التحقق من نية توليد صور)
   bool isImageGenerationRequest(String prompt) {
     if (prompt.isEmpty) return false;
-    final lower = prompt.toLowerCase();
+    final lower = prompt.toLowerCase().trim()
+        .replaceAll('ة', 'ه')
+        .replaceAll('أ', 'ا')
+        .replaceAll('إ', 'ا')
+        .replaceAll('آ', 'ا')
+        .replaceAll('ى', 'ي');
 
     // 🛡️ فحص النفي (Negation Check) - إذا كانت الجملة تحتوي على كلمات نفي، نتوقف فوراً
     final negationKeywords = [
@@ -117,9 +122,13 @@ mixin AIHelpersMixin {
 
     // تحقق من الكلمات المفتاحية
     final hasKeyword = AIConstants.imageGenKeywords
-        .any((k) => lower.contains(k.toLowerCase()));
+        .any((k) => lower.contains(k.toLowerCase().replaceAll('ة', 'ه').replaceAll('أ', 'ا').replaceAll('إ', 'ا').replaceAll('آ', 'ا').replaceAll('ى', 'ي')));
 
-    final result = hasKeyword || hasStyle;
+    // تحقق من النمط المرن (فعل إنشاء + اسم صورة)
+    final hasImageNoun = lower.contains('صوره') || lower.contains('صورة') || lower.contains('صور') || lower.contains('image');
+    final hasActionVerb = ['انش', 'اصنع', 'صنع', 'اعمل', 'عمل', 'ولد', 'توليد', 'صمم', 'تصميم', 'ارسم', 'سوي', 'سو', 'اريد', 'ابغي', 'ابغى', 'ابي', 'اعطني', 'تخيل', 'create', 'generate', 'draw', 'design', 'make'].any((v) => lower.contains(v));
+
+    final result = hasKeyword || hasStyle || (hasImageNoun && hasActionVerb);
     AppLogger.info('EXITING: isImageGenerationRequest result: $result');
     return result;
   }

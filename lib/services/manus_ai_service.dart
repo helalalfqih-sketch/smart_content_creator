@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:get/get.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../core/models/canonical_ai_request.dart';
 import '../core/models/api_provider.dart';
@@ -45,15 +46,36 @@ class ManusAiService extends GetxService {
   Future<String?> _getFreshFirebaseIdToken() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
+      final projectId = Firebase.apps.isNotEmpty ? Firebase.app().options.projectId : '<none>';
       if (user == null) {
-        debugPrint('[MANUS_AUTH] Fail-closed: FirebaseAuth.instance.currentUser is null');
+        debugPrint('[MANUS_AUTH_DIAG] currentUser=false uid=<none> firebase_project_id=$projectId token_present=false token_length=0');
         return null;
       }
       final idToken = await user.getIdToken();
       if (idToken == null || idToken.isEmpty) {
-        debugPrint('[MANUS_AUTH] Fail-closed: getIdToken returned empty/null');
+        final redactedUid = user.uid.length > 6 ? "${user.uid.substring(0, 3)}...${user.uid.substring(user.uid.length - 3)}" : "***";
+        debugPrint('[MANUS_AUTH_DIAG] currentUser=true uid=$redactedUid firebase_project_id=$projectId token_present=false token_length=0');
         return null;
       }
+
+      // Safe JWT payload inspection for diagnostics only
+      String tokenAud = '<unknown>';
+      String tokenIssProject = '<unknown>';
+      try {
+        final parts = idToken.split('.');
+        if (parts.length == 3) {
+          final normalized = base64Url.normalize(parts[1]);
+          final payloadStr = utf8.decode(base64Url.decode(normalized));
+          final claims = json.decode(payloadStr) as Map<String, dynamic>;
+          tokenAud = claims['aud']?.toString() ?? '<none>';
+          final iss = claims['iss']?.toString() ?? '';
+          tokenIssProject = iss.contains('securetoken.google.com/') ? iss.split('securetoken.google.com/').last : iss;
+        }
+      } catch (_) {}
+
+      final redactedUid = user.uid.length > 6 ? "${user.uid.substring(0, 3)}...${user.uid.substring(user.uid.length - 3)}" : "***";
+      debugPrint('[MANUS_AUTH_DIAG] currentUser=true uid=$redactedUid firebase_project_id=$projectId token_present=true token_length=${idToken.length} token_aud=$tokenAud token_iss_project=$tokenIssProject');
+
       return idToken;
     } catch (e) {
       debugPrint('[MANUS_AUTH] Fail-closed: error retrieving Firebase ID token: $e');
