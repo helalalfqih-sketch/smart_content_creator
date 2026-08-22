@@ -22,6 +22,7 @@ import 'tiktok_video_widget.dart';
 import 'chat/full_screen_viewer.dart';
 import '../ai/chat_smart_agent.dart';
 import '../core/models/chat_message.dart';
+import '../core/models/chat_attachment.dart';
 import '../core/models/tiktok_video.dart';
 import '../ai/core/agent_models.dart';
 import '../ai/ui/agent_result_renderer.dart';
@@ -54,6 +55,7 @@ class ChatBubble extends StatefulWidget {
   final Map<String, dynamic>? errorDetails; // 🔴 For glassmorphic error cards
   final String type; // 🧬 Message type (text, generated_video, etc.)
   final String? provider; // 🤖 اسم محرك الذكاء الاصطناعي المستخدم
+  final List<ChatAttachment>? attachments; // 📎 Universal attachments list
 
   const ChatBubble({
     super.key,
@@ -83,6 +85,7 @@ class ChatBubble extends StatefulWidget {
     this.agentResult,
     this.errorDetails,
     this.provider,
+    this.attachments,
   });
 
   @override
@@ -128,6 +131,15 @@ class _ChatBubbleState extends State<ChatBubble> {
     }
 
     if (newSource == null || newSource.isEmpty) {
+      if (widget.attachments != null && widget.attachments!.isNotEmpty) {
+        final vid = widget.attachments!.where((a) => a.isVideo).firstOrNull;
+        if (vid != null) {
+          newSource = vid.remoteUrl ?? vid.localPath;
+        }
+      }
+    }
+
+    if (newSource == null || newSource.isEmpty) {
       final urlRegex = RegExp(r'https?://[^\s]+\.(mp4|mov|avi|mkv)[^\s]*');
       final match = urlRegex.firstMatch(widget.text);
       if (match != null) {
@@ -144,7 +156,12 @@ class _ChatBubbleState extends State<ChatBubble> {
     _lastProcessedSource = newSource;
 
     if (_currentVideoSource == null) {
-      debugPrint("⚠️ [ChatBubble] ${widget.id}: No video source found.");
+      final isStillGenerating = widget.state == MessageState.pending ||
+          widget.state == MessageState.streaming ||
+          widget.isGenerating;
+      if (!isStillGenerating && (widget.type == 'video' || widget.type == 'generated_video' || widget.videoUrl != null)) {
+        debugPrint("⚠️ [ChatBubble] ${widget.id}: No video source found.");
+      }
     } else {
       debugPrint(
           "✅ [ChatBubble] ${widget.id}: Video source FOUND: $_currentVideoSource");
@@ -167,10 +184,13 @@ class _ChatBubbleState extends State<ChatBubble> {
   void didUpdateWidget(covariant ChatBubble oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    // 🛡️ حماية: لا تعيد التهيئة إلا إذا تغيرت خصائص الفيديو أو المحتوى الأساسي فعلياً
+    // 🛡️ حماية: إعادة التهيئة عند تغير روابط الوسائط أو المرفقات أو الحالة
     bool videoChanged = oldWidget.videoUrl != widget.videoUrl ||
         oldWidget.mediaPath != widget.mediaPath ||
-        oldWidget.videoThumbnail != widget.videoThumbnail;
+        oldWidget.videoThumbnail != widget.videoThumbnail ||
+        oldWidget.attachments != widget.attachments ||
+        oldWidget.type != widget.type ||
+        (oldWidget.state != widget.state && _currentVideoSource == null);
 
     bool contentChanged = oldWidget.text != widget.text ||
         oldWidget.id != widget.id ||
@@ -178,7 +198,7 @@ class _ChatBubbleState extends State<ChatBubble> {
 
     if (videoChanged) {
       debugPrint(
-          "🎬 [ChatBubble] Video properties changed, re-initializing content for ${widget.id}");
+          "🎬 [ChatBubble] Video properties or attachments changed, re-initializing content for ${widget.id}");
       _initializeContent();
       if (mounted) setState(() {});
     } else if (contentChanged) {
@@ -631,6 +651,10 @@ class _ChatBubbleState extends State<ChatBubble> {
       return const SizedBox.shrink();
     }
 
+    final String? remoteImage = (widget.responseImageUrl != null && widget.responseImageUrl!.isNotEmpty)
+        ? widget.responseImageUrl
+        : widget.attachments?.where((a) => a.isImage).firstOrNull?.remoteUrl;
+
     final heroTag = "img_${widget.id}";
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -651,7 +675,7 @@ class _ChatBubbleState extends State<ChatBubble> {
           Get.to(
             () => FullScreenImageViewer(
               imageFile: widget.image,
-              imageUrl: widget.responseImageUrl,
+              imageUrl: remoteImage,
               mediaPath: widget.mediaPath,
               tag: heroTag,
             ),
@@ -663,9 +687,9 @@ class _ChatBubbleState extends State<ChatBubble> {
           tag: heroTag,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(14),
-            child: widget.responseImageUrl != null
+            child: (remoteImage != null && remoteImage.isNotEmpty)
                 ? CachedNetworkImage(
-                    imageUrl: widget.responseImageUrl!,
+                    imageUrl: remoteImage,
                     width: 280,
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Container(

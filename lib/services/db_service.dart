@@ -10,7 +10,7 @@ import 'package:path/path.dart';
 /// يستخدم نظام Generic CRUD لاختصار 2200 سطر إلى هيكل ذكي وسهل الصيانة.
 class DBService extends GetxService {
   static Database? _database;
-  static const int _dbVersion = 31;
+  static const int _dbVersion = 32;
   bool _schemaChecked = false;
 
   // ---------------------------------------------------------------------------
@@ -207,7 +207,48 @@ class DBService extends GetxService {
       style TEXT,
       created_at TEXT,
       updated_at TEXT,
-      is_synced INTEGER DEFAULT 0
+      is_synced INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'approved',
+      creator_uid TEXT,
+      category_id TEXT,
+      category_name TEXT,
+      meta_product_type TEXT,
+      sync_version INTEGER DEFAULT 1,
+      deleted_at TEXT
+    )''');
+
+    // 9. طابور مزامنة الكتالوج المحلي (Offline-First Sync Outbox)
+    batch.execute('''CREATE TABLE catalog_sync_queue(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id TEXT NOT NULL,
+      operation TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      retry_count INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'pending',
+      last_error TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )''');
+
+    // 10. وسائط الكتالوج المحلية
+    batch.execute('''CREATE TABLE catalog_product_media(
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      type TEXT DEFAULT 'image',
+      url TEXT NOT NULL,
+      thumbnail_url TEXT,
+      mime_type TEXT,
+      filename TEXT,
+      sort_order INTEGER DEFAULT 0,
+      is_primary INTEGER DEFAULT 0,
+      source TEXT DEFAULT 'app',
+      status TEXT DEFAULT 'active',
+      width INTEGER,
+      height INTEGER,
+      duration_ms INTEGER,
+      dedupe_key TEXT UNIQUE,
+      created_at TEXT,
+      updated_at TEXT
     )''');
 
     await batch.commit();
@@ -273,6 +314,40 @@ class DBService extends GetxService {
       // إضافة صلاحية كتالوج المنتجات
       await _insertDefaultControls(db);
     }
+    if (oldVersion < 32) {
+      // إضافة طابور المزامنة المحلي لكتالوج المنتجات
+      await db.execute('''CREATE TABLE IF NOT EXISTS catalog_sync_queue(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        product_id TEXT NOT NULL,
+        operation TEXT NOT NULL,
+        payload_json TEXT NOT NULL,
+        retry_count INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'pending',
+        last_error TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )''');
+
+      await db.execute('''CREATE TABLE IF NOT EXISTS catalog_product_media(
+        id TEXT PRIMARY KEY,
+        product_id TEXT NOT NULL,
+        type TEXT DEFAULT 'image',
+        url TEXT NOT NULL,
+        thumbnail_url TEXT,
+        mime_type TEXT,
+        filename TEXT,
+        sort_order INTEGER DEFAULT 0,
+        is_primary INTEGER DEFAULT 0,
+        source TEXT DEFAULT 'app',
+        status TEXT DEFAULT 'active',
+        width INTEGER,
+        height INTEGER,
+        duration_ms INTEGER,
+        dedupe_key TEXT UNIQUE,
+        created_at TEXT,
+        updated_at TEXT
+      )''');
+    }
   }
 
   // 🛡️ Failsafe Table Checker
@@ -284,11 +359,58 @@ class DBService extends GetxService {
         await db.execute('''CREATE TABLE conversations(id INTEGER PRIMARY KEY AUTOINCREMENT, firebase_uid TEXT, created_at TEXT)''');
       }
 
+      final queueCheck = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='catalog_sync_queue'");
+      if (queueCheck.isEmpty) {
+        await db.execute('''CREATE TABLE IF NOT EXISTS catalog_sync_queue(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          product_id TEXT NOT NULL,
+          operation TEXT NOT NULL,
+          payload_json TEXT NOT NULL,
+          retry_count INTEGER DEFAULT 0,
+          status TEXT DEFAULT 'pending',
+          last_error TEXT,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        )''');
+      }
+
+      final mediaCheck = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='catalog_product_media'");
+      if (mediaCheck.isEmpty) {
+        await db.execute('''CREATE TABLE IF NOT EXISTS catalog_product_media(
+          id TEXT PRIMARY KEY,
+          product_id TEXT NOT NULL,
+          type TEXT DEFAULT 'image',
+          url TEXT NOT NULL,
+          thumbnail_url TEXT,
+          mime_type TEXT,
+          filename TEXT,
+          sort_order INTEGER DEFAULT 0,
+          is_primary INTEGER DEFAULT 0,
+          source TEXT DEFAULT 'app',
+          status TEXT DEFAULT 'active',
+          width INTEGER,
+          height INTEGER,
+          duration_ms INTEGER,
+          dedupe_key TEXT UNIQUE,
+          created_at TEXT,
+          updated_at TEXT
+        )''');
+      }
+
       final columnsToAdd = {
         'chat_sessions': ['firebase_uid TEXT', 'is_synced INTEGER DEFAULT 0'],
         'chat_history': ['firebase_uid TEXT', 'message_type TEXT', 'media_path TEXT', 'embedding TEXT', 'product_context TEXT'],
         'products': ['embedding TEXT', 'video_url TEXT'],
         'users': ['firebase_uid TEXT', 'photo_url TEXT', 'cover_url TEXT'],
+        'catalog_products': [
+          'status TEXT DEFAULT \'approved\'',
+          'creator_uid TEXT',
+          'category_id TEXT',
+          'category_name TEXT',
+          'meta_product_type TEXT',
+          'sync_version INTEGER DEFAULT 1',
+          'deleted_at TEXT'
+        ],
       };
       for (var table in columnsToAdd.keys) {
         final tableInfo = await db.rawQuery('PRAGMA table_info($table)');

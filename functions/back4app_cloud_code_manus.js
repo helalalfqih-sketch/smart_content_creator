@@ -816,3 +816,9 @@ Parse.Cloud.define("aiManusWebhook", async (request) => {
     return { success: false, error: err.message || "Webhook processing failed" };
   }
 });
+
+// ============================================================================
+// 🛍️ CATALOG DATABASE & SYNC DOMAIN MODULE
+// ============================================================================
+require("./catalog_cloud_code.js");
+

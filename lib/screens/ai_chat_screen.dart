@@ -294,6 +294,7 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
                                         videoUrl: msg.videoUrl,
                                         videoThumbnail: msg.videoThumbnail,
                                         videoAuthor: msg.videoAuthor,
+                                        responseImageUrl: msg.responseImageUrl,
                                         mediaPath: msg.mediaPath,
                                         state: msg.state,
                                         isError: msg.isError,

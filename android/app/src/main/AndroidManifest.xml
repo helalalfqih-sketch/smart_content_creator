@@ -45,6 +45,10 @@
                     android:host="smartcc.ai"
                     android:scheme="https"/>
                 <data
+                    android:host="smartcontentcreator2.web.app"
+                    android:scheme="https"
+                    android:pathPrefix="/auth/tiktok/callback"/>
+                <data
                     android:host="smartcontentcreator-d49f2.web.app"
                     android:scheme="https"
                     android:pathPrefix="/auth/tiktok/callback"/>
@@ -65,6 +69,14 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="smartcontentcreator2.web.app"
+                    android:pathPrefix="/" />
+                <data
+                    android:scheme="https"
+                    android:host="smartcontentcreator2.firebaseapp.com"
+                    android:pathPrefix="/" />
                 <data
                     android:scheme="https"
                     android:host="smartcontentcreator-d49f2.web.app"
