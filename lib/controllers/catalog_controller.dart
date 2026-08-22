@@ -15,6 +15,8 @@ import '../services/firebase_storage_service.dart';
 import '../services/secure_storage_service.dart';
 import '../controllers/auth_controller.dart';
 import '../core/storage/app_storage_service.dart';
+import '../core/repositories/catalog_repository.dart';
+import '../core/repositories/back4app_catalog_repository.dart';
 
 /// 🛍️ CatalogController
 /// متحكم إدارة الكتالوج: إضافة / تعديل / حذف المنتجات، استيراد Excel، ومزامنة Meta
@@ -47,7 +49,18 @@ class CatalogController extends GetxController {
 
   StreamSubscription<QuerySnapshot>? _productsSubscription;
 
-  String? get _uid => Get.find<AuthController>().firebaseUid;
+  String? get _uid => Get.isRegistered<AuthController>() ? Get.find<AuthController>().firebaseUid : null;
+
+  CatalogRepository get _catalogRepo {
+    if (Get.isRegistered<CatalogRepository>()) {
+      return Get.find<CatalogRepository>();
+    }
+    return Back4AppCatalogRepository(
+      dbService: _db,
+      getFirebaseIdToken: () => null,
+      getCurrentUid: () => _uid,
+    );
+  }
 
   @override
   void onInit() {
@@ -56,8 +69,8 @@ class CatalogController extends GetxController {
     feedUrl.value = _appStorage.readString('catalog_feed_url') ?? '';
     gridColumns.value = _appStorage.readInt('catalog_grid_columns', defaultValue: 2) ?? 2;
     
-    // بدء الاستماع للمستودع العالمي مباشرة عند التشغيل
-    setupProductsListener();
+    // 🔄 Dual-Read Verification Mode: Back4App primary with Firestore fallback
+    loadProducts();
 
     if (Get.isRegistered<AuthController>()) {
       final auth = Get.find<AuthController>();
@@ -92,7 +105,66 @@ class CatalogController extends GetxController {
   }
 
   // ---------------------------------------------------------------------------
-  // 🎧 الاستماع للكتالوج من Firestore بالوقت الفعلي
+  // 🔄 Dual-Read Verification: Back4App Primary مع المقارنة والتخزين في SQLite
+  // ---------------------------------------------------------------------------
+  Future<void> loadProducts() async {
+    isLoading.value = true;
+    try {
+      // 1. القراءة الأساسية من Back4App CatalogRepository
+      final b4aProducts = await _catalogRepo.getProducts(forceRefresh: true);
+
+      if (b4aProducts.isNotEmpty) {
+        // 2. تخزين المنتجات في SQLite
+        for (final p in b4aProducts) {
+          await _db.insertRecord('catalog_products', p.toMap());
+        }
+
+        // 3. قراءة عدد السجلات من كاش SQLite
+        final sqliteRows = await _db.getRecords('catalog_products', where: 'deleted_at IS NULL');
+        final sqliteCount = sqliteRows.length;
+
+        // 4. عرض المنتجات في الواجهة من نتيجة الـ Repository
+        b4aProducts.sort((a, b) {
+          final aTime = a.createdAt ?? DateTime.now();
+          final bTime = b.createdAt ?? DateTime.now();
+          return bTime.compareTo(aTime);
+        });
+        products.value = b4aProducts;
+        isLoading.value = false;
+
+        // 5. طباعة سجلات التحقق المطلوبة
+        debugPrint('[CATALOG_SOURCE] primary=back4app');
+        debugPrint('[CATALOG_COUNT] back4app=${b4aProducts.length}');
+        debugPrint('[CATALOG_CACHE] sqlite=$sqliteCount');
+        debugPrint('[CATALOG_UI] rendered=${products.length}');
+
+        // 6. مقارنة غير متزامنة مع Firestore في الخلفية
+        _compareWithFirestoreCount(b4aProducts.length);
+        return;
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('⚠️ [CATALOG_SOURCE] Back4App dual-read exception, falling back to Firestore: $e');
+    }
+
+    // 7. Fallback إلى Firestore عند حدوث أي خطأ بدون فقدان للبيانات
+    debugPrint('[CATALOG_SOURCE] fallback=firestore');
+    setupProductsListener();
+  }
+
+  void _compareWithFirestoreCount(int b4aCount) {
+    FirebaseFirestore.instance
+        .collection('catalog_products')
+        .get()
+        .then((snapshot) {
+      final firestoreCount = snapshot.docs.length;
+      debugPrint('[CATALOG_COMPARE] back4app=$b4aCount firestore=$firestoreCount delta=${b4aCount - firestoreCount}');
+    }).catchError((e) {
+      if (kDebugMode) debugPrint('⚠️ [CATALOG_COMPARE] Firestore comparison query: $e');
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // 🎧 الاستماع للكتالوج من Firestore بالوقت الفعلي (Fallback Listener)
   // ---------------------------------------------------------------------------
   void setupProductsListener() {
     _cancelSubscription();
@@ -123,13 +195,6 @@ class CatalogController extends GetxController {
       isLoading.value = false;
       if (kDebugMode) debugPrint('❌ CatalogController: setupProductsListener error: $e');
     }
-  }
-
-  // ---------------------------------------------------------------------------
-  // 📋 تحميل المنتجات (تم استبداله بالمستمع السحابي التفاعلي)
-  // ---------------------------------------------------------------------------
-  Future<void> loadProducts() async {
-    setupProductsListener();
   }
 
   // ---------------------------------------------------------------------------

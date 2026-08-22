@@ -90,6 +90,22 @@ class Back4AppCatalogRepository implements CatalogRepository {
         }
 
         return cloudProducts;
+      } else {
+        // Fallback to direct Parse REST class query
+        final restUri = Uri.parse('$_parseBaseUrl/classes/CatalogProduct?limit=1000&order=-createdAt');
+        final restRes = await http.get(restUri, headers: _headers).timeout(const Duration(seconds: 15));
+        if (restRes.statusCode == 200) {
+          final decoded = json.decode(restRes.body);
+          final list = decoded['results'] as List? ?? [];
+          final cloudProducts = list
+              .map((item) => CatalogProduct.fromMap(Map<String, dynamic>.from(item)))
+              .toList();
+
+          for (final p in cloudProducts) {
+            await dbService.insertRecord('catalog_products', p.toMap());
+          }
+          return cloudProducts;
+        }
       }
     } catch (e) {
       if (kDebugMode) debugPrint('⚠️ Failed to fetch cloud products: $e');
