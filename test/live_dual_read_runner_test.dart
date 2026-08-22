@@ -1,36 +1,109 @@
 // ignore_for_file: avoid_print
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:smart_content_creator/models/catalog_product_model.dart';
 
+/// Live integration test for Back4App catalog security and dual-read mode.
+///
+/// Requires environment variables:
+///   PARSE_APPLICATION_ID
+///   PARSE_REST_API_KEY
+///
+/// Run with:
+///   PARSE_APPLICATION_ID=xxx PARSE_REST_API_KEY=yyy flutter test test/live_dual_read_runner_test.dart
+///
+/// If env vars are missing, the test is skipped cleanly.
 void main() {
-  test('Live Back4App Dual-Read Real-Server Verification', () async {
-    const parseAppId = "uWUMmdbdRjcuOKuCcl9Pg7zEYxnYGVaLXjmveGF2";
-    const parseRestKey = "Zsvk14ko9rvXD25G1hflNeY2Dg2hJtkocPvh6tMp";
-    const parseBaseUrl = "https://parseapi.back4app.com";
+  final parseAppId = Platform.environment['PARSE_APPLICATION_ID'];
+  final parseRestKey = Platform.environment['PARSE_REST_API_KEY'];
 
-    final headers = {
-      'X-Parse-Application-Id': parseAppId,
-      'X-Parse-REST-API-Key': parseRestKey,
-      'Content-Type': 'application/json',
-    };
+  final hasCredentials = parseAppId != null &&
+      parseAppId.isNotEmpty &&
+      parseRestKey != null &&
+      parseRestKey.isNotEmpty;
 
-    // 1. Primary Read from Back4App
-    final uri = Uri.parse('$parseBaseUrl/classes/CatalogProduct?limit=1000&order=-createdAt');
-    final response = await http.get(uri, headers: headers);
-    expect(response.statusCode, 200);
+  Map<String, String> headers() => {
+        'X-Parse-Application-Id': parseAppId!,
+        'X-Parse-REST-API-Key': parseRestKey!,
+        'Content-Type': 'application/json',
+      };
 
-    final data = json.decode(response.body);
-    final results = data['results'] as List;
-    final b4aProducts = results.map((m) => CatalogProduct.fromMap(Map<String, dynamic>.from(m))).toList();
+  group('Live Back4App Security & Dual-Read Verification', skip: hasCredentials ? null : 'PARSE_APPLICATION_ID / PARSE_REST_API_KEY not set', () {
+    // ================================================================
+    // 1. CLP NEGATIVE TESTS: Direct class access MUST be DENIED
+    // ================================================================
+    for (final cls in [
+      'CatalogProduct',
+      'CatalogProductMedia',
+      'CatalogCategory',
+      'CatalogSyncState',
+      'CatalogChangeLog',
+    ]) {
+      test('DIRECT CLASS ACCESS: $cls -> DENIED', () async {
+        final uri = Uri.parse(
+            'https://parseapi.back4app.com/classes/$cls?limit=1');
+        final response = await http.get(uri, headers: headers());
 
-    expect(b4aProducts.length, 375);
+        print('$cls -> HTTP ${response.statusCode}');
+        expect(
+          response.statusCode,
+          anyOf(401, 403),
+          reason:
+              '$cls direct class access returned HTTP ${response.statusCode} — CLP is NOT locked down',
+        );
+      });
+    }
 
-    // 2. Verification Logging matching exact required tags
-    print('[CATALOG_SOURCE] primary=back4app');
-    print('[CATALOG_COUNT] back4app=${b4aProducts.length}');
-    print('[CATALOG_CACHE] sqlite=375');
-    print('[CATALOG_UI] rendered=${b4aProducts.length}');
+    // ================================================================
+    // 2. POSITIVE CLOUD CODE TEST: catalogList (anonymous/public)
+    // ================================================================
+    test('CLOUD CODE: catalogList returns approved global products', () async {
+      final uri = Uri.parse(
+          'https://parseapi.back4app.com/functions/catalogList');
+      final response = await http.post(
+        uri,
+        headers: headers(),
+        body: json.encode({'page': 1, 'limit': 1000}),
+      );
+
+      print('catalogList -> HTTP ${response.statusCode}');
+      expect(response.statusCode, 200,
+          reason: 'catalogList Cloud Code function must be deployed and working');
+
+      final parsed = json.decode(response.body);
+      final result = parsed['result'] as Map<String, dynamic>? ?? {};
+      final data = result['data'] as List? ?? [];
+      final total = result['total'] ?? data.length;
+
+      print('[CATALOG_SOURCE] primary=back4app');
+      print('[CATALOG_COUNT] back4app=$total');
+
+      expect(total, 375,
+          reason: 'Expected 375 approved global products from catalogList');
+
+      // Verify scoping: all returned items must be scope=global, status=approved, no deletedAt
+      for (final item in data) {
+        final scope = item['scope']?.toString() ?? '';
+        final status = item['status']?.toString() ?? '';
+        final deletedAt = item['deletedAt'];
+
+        if (scope.isNotEmpty) {
+          expect(scope, 'global',
+              reason:
+                  'Anonymous catalogList must not return private products');
+        }
+        if (status.isNotEmpty) {
+          expect(status, 'approved',
+              reason:
+                  'Anonymous catalogList must not return unapproved products');
+        }
+        expect(deletedAt, isNull,
+            reason:
+                'Anonymous catalogList must not return soft-deleted products');
+      }
+
+      print('All $total products are scope=global, status=approved, deletedAt=null ✅');
+    });
   });
 }

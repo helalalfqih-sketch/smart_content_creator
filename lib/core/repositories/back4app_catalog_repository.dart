@@ -12,7 +12,7 @@ import 'catalog_repository.dart';
 /// تطبيق مستودع الكتالوج المعتمد على Back4App مع التخزين المؤقت في SQLite وطابور المزامنة بدون اتصال
 class Back4AppCatalogRepository implements CatalogRepository {
   final DBService dbService;
-  final String? Function() getFirebaseIdToken;
+  final Future<String?> Function() getFirebaseIdToken;
   final String? Function() getCurrentUid;
 
   static const String _parseAppId = "uWUMmdbdRjcuOKuCcl9Pg7zEYxnYGVaLXjmveGF2";
@@ -62,7 +62,7 @@ class Back4AppCatalogRepository implements CatalogRepository {
 
     // 2️⃣ جلب من Back4App Cloud Code
     try {
-      final token = getFirebaseIdToken();
+      final token = await getFirebaseIdToken();
       final body = {
         'page': page,
         'limit': limit,
@@ -91,20 +91,10 @@ class Back4AppCatalogRepository implements CatalogRepository {
 
         return cloudProducts;
       } else {
-        // Fallback to direct Parse REST class query
-        final restUri = Uri.parse('$_parseBaseUrl/classes/CatalogProduct?limit=1000&order=-createdAt');
-        final restRes = await http.get(restUri, headers: _headers).timeout(const Duration(seconds: 15));
-        if (restRes.statusCode == 200) {
-          final decoded = json.decode(restRes.body);
-          final list = decoded['results'] as List? ?? [];
-          final cloudProducts = list
-              .map((item) => CatalogProduct.fromMap(Map<String, dynamic>.from(item)))
-              .toList();
-
-          for (final p in cloudProducts) {
-            await dbService.insertRecord('catalog_products', p.toMap());
-          }
-          return cloudProducts;
+        // Cloud Code returned non-200; do NOT fallback to direct class query.
+        // Direct /classes/ access bypasses Cloud Code security (scope/status/deletedAt filters).
+        if (kDebugMode) {
+          debugPrint('⚠️ catalogList returned HTTP ${response.statusCode}: ${response.body}');
         }
       }
     } catch (e) {
@@ -128,7 +118,7 @@ class Back4AppCatalogRepository implements CatalogRepository {
 
     // 2. جلب من السحابة
     try {
-      final token = getFirebaseIdToken();
+      final token = await getFirebaseIdToken();
       final response = await http.post(
         Uri.parse('$_parseBaseUrl/functions/catalogGet'),
         headers: _headers,
@@ -267,7 +257,7 @@ class Back4AppCatalogRepository implements CatalogRepository {
 
     // 2. سحب التحديثات الجديدة من السحابة (Pull cloud changes)
     try {
-      final token = getFirebaseIdToken();
+      final token = await getFirebaseIdToken();
       final response = await http.post(
         Uri.parse('$_parseBaseUrl/functions/catalogPullChanges'),
         headers: _headers,
@@ -300,7 +290,7 @@ class Back4AppCatalogRepository implements CatalogRepository {
     );
 
     if (pending.isEmpty) return;
-    final token = getFirebaseIdToken();
+    final token = await getFirebaseIdToken();
 
     for (final item in pending) {
       final id = item['id'];
@@ -362,7 +352,7 @@ class Back4AppCatalogRepository implements CatalogRepository {
     }
 
     try {
-      final token = getFirebaseIdToken();
+      final token = await getFirebaseIdToken();
       final res = await http.post(
         Uri.parse('$_parseBaseUrl/functions/catalogMediaList'),
         headers: _headers,
@@ -395,7 +385,7 @@ class Back4AppCatalogRepository implements CatalogRepository {
     final toSave = media.copyWith(dedupeKey: dedupeKey);
     await dbService.insertRecord('catalog_product_media', toSave.toMap());
 
-    final token = getFirebaseIdToken();
+    final token = await getFirebaseIdToken();
     try {
       await http.post(
         Uri.parse('$_parseBaseUrl/functions/catalogMediaAdd'),

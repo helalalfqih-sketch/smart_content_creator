@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../models/catalog_product_model.dart';
 import '../services/db_service.dart';
 import '../services/firebase_storage_service.dart';
@@ -57,7 +58,18 @@ class CatalogController extends GetxController {
     }
     return Back4AppCatalogRepository(
       dbService: _db,
-      getFirebaseIdToken: () => null,
+      getFirebaseIdToken: () async {
+        // Provide a real Firebase ID token for authenticated catalog access.
+        // Returns null for anonymous/public catalog reads.
+        final user = firebase_auth.FirebaseAuth.instance.currentUser;
+        if (user == null) return null;
+        try {
+          return await user.getIdToken();
+        } catch (e) {
+          if (kDebugMode) debugPrint('⚠️ Failed to get Firebase ID token: $e');
+          return null;
+        }
+      },
       getCurrentUid: () => _uid,
     );
   }
