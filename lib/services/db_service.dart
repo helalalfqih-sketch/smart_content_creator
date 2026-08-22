@@ -10,7 +10,7 @@ import 'package:path/path.dart';
 /// يستخدم نظام Generic CRUD لاختصار 2200 سطر إلى هيكل ذكي وسهل الصيانة.
 class DBService extends GetxService {
   static Database? _database;
-  static const int _dbVersion = 32;
+  static const int _dbVersion = 33;
   bool _schemaChecked = false;
 
   // ---------------------------------------------------------------------------
@@ -348,54 +348,83 @@ class DBService extends GetxService {
         updated_at TEXT
       )''');
     }
+    if (oldVersion < 33) {
+      try {
+        final tableInfo = await db.rawQuery('PRAGMA table_info(catalog_products)');
+        final existing = tableInfo.map((row) => row['name'] as String).toSet();
+        final neededCols = [
+          'status TEXT DEFAULT \'approved\'',
+          'creator_uid TEXT',
+          'category_id TEXT',
+          'category_name TEXT',
+          'meta_product_type TEXT',
+          'sync_version INTEGER DEFAULT 1',
+          'deleted_at TEXT'
+        ];
+        for (var colDef in neededCols) {
+          final colName = colDef.split(' ').first;
+          if (!existing.contains(colName)) {
+            await db.execute('ALTER TABLE catalog_products ADD COLUMN $colDef');
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) print('⚠️ DB Migration v33 catalog_products check: $e');
+      }
+    }
   }
 
   // 🛡️ Failsafe Table Checker
   Future<void> _ensureColumnsExist(Database db) async {
     try {
       // 🛡️ Ensure missing tables are created
-      final tableCheck = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='conversations'");
-      if (tableCheck.isEmpty) {
-        await db.execute('''CREATE TABLE conversations(id INTEGER PRIMARY KEY AUTOINCREMENT, firebase_uid TEXT, created_at TEXT)''');
-      }
+      try {
+        final tableCheck = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='conversations'");
+        if (tableCheck.isEmpty) {
+          await db.execute('''CREATE TABLE conversations(id INTEGER PRIMARY KEY AUTOINCREMENT, firebase_uid TEXT, created_at TEXT)''');
+        }
+      } catch (_) {}
 
-      final queueCheck = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='catalog_sync_queue'");
-      if (queueCheck.isEmpty) {
-        await db.execute('''CREATE TABLE IF NOT EXISTS catalog_sync_queue(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          product_id TEXT NOT NULL,
-          operation TEXT NOT NULL,
-          payload_json TEXT NOT NULL,
-          retry_count INTEGER DEFAULT 0,
-          status TEXT DEFAULT 'pending',
-          last_error TEXT,
-          created_at TEXT NOT NULL,
-          updated_at TEXT NOT NULL
-        )''');
-      }
+      try {
+        final queueCheck = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='catalog_sync_queue'");
+        if (queueCheck.isEmpty) {
+          await db.execute('''CREATE TABLE IF NOT EXISTS catalog_sync_queue(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_id TEXT NOT NULL,
+            operation TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            retry_count INTEGER DEFAULT 0,
+            status TEXT DEFAULT 'pending',
+            last_error TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          )''');
+        }
+      } catch (_) {}
 
-      final mediaCheck = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='catalog_product_media'");
-      if (mediaCheck.isEmpty) {
-        await db.execute('''CREATE TABLE IF NOT EXISTS catalog_product_media(
-          id TEXT PRIMARY KEY,
-          product_id TEXT NOT NULL,
-          type TEXT DEFAULT 'image',
-          url TEXT NOT NULL,
-          thumbnail_url TEXT,
-          mime_type TEXT,
-          filename TEXT,
-          sort_order INTEGER DEFAULT 0,
-          is_primary INTEGER DEFAULT 0,
-          source TEXT DEFAULT 'app',
-          status TEXT DEFAULT 'active',
-          width INTEGER,
-          height INTEGER,
-          duration_ms INTEGER,
-          dedupe_key TEXT UNIQUE,
-          created_at TEXT,
-          updated_at TEXT
-        )''');
-      }
+      try {
+        final mediaCheck = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='catalog_product_media'");
+        if (mediaCheck.isEmpty) {
+          await db.execute('''CREATE TABLE IF NOT EXISTS catalog_product_media(
+            id TEXT PRIMARY KEY,
+            product_id TEXT NOT NULL,
+            type TEXT DEFAULT 'image',
+            url TEXT NOT NULL,
+            thumbnail_url TEXT,
+            mime_type TEXT,
+            filename TEXT,
+            sort_order INTEGER DEFAULT 0,
+            is_primary INTEGER DEFAULT 0,
+            source TEXT DEFAULT 'app',
+            status TEXT DEFAULT 'active',
+            width INTEGER,
+            height INTEGER,
+            duration_ms INTEGER,
+            dedupe_key TEXT UNIQUE,
+            created_at TEXT,
+            updated_at TEXT
+          )''');
+        }
+      } catch (_) {}
 
       final columnsToAdd = {
         'chat_sessions': ['firebase_uid TEXT', 'is_synced INTEGER DEFAULT 0'],
@@ -413,14 +442,19 @@ class DBService extends GetxService {
         ],
       };
       for (var table in columnsToAdd.keys) {
-        final tableInfo = await db.rawQuery('PRAGMA table_info($table)');
-        final existing = tableInfo.map((row) => row['name'] as String).toSet();
-        for (var colDef in columnsToAdd[table]!) {
-          final colName = colDef.split(' ').first;
-          if (!existing.contains(colName)) {
-            await db.execute('ALTER TABLE $table ADD COLUMN $colDef');
+        try {
+          final tableCheck = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='$table'");
+          if (tableCheck.isEmpty) continue;
+
+          final tableInfo = await db.rawQuery('PRAGMA table_info($table)');
+          final existing = tableInfo.map((row) => row['name'] as String).toSet();
+          for (var colDef in columnsToAdd[table]!) {
+            final colName = colDef.split(' ').first;
+            if (!existing.contains(colName)) {
+              await db.execute('ALTER TABLE $table ADD COLUMN $colDef');
+            }
           }
-        }
+        } catch (_) {}
       }
       _schemaChecked = true;
     } catch (_) {}

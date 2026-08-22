@@ -123,7 +123,7 @@ class CatalogController extends GetxController {
     isLoading.value = true;
     try {
       // 1. القراءة الأساسية من Back4App CatalogRepository
-      final b4aProducts = await _catalogRepo.getProducts(forceRefresh: true);
+      final b4aProducts = await _catalogRepo.getProducts(limit: 1000, forceRefresh: true);
 
       if (b4aProducts.isNotEmpty) {
         // 2. تخزين المنتجات في SQLite
@@ -933,40 +933,70 @@ class CatalogController extends GetxController {
 
       final List<CatalogProduct> parsedProducts = [];
 
-      for (final sheetName in excel.tables.keys) {
-        final sheet = excel.tables[sheetName]!;
-        final rows = sheet.rows;
-        if (rows.isEmpty) continue;
+      final targetSheetName = 'recovery_reference';
 
-        // تحديد سطر البداية (تخطي العناوين إن وجدت)
-        int startRow = 0;
-        if (rows.isNotEmpty) {
-          final firstRowText = rows[0].map((c) => c?.value?.toString().toLowerCase() ?? '').toList();
-          if (firstRowText.any((t) => t.contains('id') || t.contains('title') || t.contains('price') || t.contains('name'))) {
-            startRow = 1;
-          }
+      debugPrint(
+        '[CATALOG_IMPORT_VERSION] nullsafe_recovery_reference_v2',
+      );
+
+      debugPrint(
+        '[CATALOG_IMPORT] available_sheets=${excel.tables.keys.toList()}',
+      );
+
+      final sheet = excel.tables[targetSheetName];
+
+      if (sheet == null) {
+        throw FormatException(
+          'Required sheet "$targetSheetName" was not found. '
+          'Available sheets: ${excel.tables.keys.join(", ")}',
+        );
+      }
+
+      final rows = sheet.rows;
+
+      debugPrint(
+        '[CATALOG_IMPORT] selected_sheet=$targetSheetName',
+      );
+
+      if (rows.isEmpty) {
+        throw FormatException(
+          'Sheet "$targetSheetName" is empty',
+        );
+      }
+
+      // تحديد سطر البداية (تخطي العناوين إن وجدت)
+      int startRow = 0;
+      if (rows.isNotEmpty) {
+        final firstRowText = rows[0].map((c) => c?.value?.toString().toLowerCase() ?? '').toList();
+        if (firstRowText.any((t) => t.contains('id') || t.contains('title') || t.contains('price') || t.contains('name'))) {
+          startRow = 1;
+        }
+      }
+
+      for (int i = startRow; i < rows.length; i++) {
+        final row = rows[i];
+        final cells = row.map((c) {
+          final v = c?.value;
+          if (v == null) return '';
+          // استخراج القيمة الحقيقية من CellValue
+          return v.toString();
+        }).toList();
+        if (cells.isEmpty) continue;
+
+        // تخطي الصفوف الفارغة
+        final firstCell = cells[0].trim();
+        if (firstCell.isEmpty && (cells.length < 2 || cells[1].trim().isEmpty)) {
+          skipped++;
+          continue;
         }
 
-        for (int i = startRow; i < rows.length; i++) {
-          final row = rows[i];
-          final cells = row.map((c) => c?.value).toList();
-          if (cells.isEmpty) continue;
-
-          // تخطي الصفوف الفارغة
-          final firstCell = cells[0]?.toString().trim() ?? '';
-          if (firstCell.isEmpty && (cells.length < 2 || (cells[1]?.toString().trim() ?? '').isEmpty)) {
-            skipped++;
-            continue;
-          }
-
-          try {
-            final product = CatalogProduct.fromExcelRow(cells, i);
-            parsedProducts.add(product);
-            imported++;
-          } catch (e) {
-            skipped++;
-            if (kDebugMode) debugPrint('⚠️ Skipped row $i: $e');
-          }
+        try {
+          final product = CatalogProduct.fromExcelRow(cells, i);
+          parsedProducts.add(product);
+          imported++;
+        } catch (e) {
+          skipped++;
+          if (kDebugMode) debugPrint('⚠️ Skipped row $i: $e');
         }
       }
 
@@ -985,7 +1015,7 @@ class CatalogController extends GetxController {
             );
             
             for (final prd in chunk) {
-              final prdId = prd.id?.isNotEmpty == true
+              final prdId = (prd.id != null && prd.id!.isNotEmpty)
                   ? prd.id!
                   : 'prd_${DateTime.now().millisecondsSinceEpoch}_${prd.title.hashCode}';
               final docRef = collRef.doc(prdId);
@@ -1016,8 +1046,10 @@ class CatalogController extends GetxController {
         colorText: const Color(0xFF4CAF50),
         duration: const Duration(seconds: 4),
       );
-    } catch (e) {
-      if (kDebugMode) debugPrint('❌ CatalogController: importFromExcel error: $e');
+    } catch (e, st) {
+      debugPrint(
+        '❌ CatalogController: importFromExcel error: $e\n$st',
+      );
       Get.snackbar(
         '❌ خطأ في الاستيراد',
         e.toString(),

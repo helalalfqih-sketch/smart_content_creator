@@ -131,7 +131,7 @@ class FirebaseStorageService extends GetxService {
 
       final ref = _storage.ref().child(filePath);
       final uploadTask = await ref.putData(
-        utf8.encode(csvContent),
+        Uint8List.fromList(utf8.encode(csvContent)),
         SettableMetadata(
           contentType: 'text/csv; charset=utf-8',
           customMetadata: {
