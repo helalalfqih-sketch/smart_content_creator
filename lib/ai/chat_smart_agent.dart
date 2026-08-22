@@ -345,70 +345,120 @@ class ChatSmartAgent extends GetxService
       {dio.CancelToken? cancelToken}) async {
     AppLogger.info('ENTERING: handleImageGeneration with prompt: $prompt');
     isLoading.value = true;
-    updateStage(1, 1, "🎨 جاري تخيل وإنشاء الصورة... ✨");
+    updateStage(1, 1, "🎨 جاري تخيل وإنشاء الصورة عبر Manus... ✨");
+
+    // Correction #8: ONE placeholder message
+    final placeholder = ChatMessage.assistant(
+      content: "🎨 جاري توليد الصورة... ✨",
+      type: 'generated_image',
+      state: MessageState.pending,
+      productContext: lastAnalyzedProduct.value,
+    );
+    final dbId = await addAndSaveMessage(placeholder);
+    final messageId = dbId != null ? "${dbId}_a" : placeholder.id;
+
     try {
-      final latestPath = _state.latestUploadPath.value;
-      final canPreserveProduct = latestPath != null &&
+      // Correction #11: Route through Manus ONLY via AIBackendRouter
+      final latestPath = latestUploadPath.value;
+      final hasProductImage = latestPath != null &&
           latestPath.trim().isNotEmpty &&
           File(latestPath).existsSync();
 
-      if (kDebugMode) {
-        debugPrint(
-            '🖼️ [ImageGen] preserve_product=$canPreserveProduct, latestUploadPath=${latestPath ?? "(null)"}');
+      Uint8List? imageBytes;
+      if (hasProductImage) {
+        imageBytes = await File(latestPath).readAsBytes();
       }
 
-      // 🧠 التحقق مما إذا كان الطلب يتطلب تفاعلاً بشرياً (Level 5 Pipeline)
-      final bool needsHumanInteraction = prompt.toLowerCase().contains(RegExp(
-          r'\b(person|people|woman|man|model|sitting|holding|wearing|standing)\b'));
+      final gatewayResponse = await aiRouter.submitMediaTask(
+        prompt: prompt,
+        taskType: 'image_generation',
+        imageBytes: imageBytes,
+      );
 
-      final result = canPreserveProduct
-          ? (needsHumanInteraction
-              ? await imageGenService.generateAdvancedHighFidelityScene(
-                  productFile: File(latestPath),
-                  userPrompt: prompt,
-                  cancelToken: cancelToken,
-                )
-              : await imageGenService.generateProfessionalProductPhoto(
-                  originalImageFile: File(latestPath),
-                  prompt: prompt,
-                  negativePrompt:
-                      'nsfw, nude, naked, erotic, lingerie, sexual, explicit, porn, genitalia, nipples, fetish, underage, child, teen, loli, woman, man, person, people, model',
-                  cancelToken: cancelToken,
-                ))
-          : await imageGenService.generateImage(prompt,
-              cancelToken: cancelToken);
-      if (result.file != null) {
-        final response =
-            "✨ تمت عملية التوليد بنجاح! إليك ما قمت بإنشائه لـ: **$prompt**";
-        await addAndSaveMessage(
-          ChatMessage.assistant(
-            content: response,
-            type: 'generated_image',
+      if (!gatewayResponse.success) {
+        // Correction #11: Explicit error, no silent fallback
+        final errorMsg = gatewayResponse.error ?? 'فشل في إرسال طلب التوليد';
+        await updateMessage(messageId, placeholder.copyWith(
+          content: "⚠️ $errorMsg",
+          state: MessageState.error,
+        ), dbId: dbId);
+        return;
+      }
+
+      final taskId = gatewayResponse.taskId;
+      if (taskId == null || !gatewayResponse.isAsync) {
+        // Synchronous response (unlikely for media, but handle it)
+        if (gatewayResponse.media.isNotEmpty) {
+          final imageUrl = gatewayResponse.media.firstWhere(
+            (m) => m.isImage,
+            orElse: () => gatewayResponse.media.first,
+          ).url;
+          await updateMessage(messageId, placeholder.copyWith(
+            content: "✨ تمت عملية التوليد بنجاح! إليك ما قمت بإنشائه لـ: **$prompt**",
+            responseImageUrl: imageUrl,
             state: MessageState.completed,
-          ).copyWith(
-            image: result.file,
-            mediaPath: result.file!.path,
-          ),
-        );
+            isNew: true,
+          ), dbId: dbId);
+        } else {
+          await updateMessage(messageId, placeholder.copyWith(
+            content: gatewayResponse.data ?? "✨ تمت العملية بنجاح!",
+            state: MessageState.completed,
+            isNew: true,
+          ), dbId: dbId);
+        }
+        return;
+      }
+
+      // Correction #5: Async polling — update ONE placeholder with real status
+      final finalStatus = await aiRouter.pollMediaUntilComplete(
+        taskId,
+        onStatusUpdate: (status) {
+          // Correction #4: Real Manus status text, NO fake percentages
+          final currentMsg = history.firstWhereOrNull((m) => m.id == messageId);
+          if (currentMsg != null && currentMsg.state == MessageState.completed) return;
+
+          updateMessage(messageId, (currentMsg ?? placeholder).copyWith(
+            content: status.displayMessage,
+            state: MessageState.pending,
+          ), dbId: dbId);
+        },
+      );
+
+      if (finalStatus.isCompleted && finalStatus.hasImages) {
+        final imageUrl = finalStatus.firstImageUrl;
+        await updateMessage(messageId, placeholder.copyWith(
+          content: "✨ تمت عملية التوليد بنجاح! إليك ما قمت بإنشائه لـ: **$prompt**",
+          responseImageUrl: imageUrl,
+          state: MessageState.completed,
+          isNew: true,
+        ), dbId: dbId);
+        await incrementVisualCount();
+      } else if (finalStatus.isCompleted) {
+        // Completed but no image — show text response
+        await updateMessage(messageId, placeholder.copyWith(
+          content: finalStatus.data ?? "✨ تمت العملية بنجاح!",
+          state: MessageState.completed,
+          isNew: true,
+        ), dbId: dbId);
       } else {
-        final msg = (result.error != null && result.error!.trim().isNotEmpty)
-            ? result.error!.trim()
-            : 'تعذر توليد الصورة حالياً. جرّب وصفاً أبسط وأكثر حيادية للمنتج.';
-        await addAndSaveMessage(
-          ChatMessage.assistant(
-            content: msg,
-            type: 'generated_image',
-            state: MessageState.completed,
-          ),
-        );
+        // Error or timeout
+        await updateMessage(messageId, placeholder.copyWith(
+          content: "❌ ${finalStatus.error ?? 'فشل توليد الصورة'}",
+          state: MessageState.error,
+        ), dbId: dbId);
       }
     } catch (e) {
-      ErrorHandler.logError('Image Gen', e);
+      ErrorHandler.logError('Image Gen (Manus)', e);
+      await updateMessage(messageId, placeholder.copyWith(
+        content: "⚠️ حدث خطأ أثناء توليد الصورة: ${e.toString().split('\n').first}",
+        state: MessageState.error,
+      ), dbId: dbId);
     } finally {
       isLoading.value = false;
       AppLogger.info('EXITING: handleImageGeneration');
     }
   }
+
 
   // ========================================
   // 🌉 UI COMPATIBILITY BRIDGES

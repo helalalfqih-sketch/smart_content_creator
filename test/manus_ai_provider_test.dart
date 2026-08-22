@@ -135,5 +135,69 @@ void main() {
 
       expect(finalOutputText, equals('Final refined answer'));
     });
+
+    // ──────────────────────────────────────────────────────
+    // 🆕 Session Continuity Tests
+    // ──────────────────────────────────────────────────────
+
+    test('Test I: appSessionId is included in CanonicalAiRequest.toJson()', () {
+      final request = CanonicalAiRequest(
+        prompt: 'Test prompt',
+        appSessionId: 42,
+        taskType: 'text',
+      );
+
+      final json = request.toJson();
+      expect(json['appSessionId'], equals(42));
+      expect(json['prompt'], equals('Test prompt'));
+    });
+
+    test('Test J: appSessionId null is excluded from toJson()', () {
+      final request = CanonicalAiRequest(
+        prompt: 'Test prompt',
+        taskType: 'text',
+      );
+
+      final json = request.toJson();
+      expect(json.containsKey('appSessionId'), isFalse);
+    });
+
+    test('Test K: copyWith propagates appSessionId correctly', () {
+      final original = CanonicalAiRequest(
+        prompt: 'Original',
+        appSessionId: 10,
+        taskType: 'text',
+      );
+
+      // copyWith preserves appSessionId when not overridden
+      final copy1 = original.copyWith(prompt: 'Modified');
+      expect(copy1.appSessionId, equals(10));
+      expect(copy1.prompt, equals('Modified'));
+
+      // copyWith can override appSessionId
+      final copy2 = original.copyWith(appSessionId: 20);
+      expect(copy2.appSessionId, equals(20));
+      expect(copy2.prompt, equals('Original'));
+    });
+
+    test('Test L: Different session IDs produce different payload keys', () {
+      final request1 = CanonicalAiRequest(
+        prompt: 'Test',
+        appSessionId: 12,
+        taskType: 'text',
+      );
+      final request2 = CanonicalAiRequest(
+        prompt: 'Test',
+        appSessionId: 13,
+        taskType: 'text',
+      );
+
+      final json1 = request1.toJson();
+      final json2 = request2.toJson();
+
+      expect(json1['appSessionId'], equals(12));
+      expect(json2['appSessionId'], equals(13));
+      expect(json1['appSessionId'], isNot(equals(json2['appSessionId'])));
+    });
   });
 }

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 /// يضمن عدم تكرار البرومبتات أو منطق العمل بين المزودات المختلفة (Gemini, Manus, Back4App).
 class CanonicalAiRequest {
   final String prompt;
+  final int? appSessionId;
   final String? systemPersona;
   final List<Map<String, String>>? history;
   final Uint8List? imageBytes;
@@ -20,6 +21,7 @@ class CanonicalAiRequest {
 
   const CanonicalAiRequest({
     required this.prompt,
+    this.appSessionId,
     this.systemPersona,
     this.history,
     this.imageBytes,
@@ -39,6 +41,7 @@ class CanonicalAiRequest {
   Map<String, dynamic> toJson({bool includeRawBytes = false}) {
     return {
       'prompt': prompt,
+      if (appSessionId != null) 'appSessionId': appSessionId,
       'systemPersona': systemPersona,
       'history': history,
       'mimeType': mimeType,
@@ -56,6 +59,7 @@ class CanonicalAiRequest {
 
   CanonicalAiRequest copyWith({
     String? prompt,
+    int? appSessionId,
     String? systemPersona,
     List<Map<String, String>>? history,
     Uint8List? imageBytes,
@@ -71,6 +75,7 @@ class CanonicalAiRequest {
   }) {
     return CanonicalAiRequest(
       prompt: prompt ?? this.prompt,
+      appSessionId: appSessionId ?? this.appSessionId,
       systemPersona: systemPersona ?? this.systemPersona,
       history: history ?? this.history,
       imageBytes: imageBytes ?? this.imageBytes,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart'; // استيراد حزمة Flutter الأساسية لواجهة المستخدم
 import 'package:get/get.dart'; // استيراد حزمة GetX لإدارة الحالة والتنقل
 import 'package:flutter/foundation.dart'
-    show kIsWeb, kReleaseMode; // استيراد ثوابت للتحقق من المنصة ووضع التشغيل
+    show kIsWeb; // استيراد ثوابت للتحقق من المنصة ووضع التشغيل
 import 'dart:io' show Platform; // استيراد مكتبة التعامل مع نظام التشغيل
 import 'package:firebase_core/firebase_core.dart'; // استيراد المكتبة الأساسية لخدمات Firebase
 import 'package:cloud_firestore/cloud_firestore.dart'; // استيراد مكتبة Cloud Firestore للتعامل مع قواعد البيانات السحابية

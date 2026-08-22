@@ -292,8 +292,8 @@ exports.server = functions.https.onRequest(async (req, res) => {
 
 // ============================================
 // 🤖 Manus API v2 Gateway (Secure Backend Transport)
-// Integrates Manus API v2 behind Firebase Auth & App Check
-// Holds MANUS_API_KEY in backend environment securely
+// Supports conversation continuity:
+//   ONE app chat session = ONE Manus task/conversation
 // ============================================
 
 exports.aiManusGateway = functions.https.onCall(async (data, context) => {
@@ -332,6 +332,10 @@ exports.aiManusGateway = functions.https.onCall(async (data, context) => {
   const isModificationMode = Boolean(data && data.isModificationMode);
   const taskType = (data && data.taskType) || 'general';
   const metadata = (data && data.metadata) || {};
+
+  // 🆕 Session continuity fields
+  const uid = context.auth.uid;
+  const appSessionId = (data && data.appSessionId != null) ? String(data.appSessionId) : null;
 
   if (!prompt && images.length === 0) {
     throw new functions.https.HttpsError('invalid-argument', 'Prompt or images are required');
@@ -376,48 +380,130 @@ exports.aiManusGateway = functions.https.onCall(async (data, context) => {
     'x-manus-api-key': manusApiKey,
   };
 
+  // ──────────────────────────────────────────────────────
+  // 🆕 SESSION CONTINUITY: Lookup or create Manus task
+  // ──────────────────────────────────────────────────────
+
+  let taskId = null;
+  let conversationMode = 'create';
+
   try {
     const fetch = globalThis.fetch || require('node-fetch');
 
-    // 7. Create Task on Manus API v2 (POST /v2/task.create)
-    console.log(`[MANUS_GATEWAY] Creating task on Manus API v2 (taskType=${taskType}, imageCount=${images.length})`);
-    const createRes = await fetch(`${manusBaseUrl}/task.create`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        message: {
-          content: contentItems,
-        },
-      }),
-    });
+    // 7. 🔍 Lookup existing Manus task for this uid + appSessionId
+    if (uid && appSessionId) {
+      const sessionKey = `${uid}_${appSessionId}`;
+      const sessionDocRef = db.collection('manus_task_sessions').doc(sessionKey);
+      const sessionDoc = await sessionDocRef.get();
 
-    if (!createRes.ok) {
-      const status = createRes.status;
-      const errBody = await createRes.text();
-      console.error(`[MANUS_GATEWAY] task.create failed with HTTP ${status}: ${errBody}`);
+      if (sessionDoc.exists && sessionDoc.data().task_id) {
+        const existingTaskId = sessionDoc.data().task_id;
 
-      if (status === 401 || status === 403) {
-        throw new functions.https.HttpsError('unauthenticated', `Manus Auth Error: ${errBody}`);
-      } else if (status === 429) {
-        throw new functions.https.HttpsError('resource-exhausted', `Manus Quota / Rate Limited: ${errBody}`);
-      } else if (status >= 400 && status < 500) {
-        throw new functions.https.HttpsError('invalid-argument', `Manus Bad Request: ${errBody}`);
-      } else {
-        throw new functions.https.HttpsError('internal', `Manus Server Error (${status}): ${errBody}`);
+        // 8. 📨 Follow-up: Use task.sendMessage
+        console.log(
+          `[MANUS_SESSION] app_session=${appSessionId} action=follow_up task_id=${existingTaskId.substring(0, 8)}...`
+        );
+
+        try {
+          const sendRes = await fetch(`${manusBaseUrl}/task.sendMessage`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              task_id: existingTaskId,
+              message: {
+                content: contentItems,
+              },
+            }),
+          });
+
+          if (sendRes.ok) {
+            // task.sendMessage succeeded
+            taskId = existingTaskId;
+            conversationMode = 'follow_up';
+
+            // Update lastUsedAt
+            await sessionDocRef.update({
+              lastUsedAt: admin.firestore.FieldValue.serverTimestamp(),
+            });
+          } else {
+            const errBody = await sendRes.text();
+            console.warn(
+              `[MANUS_SESSION] app_session=${appSessionId} action=follow_up_failed http=${sendRes.status} error=${errBody}. Falling back to task.create.`
+            );
+            taskId = null;
+          }
+        } catch (sendErr) {
+          console.warn(
+            `[MANUS_SESSION] app_session=${appSessionId} action=follow_up_failed error=${sendErr.message || sendErr}. Falling back to task.create.`
+          );
+          taskId = null;
+        }
       }
     }
 
-    const createData = await createRes.json();
-    const taskId = createData.task_id || (createData.data && createData.data.task_id);
-    const createRequestId = createData.request_id || null;
-
+    // 9. 🆕 First request or follow-up failed: Create new Manus task
     if (!taskId) {
-      throw new functions.https.HttpsError('internal', 'Manus did not return a valid task_id');
+      console.log(
+        `[MANUS_SESSION] app_session=${appSessionId || 'none'} action=create (taskType=${taskType}, imageCount=${images.length})`
+      );
+
+      const createRes = await fetch(`${manusBaseUrl}/task.create`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          message: {
+            content: contentItems,
+          },
+        }),
+      });
+
+      if (!createRes.ok) {
+        const status = createRes.status;
+        const errBody = await createRes.text();
+        console.error(`[MANUS_GATEWAY] task.create failed with HTTP ${status}: ${errBody}`);
+
+        if (status === 401 || status === 403) {
+          throw new functions.https.HttpsError('unauthenticated', `Manus Auth Error: ${errBody}`);
+        } else if (status === 429) {
+          throw new functions.https.HttpsError('resource-exhausted', `Manus Quota / Rate Limited: ${errBody}`);
+        } else if (status >= 400 && status < 500) {
+          throw new functions.https.HttpsError('invalid-argument', `Manus Bad Request: ${errBody}`);
+        } else {
+          throw new functions.https.HttpsError('internal', `Manus Server Error (${status}): ${errBody}`);
+        }
+      }
+
+      const createData = await createRes.json();
+      taskId = createData.task_id || (createData.data && createData.data.task_id);
+
+      if (!taskId) {
+        throw new functions.https.HttpsError('internal', 'Manus did not return a valid task_id');
+      }
+
+      conversationMode = 'create';
+
+      // 10. 💾 Persist session mapping (uid + appSessionId → taskId) via Firestore
+      if (uid && appSessionId) {
+        const sessionKey = `${uid}_${appSessionId}`;
+        await db.collection('manus_task_sessions').doc(sessionKey).set({
+          uid,
+          appSessionId,
+          task_id: taskId,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          lastUsedAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        console.log(
+          `[MANUS_SESSION] app_session=${appSessionId} action=mapping_saved task_id=${taskId.substring(0, 8)}...`
+        );
+      }
     }
 
-    console.log(`[MANUS_GATEWAY] Task created successfully: ${taskId} (req_id=${createRequestId}). Waiting for completion...`);
+    console.log(
+      `[MANUS_GATEWAY] Task ${conversationMode === 'create' ? 'created' : 'continued'}: ${taskId}. Polling for completion...`
+    );
 
-    // 8. Poll for completion via task.detail (bounded backoff: max 30 seconds)
+    // 11. ⏱️ Poll for completion via task.detail (bounded backoff: max 30 seconds)
     const startTime = Date.now();
     const maxWaitMs = 30000;
     let pollIntervalMs = 1000;
@@ -456,7 +542,7 @@ exports.aiManusGateway = functions.https.onCall(async (data, context) => {
       throw new functions.https.HttpsError('deadline-exceeded', 'Manus task timed out after 30s');
     }
 
-    // 9. Fetch Last Assistant Output from task.listMessages
+    // 12. 📥 Fetch Last Assistant Output from task.listMessages
     const messagesRes = await fetch(`${manusBaseUrl}/task.listMessages?task_id=${encodeURIComponent(taskId)}`, {
       method: 'GET',
       headers,
@@ -481,7 +567,7 @@ exports.aiManusGateway = functions.https.onCall(async (data, context) => {
       }
     }
 
-    // 10. Reject Empty Output without Fabricating Sentences
+    // 13. Reject Empty Output without Fabricating Sentences
     if (!finalOutputText || finalOutputText.trim().length === 0) {
       throw new functions.https.HttpsError(
         'internal',
@@ -496,7 +582,8 @@ exports.aiManusGateway = functions.https.onCall(async (data, context) => {
         provider: 'manus',
         model: 'manus-v2',
         task_id: taskId,
-        request_id: createRequestId || listRequestId,
+        request_id: listRequestId,
+        conversation_mode: conversationMode,
       },
     };
   } catch (err) {
@@ -507,7 +594,3 @@ exports.aiManusGateway = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('internal', err.message || 'Unknown Manus Gateway Error');
   }
 });
-
-
-
-

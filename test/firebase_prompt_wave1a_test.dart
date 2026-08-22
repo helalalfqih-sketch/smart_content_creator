@@ -161,8 +161,8 @@ void main() {
 
     test('Backend route is unaffected by Firebase template configuration', () {
       // Back4App / backend route is separate and never invokes Firebase template models
-      expect(AIBackendRouter.validBackends.length, equals(2));
-      expect(AIBackendRouter.validBackends[1], equals('backend'));
+      expect(AIBackendRouter.validBackends.length, equals(3));
+      expect(AIBackendRouter.validBackends, contains('backend'));
     });
   });
 }

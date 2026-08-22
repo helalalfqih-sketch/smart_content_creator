@@ -9,6 +9,8 @@ import 'firebase_ai_logic_service.dart';
 import 'back4app_gateway_service.dart';
 import 'manus_ai_service.dart';
 import '../core/models/canonical_ai_request.dart';
+import '../core/models/manus_media_models.dart';
+import '../controllers/chat_history_controller.dart';
 
 /// 🎯 AIBackendRouter - نقطة الدخول الموحدة لجميع طلبات الذكاء الاصطناعي
 ///
@@ -778,6 +780,17 @@ class AIBackendRouter extends GetxService {
   // 🤖 Manus API v2 Gateway Routes
   // ──────────────────────────────────────────────────────
 
+  /// 🔗 Resolve the current app session ID for Manus task continuity.
+  /// Reads from ChatHistoryController so callers don't need to thread it.
+  int? get _currentAppSessionId {
+    try {
+      if (Get.isRegistered<ChatHistoryController>()) {
+        return Get.find<ChatHistoryController>().currentSessionId.value;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   Future<Map<String, dynamic>> _routeToManus({
     required String prompt,
     List<Map<String, String>>? history,
@@ -791,6 +804,7 @@ class AIBackendRouter extends GetxService {
     final service = Get.find<ManusAiService>();
     final request = CanonicalAiRequest(
       prompt: prompt,
+      appSessionId: _currentAppSessionId,
       systemPersona: systemPersona,
       history: history,
       maxTokens: maxTokens,
@@ -811,11 +825,88 @@ class AIBackendRouter extends GetxService {
     final service = Get.find<ManusAiService>();
     final request = CanonicalAiRequest(
       prompt: prompt,
+      appSessionId: _currentAppSessionId,
       imageBytes: imageBytes,
       mimeType: mimeType,
       taskType: 'vision',
     );
     return await service.analyzeVision(request);
+  }
+
+  // ──────────────────────────────────────────────────────
+  // 🎨 MEDIA GENERATION — MANUS ONLY (Correction #11)
+  // ──────────────────────────────────────────────────────
+  // No silent fallback to Stability/Kling/Higgsfield/Gemini.
+  // If ai_backend != 'manus', return explicit error.
+
+  /// 🎨 Submit a media generation task (image/video/product_photo/etc)
+  /// Returns ManusGatewayResponse with task_id for async polling.
+  /// Correction #5: No synchronous media waits.
+  /// Correction #11: MANUS ONLY — no fallback.
+  Future<ManusGatewayResponse> submitMediaTask({
+    required String prompt,
+    required String taskType,
+    Uint8List? imageBytes,
+    String mimeType = 'image/jpeg',
+    String? systemPersona,
+  }) async {
+    final backend = await resolveBackend();
+    final redactedId = _redactUserId(currentUserId);
+
+    debugPrint(
+        '[AI_ROUTER] operation=media_$taskType selected=$backend userId=$redactedId');
+
+    // Correction #11: Media generation is MANUS ONLY
+    if (backend != 'manus') {
+      debugPrint(
+          '[AI_ROUTER] ERROR: Media generation requires Manus backend. Current: $backend');
+      return ManusGatewayResponse(
+        success: false,
+        error: 'توليد الوسائط يتطلب تفعيل محرك Manus. '
+            'يرجى تفعيل Manus من إعدادات الذكاء الاصطناعي.',
+      );
+    }
+
+    if (!Get.isRegistered<ManusAiService>()) {
+      Get.put(ManusAiService());
+    }
+    final service = Get.find<ManusAiService>();
+
+    final request = CanonicalAiRequest(
+      prompt: prompt,
+      appSessionId: _currentAppSessionId,
+      systemPersona: systemPersona,
+      imageBytes: imageBytes,
+      mimeType: mimeType,
+      taskType: taskType,
+    );
+
+    return await service.submitMediaTask(request, taskType: taskType);
+  }
+
+  /// 🔄 Poll task status (delegates to ManusAiService)
+  /// Correction #7: Flutter polls Back4App, never Manus directly.
+  Future<ManusTaskStatus> pollMediaTaskStatus(String taskId) async {
+    if (!Get.isRegistered<ManusAiService>()) {
+      Get.put(ManusAiService());
+    }
+    return await Get.find<ManusAiService>().pollTaskStatus(taskId);
+  }
+
+  /// 🔄 Poll until media task completes (with status callbacks)
+  /// Correction #4: Real Manus status_update text, NO fake percentages.
+  /// Correction #8: Caller maintains ONE placeholder message.
+  Future<ManusTaskStatus> pollMediaUntilComplete(
+    String taskId, {
+    void Function(ManusTaskStatus status)? onStatusUpdate,
+  }) async {
+    if (!Get.isRegistered<ManusAiService>()) {
+      Get.put(ManusAiService());
+    }
+    return await Get.find<ManusAiService>().pollUntilComplete(
+      taskId,
+      onStatusUpdate: onStatusUpdate,
+    );
   }
 }
 

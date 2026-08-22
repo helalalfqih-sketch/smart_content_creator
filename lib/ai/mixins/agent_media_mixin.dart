@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:dio/dio.dart' as dio;
 import 'package:get/get.dart';
 
-import '../../controllers/settings_controller.dart';
 import '../../core/models/chat_message.dart';
 import '../../core/utils/error_handler.dart';
 import '../../core/utils/log_service.dart';
@@ -349,142 +348,134 @@ $description
   }
 
   Future<void> handleVideoGeneration(String prompt, {dio.CancelToken? cancelToken}) async {
-    final settings = Get.find<SettingsController>();
-    final activeProvider = settings.getActiveVideoProvider();
-    final providerName = activeProvider.displayName;
-
-    AppLogger.info('ENTERING: handleVideoGeneration with prompt: $prompt (Provider: $providerName)');
-    LogService.info("🎨 Starting Video Generation ($providerName) for: $prompt", tag: 'MediaMixin');
+    AppLogger.info('ENTERING: handleVideoGeneration with prompt: $prompt (Provider: Manus)');
+    LogService.info("🎬 Starting Video Generation (Manus) for: $prompt", tag: 'MediaMixin');
     
     final lastMsg = agent.history.lastWhere((m) => m.image != null, orElse: () => ChatMessage.user(content: ''));
     final image = lastMsg.image;
     
     if (image == null) {
-      agent.history.add(ChatMessage.assistant(content: "⚠️ عذراً، أحتاج لصورة منتج أولاً لتوليد فيديو $providerName."));
+      agent.history.add(ChatMessage.assistant(content: "⚠️ عذراً، أحتاج لصورة منتج أولاً لتوليد فيديو."));
       AppLogger.info('EXITING: handleVideoGeneration (No Image Found)');
       return;
     }
 
     agent.isLoading.value = true;
     
-    ChatMessage? placeholder;
-    String? messageId;
+    // Correction #8: ONE placeholder message
+    ChatMessage placeholder = ChatMessage.assistant(
+      content: "🎬 جاري توليد الفيديو عبر Manus... يرجى الانتظار",
+      type: 'generated_video',
+      state: MessageState.pending,
+      productContext: agent.lastAnalyzedProduct.value,
+    );
+    String messageId = placeholder.id;
     int? dbId;
 
     try {
-      // 🛡️ Usage Limit Check
+      // Usage Limit Check
       if (!await agent.checkVisualLimit()) return;
 
-      // 🔍 Find existing placeholder or use the last assistant message to avoid duplication
-      ChatMessage? targetMessage;
+      dbId = await agent.addAndSaveMessage(placeholder);
+      if (dbId != null) {
+        messageId = "${dbId}_a";
+        placeholder = placeholder.copyWith(id: messageId);
+      }
+      AppLogger.info("🆕 Created video placeholder: $messageId (dbId: $dbId)");
 
-      // Check if any recent message is a video placeholder to reuse
-      try {
-        targetMessage = agent.history.lastWhere(
-          (m) => m.role == 'assistant' && 
-                 (m.type == 'generated_video' || m.content.contains('جاري توليد')) &&
-                 m.state == MessageState.pending,
-        );
-      } catch (_) {
-        targetMessage = null;
+      // Read image bytes for Manus
+      final imageBytes = await image.readAsBytes();
+
+      // Correction #11: Route through Manus ONLY
+      final gatewayResponse = await agent.aiRouter.submitMediaTask(
+        prompt: prompt,
+        taskType: 'video_generation',
+        imageBytes: imageBytes,
+      );
+
+      if (!gatewayResponse.success) {
+        final errorMsg = gatewayResponse.error ?? 'فشل في إرسال طلب توليد الفيديو';
+        await agent.updateMessage(messageId, placeholder.copyWith(
+          content: "⚠️ $errorMsg",
+          state: MessageState.error,
+        ), dbId: dbId);
+        return;
       }
 
-      placeholder = ChatMessage.assistant(
-        content: "🎬 جاري توليد الفيديو الاحترافي عبر $providerName... يرجى الانتظار",
-        type: 'generated_video',
-        state: MessageState.pending,
-        productContext: agent.lastAnalyzedProduct.value,
-      ).copyWith(id: targetMessage?.id); // 🔑 Maintain ID if reusing
-      
-      messageId = placeholder.id;
-
-      if (targetMessage != null) {
-        // Update the existing message instead of adding a new one
-        messageId = targetMessage.id;
-        
-        // 🔑 Extract dbId from existing ID (pattern "123_a")
-        final parts = messageId.split('_');
-        if (parts.isNotEmpty) {
-          dbId = int.tryParse(parts[0]);
-        }
-        
-        await agent.updateMessage(messageId, placeholder);
-        AppLogger.info("🔄 Reusing existing message bubble: $messageId (dbId: $dbId)");
-      } else {
-        dbId = await agent.addAndSaveMessage(placeholder);
-        if (dbId != null) {
-          messageId = "${dbId}_a"; // Sync ID immediately
-          // 🔑 CRITICAL: Update the placeholder with the new ID so callbacks use it correctly
-          placeholder = placeholder.copyWith(id: messageId);
-        }
-        AppLogger.info("🆕 Created new video placeholder: $messageId (dbId: $dbId)");
+      final taskId = gatewayResponse.taskId;
+      if (taskId == null) {
+        await agent.updateMessage(messageId, placeholder.copyWith(
+          content: "❌ لم يتم إرجاع معرف المهمة من Manus",
+          state: MessageState.error,
+        ), dbId: dbId);
+        return;
       }
 
-      final videoUrlResult = await agent.videoService.generateVideo(
-        image: image,
+      // Save task_id for resume capability
+      final progressMessage = placeholder.copyWith(
+        agentResult: AgentResult(
+          type: AgentResultType.videoTask,
+          data: jsonEncode({'task_id': taskId}),
+          executionTimestamp: DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
+      await agent.updateMessage(messageId, progressMessage, dbId: dbId);
+
+      // Correction #5: Async polling with real Manus status updates
+      // Correction #4: NO fake progress percentages
+      final finalStatus = await agent.aiRouter.pollMediaUntilComplete(
+        taskId,
         onStatusUpdate: (status) {
-          final percentage = (status.progress * 100).toInt();
-          agent.updateStage(percentage, 100, status.message);
-          
-          // 🔥 تحديث نص الفقاعة أيضاً ليشعر المستخدم بالتقدم
-          if (messageId != null) {
-            // 🛡️ نتحقق من الرسالة الحالية في الذاكرة لمنع مسح الرابط إذا اكتمل
-            final currentMsg = agent.history.firstWhereOrNull((m) => m.id == messageId);
-            if (currentMsg != null && currentMsg.videoUrl != null && currentMsg.videoUrl!.isNotEmpty) {
-              return; // لا نحدث الحالة إذا كان الرابط موجوداً بالفعل
-            }
-
-            agent.updateMessage(messageId, (currentMsg ?? placeholder!).copyWith(
-              content: status.message,
-              state: MessageState.pending,
-            ), dbId: dbId);
+          final currentMsg = agent.history.firstWhereOrNull((m) => m.id == messageId);
+          if (currentMsg != null && currentMsg.videoUrl != null && currentMsg.videoUrl!.isNotEmpty) {
+            return; // Don't overwrite completed state
           }
-        },
-        onTaskIdReceived: (taskId) async {
-          // 🚀 حفظ معرف المهمة فوراً للتمكن من الاستئناف في حالة إعادة التشغيل
-          final progressMessage = placeholder!.copyWith(
-            agentResult: AgentResult(
-              type: AgentResultType.videoTask,
-              data: jsonEncode({'task_id': taskId}),
-              executionTimestamp: DateTime.now().millisecondsSinceEpoch,
-            ),
-          );
-          await agent.updateMessage(messageId!, progressMessage, dbId: dbId);
+
+          // Use real Manus status_update text
+          agent.updateStage(1, 1, status.displayMessage);
+          agent.updateMessage(messageId, (currentMsg ?? placeholder).copyWith(
+            content: status.displayMessage,
+            state: MessageState.pending,
+          ), dbId: dbId);
         },
       );
 
-      if (videoUrlResult.isNotEmpty) {
-        final response = "🎬 تم توليد الفيديو بنجاح عبر $providerName! يمكنك مشاهدته الآن.";
+      if (finalStatus.isCompleted && finalStatus.hasVideos) {
+        final videoUrl = finalStatus.firstVideoUrl!;
+        final response = "🎬 تم توليد الفيديو بنجاح عبر Manus! يمكنك مشاهدته الآن.";
         
-        // 🛡️ نأخذ أحدث نسخة من الرسالة من الذاكرة للحفاظ على الـ TaskID وأي بيانات أخرى
         final latestMsg = agent.history.firstWhereOrNull((m) => m.id == messageId);
-        
         final updatedMessage = (latestMsg ?? placeholder).copyWith(
           content: response,
-          videoUrl: videoUrlResult,
+          videoUrl: videoUrl,
           state: MessageState.completed,
           isNew: true,
-          clearAgentResult: false, // 🔥 نحتفظ بالـ TaskID للاستخدام المستقبلي (Refresh)
+          clearAgentResult: false,
         );
         await agent.updateMessage(messageId, updatedMessage, dbId: dbId);
         await agent.incrementVisualCount();
+      } else if (finalStatus.isCompleted && finalStatus.hasImages) {
+        // Manus returned an image instead of video — still show it
+        final imageUrl = finalStatus.firstImageUrl;
+        await agent.updateMessage(messageId, placeholder.copyWith(
+          content: "🎬 تم إنشاء المحتوى بنجاح!",
+          responseImageUrl: imageUrl,
+          state: MessageState.completed,
+          isNew: true,
+        ), dbId: dbId);
       } else {
-        final errorMessage = placeholder.copyWith(
-          content: "❌ نعتذر، فشل توليد الفيديو عبر $providerName. يرجى المحاولة لاحقاً.",
+        final errorMsg = finalStatus.error ?? 'فشل توليد الفيديو';
+        await agent.updateMessage(messageId, placeholder.copyWith(
+          content: "❌ $errorMsg",
           state: MessageState.error,
-        );
-        await agent.updateMessage(messageId, errorMessage, dbId: dbId);
+        ), dbId: dbId);
       }
     } catch (e) {
-      ErrorHandler.logError('$providerName Video', e);
-      // 🚨 FIX: Update bubble to show error instead of staying stuck in "Generating"
-      if (placeholder != null && messageId != null) {
-        final errorMessage = placeholder.copyWith(
-          content: "❌ عذراً، استغرق التوليد وقتاً أطول من المتوقع. يمكنك محاولة تحديث الرابط لاحقاً أو المحاولة مرة أخرى.",
-          state: MessageState.error,
-        );
-        await agent.updateMessage(messageId, errorMessage, dbId: dbId);
-      }
+      ErrorHandler.logError('Manus Video', e);
+      await agent.updateMessage(messageId, placeholder.copyWith(
+        content: "❌ عذراً، حدث خطأ أثناء توليد الفيديو: ${e.toString().split('\n').first}",
+        state: MessageState.error,
+      ), dbId: dbId);
     } finally {
       agent.isLoading.value = false;
       agent.updateStage(0, 0, "");
