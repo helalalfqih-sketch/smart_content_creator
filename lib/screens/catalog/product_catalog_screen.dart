@@ -1,12 +1,10 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:share_plus/share_plus.dart' as sp;
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../controllers/catalog_controller.dart';
 import '../../models/catalog_product_model.dart';
 import '../../theme/app_theme.dart';
