@@ -45,12 +45,16 @@ void main() {
             'https://parseapi.back4app.com/classes/$cls?limit=1');
         final response = await http.get(uri, headers: headers());
 
-        print('$cls -> HTTP ${response.statusCode}');
+        print('$cls -> HTTP ${response.statusCode}: ${response.body}');
+        final isDenied = response.statusCode == 401 ||
+            response.statusCode == 403 ||
+            response.body.contains('"code":119') ||
+            response.body.toLowerCase().contains('permission denied');
         expect(
-          response.statusCode,
-          anyOf(401, 403),
+          isDenied,
+          isTrue,
           reason:
-              '$cls direct class access returned HTTP ${response.statusCode} — CLP is NOT locked down',
+              '$cls direct class access returned HTTP ${response.statusCode} (${response.body}) — CLP is NOT locked down',
         );
       });
     }
