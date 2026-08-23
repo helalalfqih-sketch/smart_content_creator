@@ -20,29 +20,33 @@ class WhatsAppMediaSyncScreen extends StatelessWidget {
         backgroundColor: const Color(0xFF111124),
         elevation: 0,
         title: const Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.chat_bubble_outline, color: Color(0xFF25D366), size: 24),
+            Icon(Icons.chat_bubble_outline, color: Color(0xFF25D366), size: 20),
             SizedBox(width: 8),
-            Text(
-              'تكامل WhatsApp Media Sync',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+            Flexible(
+              child: Text(
+                'WhatsApp Sync',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white70),
+            icon: const Icon(Icons.refresh, color: Colors.white70, size: 20),
             tooltip: 'تحديث البيانات',
             onPressed: () => ctrl.loadAll(),
           ),
           Obx(() => TextButton.icon(
                 onPressed: ctrl.isSaving.value ? null : () => ctrl.saveSettings(),
                 icon: ctrl.isSaving.value
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.save, color: Color(0xFF25D366), size: 18),
-                label: const Text('حفظ الإعدادات', style: TextStyle(color: Color(0xFF25D366), fontWeight: FontWeight.bold)),
+                    ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.save, color: Color(0xFF25D366), size: 16),
+                label: const Text('حفظ', style: TextStyle(color: Color(0xFF25D366), fontWeight: FontWeight.bold, fontSize: 13)),
               )),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
         ],
       ),
       body: Obx(() {
@@ -167,7 +171,7 @@ class WhatsAppMediaSyncScreen extends StatelessWidget {
               Expanded(
                 child: Text(
                   value,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: color),
                   overflow: TextOverflow.ellipsis,
                   textDirection: isLtr ? TextDirection.ltr : null,
                 ),
@@ -201,13 +205,22 @@ class WhatsAppMediaSyncScreen extends StatelessWidget {
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.auto_awesome, color: Color(0xFF25D366), size: 20),
-                  SizedBox(width: 8),
-                  Text('مسار الأتمتة الكامل: من المورد إلى الكتالوجات', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(Icons.auto_awesome, color: Color(0xFF25D366), size: 18),
+                    SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'مسار الأتمتة الكامل: من المورد إلى الكتالوجات',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              SizedBox(width: 8),
               Chip(
                 label: Text('Auto-Sync ⚡', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF25D366))),
                 backgroundColor: Color(0xFF1B382B),
@@ -243,8 +256,8 @@ class WhatsAppMediaSyncScreen extends StatelessWidget {
                     children: [
                       Text(st['icon']!, style: const TextStyle(fontSize: 18)),
                       const SizedBox(height: 2),
-                      Text(st['title']!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
-                      Text(st['sub']!, style: const TextStyle(fontSize: 9, color: Colors.white54)),
+                      Text(st['title']!, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white), overflow: TextOverflow.ellipsis),
+                      Text(st['sub']!, style: const TextStyle(fontSize: 9, color: Colors.white54), overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 );
@@ -269,9 +282,15 @@ class WhatsAppMediaSyncScreen extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.business_center, color: Color(0xFF25D366), size: 20),
+              Icon(Icons.business_center, color: Color(0xFF25D366), size: 18),
               SizedBox(width: 8),
-              Text('حسابات واتساب للأعمال المسجلة في Meta (Meta WABA Accounts)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+              Expanded(
+                child: Text(
+                  'حسابات واتساب للأعمال المسجلة في Meta',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -297,7 +316,9 @@ class WhatsAppMediaSyncScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(acc.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                        Expanded(
+                          child: Text(acc.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white), overflow: TextOverflow.ellipsis),
+                        ),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
@@ -338,13 +359,22 @@ class WhatsAppMediaSyncScreen extends StatelessWidget {
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.science, color: Color(0xFF25D366), size: 20),
-                  SizedBox(width: 8),
-                  Text('مختبر محاكاة استقبال وسائط واتساب (AI Test Sandbox)', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(Icons.science, color: Color(0xFF25D366), size: 18),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'مختبر محاكاة استقبال وسائط واتساب (AI Sandbox)',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              SizedBox(width: 6),
               Chip(
                 label: Text('AI Sandbox 🧪', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white)),
                 backgroundColor: Color(0xFF222244),
@@ -472,12 +502,20 @@ class WhatsAppMediaSyncScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.inbox, color: Color(0xFF25D366), size: 20),
-                  const SizedBox(width: 8),
-                  Text('مسودات الموردين بانتظار الاعتماد (${drafts.length})', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(Icons.inbox, color: Color(0xFF25D366), size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'مسودات الموردين بانتظار الاعتماد (${drafts.length})',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.refresh, size: 18, color: Colors.white60),
@@ -543,7 +581,7 @@ class WhatsAppMediaSyncScreen extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
-                        child: const Text('اعتماد للكتالوج', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                        child: const Text('اعتماد', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -570,9 +608,15 @@ class WhatsAppMediaSyncScreen extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.link, color: Color(0xFF25D366), size: 20),
+              Icon(Icons.link, color: Color(0xFF25D366), size: 18),
               SizedBox(width: 8),
-              Text('رابط الويب هوك وإعدادات Meta App', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+              Expanded(
+                child: Text(
+                  'رابط الويب هوك وإعدادات Meta App',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
