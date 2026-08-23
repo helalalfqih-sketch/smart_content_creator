@@ -11,6 +11,7 @@ class CatalogXlsxImportResult {
   final int validProductsCount;
   final int invalidProductsCount;
   final List<CatalogProduct> products;
+  final List<Map<String, dynamic>> supplierDrafts; // مسودات وسائط الموردين المعزولة
 
   CatalogXlsxImportResult({
     required this.totalSheetRows,
@@ -18,11 +19,12 @@ class CatalogXlsxImportResult {
     required this.validProductsCount,
     required this.invalidProductsCount,
     required this.products,
+    this.supplierDrafts = const [],
   });
 
   @override
   String toString() {
-    return 'sheet_rows_total=$totalSheetRows, header_rows=$headerRows, valid_products=$validProductsCount, invalid_products=$invalidProductsCount';
+    return 'sheet_rows_total=$totalSheetRows, header_rows=$headerRows, valid_products=$validProductsCount, supplier_drafts=${supplierDrafts.length}, invalid_products=$invalidProductsCount';
   }
 }
 
@@ -213,9 +215,10 @@ class CatalogXlsxImportService {
     }
 
     final List<CatalogProduct> validProducts = [];
+    final List<Map<String, dynamic>> supplierDrafts = [];
     int invalidCount = 0;
 
-    // 6. تحويل سطور البيانات إلى نماذج CatalogProduct
+    // 6. تحويل سطور البيانات إلى نماذج CatalogProduct أو مسودات موردين
     for (int i = 1; i < parsedGrid.length; i++) {
       final rowData = parsedGrid[i];
 
@@ -246,8 +249,24 @@ class CatalogXlsxImportService {
       final condition = getAnyVal(['condition', 'حالة_المنتج']).isNotEmpty ? getAnyVal(['condition', 'حالة_المنتج']) : 'new';
       final brand = getAnyVal(['brand', 'الماركة', 'العلامة_التجارية']).isNotEmpty ? getAnyVal(['brand', 'الماركة', 'العلامة_التجارية']) : null;
       final category = getAnyVal(['category_name', 'category', 'الفئة', 'القسم', 'التصنيف']).isNotEmpty ? getAnyVal(['category_name', 'category', 'الفئة', 'القسم', 'التصنيف']) : null;
+      final supplierPhone = getAnyVal(['supplier_phone', 'phone', 'هاتف_المورد', 'المورد', 'رقم_المورد']).isNotEmpty ? getAnyVal(['supplier_phone', 'phone', 'هاتف_المورد', 'المورد', 'رقم_المورد']) : '+967738609222';
 
-      if (title.isEmpty && id.isEmpty) {
+      // استخراج وتنظيف روابط الصور
+      final List<String> additionalImages = additionalImageRaw.isNotEmpty
+          ? additionalImageRaw
+              .split(RegExp(r'[,;\n\|]'))
+              .map((u) => u.trim())
+              .where((u) => u.isNotEmpty)
+              .toList()
+          : [];
+
+      String finalImageLink = imageLinkRaw.trim();
+      if (finalImageLink.isEmpty && additionalImages.isNotEmpty) {
+        finalImageLink = additionalImages.first;
+      }
+
+      // التحقق من خلو السطر تماماً
+      if (title.isEmpty && id.isEmpty && finalImageLink.isEmpty) {
         invalidCount++;
         continue;
       }
@@ -269,23 +288,31 @@ class CatalogXlsxImportService {
         }
       }
 
-      // استخراج وتنظيف روابط الصور (سواء كانت مفصولة بفواصل أو أسطر جديدة أو فواصل منقوطة)
-      final List<String> additionalImages = additionalImageRaw.isNotEmpty
-          ? additionalImageRaw
-              .split(RegExp(r'[,;\n\|]'))
-              .map((u) => u.trim())
-              .where((u) => u.isNotEmpty)
-              .toList()
-          : [];
+      // 🔍 عزل صفوف الصور المجردة أو مسودات الموردين إلى شاشة الموردين
+      final bool isImageDraft = finalImageLink.isNotEmpty && (
+        title.isEmpty ||
+        title.toLowerCase().startsWith('صورة') ||
+        title.toLowerCase().startsWith('image') ||
+        title.toLowerCase().startsWith('draft') ||
+        (parsedPrice == 0.0 && description.isEmpty)
+      );
 
-      String finalImageLink = imageLinkRaw.trim();
-      if (finalImageLink.isEmpty && additionalImages.isNotEmpty) {
-        finalImageLink = additionalImages.first;
+      if (isImageDraft) {
+        supplierDrafts.add({
+          'fileUrl': finalImageLink,
+          'caption': description.isNotEmpty ? description : title,
+          'senderPhone': supplierPhone,
+          'fileType': videoLink.isNotEmpty ? 'video' : 'image',
+          'additionalImages': additionalImages,
+          'suggestedPrice': parsedPrice > 0 ? parsedPrice : null,
+          'category': category,
+        });
+        continue;
       }
 
       final product = CatalogProduct(
         id: id.isNotEmpty ? id : 'prd_${DateTime.now().millisecondsSinceEpoch}_$i',
-        title: title,
+        title: title.isNotEmpty ? title : 'منتج مستورد $i',
         description: description,
         availability: availability,
         condition: condition,
@@ -309,6 +336,7 @@ class CatalogXlsxImportService {
       validProductsCount: validProducts.length,
       invalidProductsCount: invalidCount,
       products: validProducts,
+      supplierDrafts: supplierDrafts,
     );
 
     debugPrint('[CATALOG_IMPORT] $result');

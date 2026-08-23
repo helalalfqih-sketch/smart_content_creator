@@ -16,7 +16,9 @@ import '../services/db_service.dart';
 import '../services/back4app_catalog_media_service.dart';
 import '../services/secure_storage_service.dart';
 import '../services/catalog_xlsx_import_service.dart';
+import '../services/whatsapp_sync_service.dart';
 import '../controllers/auth_controller.dart';
+import '../controllers/whatsapp_sync_controller.dart';
 import '../core/storage/app_storage_service.dart';
 import '../core/repositories/catalog_repository.dart';
 import '../core/repositories/back4app_catalog_repository.dart';
@@ -783,9 +785,14 @@ class CatalogController extends GetxController {
       );
 
       final parsedProducts = importResult.products;
+      final supplierDrafts = importResult.supplierDrafts;
       final totalValid = importResult.validProductsCount;
       final skipped = importResult.invalidProductsCount;
 
+      int savedCount = 0;
+      int draftedCount = 0;
+
+      // 1. حفظ المنتجات الجاهزة والكاملة في الكتالوج الأساسي
       if (parsedProducts.isNotEmpty) {
         final uid = _uid ?? 'helal_admin';
         final prepared = parsedProducts.map((p) {
@@ -796,17 +803,33 @@ class CatalogController extends GetxController {
         }).toList();
 
         // حفظ دفعي مع Back4App
-        final savedCount = await _catalogRepo.batchSaveProducts(prepared, batchSize: 25);
-
+        savedCount = await _catalogRepo.batchSaveProducts(prepared, batchSize: 25);
         await loadProducts();
-        Get.snackbar(
-          '📂 اكتمل الاستيراد',
-          'تم استيراد $savedCount من إجمالي $totalValid منتج بنجاح${skipped > 0 ? " (تم تخطي $skipped صف غير صالح)" : ""}',
-          backgroundColor: const Color(0xFF1A3A1A),
-          colorText: const Color(0xFF4CAF50),
-          duration: const Duration(seconds: 4),
-        );
       }
+
+      // 2. عزل وسائط وصور الموردين غير المكتملة إلى شاشة الموردين (WhatsApp Media Sync)
+      if (supplierDrafts.isNotEmpty) {
+        final waService = Get.isRegistered<WhatsAppSyncService>()
+            ? Get.find<WhatsAppSyncService>()
+            : Get.put(WhatsAppSyncService());
+
+        final res = await waService.processSupplierBatch(mediaItems: supplierDrafts);
+        draftedCount = (res != null && res['processed'] != null)
+            ? (res['processed'] as num).toInt()
+            : supplierDrafts.length;
+
+        if (Get.isRegistered<WhatsAppSyncController>()) {
+          Get.find<WhatsAppSyncController>().fetchDrafts();
+        }
+      }
+
+      Get.snackbar(
+        '📂 اكتمل الاستيراد والتوزيع',
+        'تم إدراج $savedCount منتجاً في الكتالوج، وعزل $draftedCount مسودة صورة إلى شاشة الموردين للمراجعة.${skipped > 0 ? " (تم تخطي $skipped صف فارغ)" : ""}',
+        backgroundColor: const Color(0xFF1A3A1A),
+        colorText: const Color(0xFF4CAF50),
+        duration: const Duration(seconds: 5),
+      );
     } catch (e, st) {
       debugPrint('❌ CatalogController: importFromExcel error: $e\n$st');
       Get.snackbar(

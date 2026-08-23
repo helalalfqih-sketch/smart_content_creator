@@ -188,4 +188,31 @@ class WhatsAppSyncService extends GetxService {
     }
     return false;
   }
+
+  /// 📦 معالجة وحفظ دفعة وسائط الموردين المعزولة من ملفات الإكسل
+  Future<Map<String, dynamic>?> processSupplierBatch({
+    required List<Map<String, dynamic>> mediaItems,
+    String? supplierPhone,
+  }) async {
+    try {
+      final token = await _getAuthToken();
+      final response = await http.post(
+        Uri.parse('$_parseBaseUrl/whatsAppProcessSupplierBatch'),
+        headers: _headers,
+        body: jsonEncode({
+          if (token != null) 'firebaseIdToken': token,
+          'mediaItems': mediaItems,
+          'supplierPhone': supplierPhone ?? '+967738609222',
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        return decoded['result'] as Map<String, dynamic>?;
+      }
+    } catch (e) {
+      debugPrint('⚠️ processSupplierBatch error: $e');
+    }
+    return null;
+  }
 }
