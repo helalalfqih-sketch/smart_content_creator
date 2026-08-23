@@ -2451,6 +2451,52 @@ Parse.Cloud.define("whatsAppProcessSupplierBatch", async (request) => {
   if (!auth) throw new Parse.Error(401, "Authentication required");
 
   const params = request.params || {};
+  const mediaItems = Array.isArray(params.mediaItems) ? params.mediaItems : null;
+  const WhatsAppDraft = Parse.Object.extend("WhatsAppDraft");
+
+  if (mediaItems && mediaItems.length > 0) {
+    let createdCount = 0;
+    for (const item of mediaItems) {
+      const fileUrl = (item.fileUrl || item.imageLink || "").trim();
+      if (!fileUrl) continue;
+
+      const caption = (item.caption || item.title || "").trim();
+      const sPhone = item.senderPhone || params.supplierPhone || "+967738609222";
+      const { category, tags } = extractWaCategoryAndTags(caption);
+      const extPrice = Number(item.suggestedPrice) || extractPriceFromText(caption) || 0.0;
+
+      const aiSuggestion = {
+        title: caption || "مسودة مورد معزولة من الإكسل",
+        description: `تم عزل هذه الصورة تلقائياً من ملف الإكسل كمسودة مورد: ${sPhone}\n${caption}`,
+        category: item.category || category,
+        price: extPrice,
+        tags: tags.length ? tags : ["إكسل", "مورد"],
+      };
+
+      const draft = new WhatsAppDraft();
+      draft.set("supplierPhone", sPhone);
+      draft.set("title", aiSuggestion.title);
+      draft.set("description", aiSuggestion.description);
+      draft.set("price", extPrice);
+      draft.set("currency", "YER");
+      draft.set("imageLink", fileUrl);
+      draft.set("additionalImageLinks", Array.isArray(item.additionalImages) ? item.additionalImages : []);
+      draft.set("videoUrl", item.fileType === "video" ? fileUrl : null);
+      draft.set("categoryName", aiSuggestion.category);
+      draft.set("status", "pending_review");
+      draft.set("aiSuggestion", aiSuggestion);
+      draft.set("receivedAt", new Date());
+      await draft.save(null, { useMasterKey: true });
+      createdCount++;
+    }
+
+    return {
+      success: true,
+      processed: createdCount,
+      total: mediaItems.length,
+    };
+  }
+
   const images = Array.isArray(params.images) ? params.images : [];
   const videoUrl = params.videoUrl || null;
   const priceText = params.priceText || "";
@@ -2470,7 +2516,6 @@ Parse.Cloud.define("whatsAppProcessSupplierBatch", async (request) => {
     tags,
   };
 
-  const WhatsAppDraft = Parse.Object.extend("WhatsAppDraft");
   const draft = new WhatsAppDraft();
   draft.set("supplierPhone", supplierPhone);
   draft.set("title", aiSuggestion.title);
@@ -2492,6 +2537,7 @@ Parse.Cloud.define("whatsAppProcessSupplierBatch", async (request) => {
     aiSuggestion,
     imagesCount: images.length,
     hasVideo: Boolean(videoUrl),
+    processed: 1,
   };
 });
 

@@ -402,4 +402,77 @@ void main() {
       expect(canAdminAction, isTrue); // Success
     });
   });
+
+  group('🛡️ SQLite Reconciliation Data-Safety & Draft Preservation Tests', () {
+    List<Map<String, dynamic>> reconcileSQLite({
+      required Set<String> serverIds,
+      required List<Map<String, dynamic>> localRows,
+    }) {
+      final List<Map<String, dynamic>> kept = [];
+      final List<String> removedIds = [];
+
+      final localSynced = localRows.where((r) => r['is_synced'] == 1 && r['deleted_at'] == null).toList();
+      final localUnsynced = localRows.where((r) => r['is_synced'] == 0 && r['deleted_at'] == null).toList();
+
+      for (final r in localSynced) {
+        final id = r['id'] as String;
+        if (serverIds.contains(id)) {
+          kept.add(r);
+        } else {
+          removedIds.add(id);
+        }
+      }
+
+      // Unsynced rows MUST ALWAYS be preserved
+      for (final r in localUnsynced) {
+        kept.add(r);
+      }
+
+      return kept;
+    }
+
+    test('TEST A: server IDs=[A,B], SQLite=[A(1), B(1), C(1), D(0)] => C removed, D preserved', () {
+      final serverIds = {'A', 'B'};
+      final localRows = [
+        {'id': 'A', 'is_synced': 1, 'deleted_at': null},
+        {'id': 'B', 'is_synced': 1, 'deleted_at': null},
+        {'id': 'C', 'is_synced': 1, 'deleted_at': null},
+        {'id': 'D', 'is_synced': 0, 'deleted_at': null},
+      ];
+
+      final remaining = reconcileSQLite(serverIds: serverIds, localRows: localRows);
+      final remainingIds = remaining.map((r) => r['id']).toSet();
+
+      expect(remainingIds.contains('A'), isTrue);
+      expect(remainingIds.contains('B'), isTrue);
+      expect(remainingIds.contains('C'), isFalse, reason: 'Stale synced cache C must be removed');
+      expect(remainingIds.contains('D'), isTrue, reason: 'Unsynced draft D must NEVER be deleted');
+      expect(remaining.firstWhere((r) => r['id'] == 'D')['is_synced'], equals(0));
+    });
+
+    test('TEST B: local draft not on server (is_synced=0) => preserved', () {
+      final serverIds = {'server_prd_1', 'server_prd_2'};
+      final localRows = [
+        {'id': 'local_draft_999', 'is_synced': 0, 'title': 'مسودة محلية جديدة', 'deleted_at': null},
+      ];
+
+      final remaining = reconcileSQLite(serverIds: serverIds, localRows: localRows);
+      expect(remaining.length, equals(1));
+      expect(remaining.first['id'], equals('local_draft_999'));
+      expect(remaining.first['is_synced'], equals(0));
+    });
+
+    test('TEST C: pending offline write not on server (is_synced=0) => preserved', () {
+      final serverIds = <String>{}; // Offline / Empty server response
+      final localRows = [
+        {'id': 'offline_prd_001', 'is_synced': 0, 'title': 'منتج تم إنشاؤه أوفلاين', 'deleted_at': null},
+        {'id': 'offline_prd_002', 'is_synced': 0, 'title': 'منتج آخر أوفلاين', 'deleted_at': null},
+      ];
+
+      final remaining = reconcileSQLite(serverIds: serverIds, localRows: localRows);
+      expect(remaining.length, equals(2));
+      expect(remaining.map((r) => r['id']).toSet(), containsAll(['offline_prd_001', 'offline_prd_002']));
+    });
+  });
 }
+

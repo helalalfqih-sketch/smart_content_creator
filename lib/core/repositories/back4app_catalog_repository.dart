@@ -130,30 +130,38 @@ class Back4AppCatalogRepository implements CatalogRepository {
 
         // تحديث وتوحيد SQLite لمنع انحراف العدد (Reconcile SQLite cache with authoritative server products)
         try {
-          final localRows = await dbService.getRecords(
+          final localSyncedRows = await dbService.getRecords(
             'catalog_products',
-            where: 'deleted_at IS NULL',
+            where: 'is_synced = 1 AND deleted_at IS NULL',
           );
+          final localUnsyncedRows = await dbService.getRecords(
+            'catalog_products',
+            where: 'is_synced = 0 AND deleted_at IS NULL',
+          );
+
           final serverIdSet = dedupedProducts
               .map((p) => p.id ?? '')
               .where((id) => id.isNotEmpty)
               .toSet();
 
-          final staleIds = localRows
+          // فقط السجلات المتزامنة سابقاً (is_synced = 1) التي حُذفت من السيرفر يتم إزالتها
+          final staleSyncedIds = localSyncedRows
               .map((r) => r['id']?.toString() ?? '')
               .where((id) => id.isNotEmpty && !serverIdSet.contains(id))
               .toList();
 
-          if (staleIds.isNotEmpty) {
-            for (int i = 0; i < staleIds.length; i += 50) {
-              final chunk = staleIds.skip(i).take(50).map((id) => "'$id'").join(',');
+          if (staleSyncedIds.isNotEmpty) {
+            for (int i = 0; i < staleSyncedIds.length; i += 50) {
+              final chunk = staleSyncedIds.skip(i).take(50).map((id) => "'$id'").join(',');
               await dbService.deleteRecord(
                 'catalog_products',
-                where: 'id IN ($chunk)',
+                where: 'id IN ($chunk) AND is_synced = 1',
                 whereArgs: const [],
               );
             }
           }
+
+          debugPrint('[CATALOG_RECONCILE] server=${dedupedProducts.length} sqlite_synced=${localSyncedRows.length} sqlite_unsynced=${localUnsyncedRows.length} stale_synced_removed=${staleSyncedIds.length} unsynced_preserved=${localUnsyncedRows.length}');
         } catch (e) {
           if (kDebugMode) debugPrint('⚠️ SQLite reconciliation error: $e');
         }
