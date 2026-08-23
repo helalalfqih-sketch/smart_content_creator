@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
+import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -10,10 +12,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../models/catalog_product_model.dart';
+import '../models/catalog_media_model.dart';
 import '../services/db_service.dart';
 import '../services/firebase_storage_service.dart';
 import '../services/secure_storage_service.dart';
 import '../services/catalog_xlsx_import_service.dart';
+import '../services/catalog_firestore_mirror_service.dart';
 import '../controllers/auth_controller.dart';
 import '../core/storage/app_storage_service.dart';
 import '../core/repositories/catalog_repository.dart';
@@ -25,6 +29,10 @@ class CatalogController extends GetxController {
   DBService get _db => Get.find<DBService>();
   FirebaseStorageService get _storage => Get.find<FirebaseStorageService>();
   AppStorageService get _appStorage => Get.find<AppStorageService>();
+  CatalogFirestoreMirrorService get _firestoreMirror =>
+      Get.isRegistered<CatalogFirestoreMirrorService>()
+          ? Get.find<CatalogFirestoreMirrorService>()
+          : Get.put(CatalogFirestoreMirrorService());
 
   // ---------------------------------------------------------------------------
   // 📊 المتغيرات التفاعلية (Reactive State)
@@ -579,49 +587,182 @@ class CatalogController extends GetxController {
     return list;
   }
 
+  /// التحقق من رفع جميع الوسائط المحلية إلى Firebase Storage والحصول على روابط HTTPS
+  Future<void> _ensureMediaUploaded(String uid) async {
+    for (int i = 0; i < pickedImages.length; i++) {
+      final path = pickedImages[i];
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        if (!uploadedImageUrls.contains(path)) {
+          uploadedImageUrls.add(path);
+        }
+      } else {
+        final file = File(path);
+        if (await file.exists()) {
+          final url = await _storage.uploadProductMedia(
+            uid: uid,
+            file: file,
+            mediaType: 'image',
+          );
+          if (url != null && url.startsWith('http')) {
+            debugPrint('[CATALOG_MEDIA_UPLOAD] type=image status=success url=$url');
+            if (!uploadedImageUrls.contains(url)) {
+              uploadedImageUrls.add(url);
+            }
+          }
+        }
+      }
+    }
+
+    if (pickedVideoPath.isNotEmpty && !pickedVideoPath.value.startsWith('http')) {
+      final file = File(pickedVideoPath.value);
+      if (await file.exists()) {
+        final url = await _storage.uploadProductMedia(
+          uid: uid,
+          file: file,
+          mediaType: 'video',
+        );
+        if (url != null && url.startsWith('http')) {
+          debugPrint('[CATALOG_MEDIA_UPLOAD] type=video status=success url=$url');
+          uploadedVideoUrl.value = url;
+        }
+      }
+    }
+  }
+
   // ---------------------------------------------------------------------------
-  // ➕ إضافة منتج جديد
+  // ➕ إضافة / تعديل منتج (Controlled Dual-Write)
   // ---------------------------------------------------------------------------
   Future<bool> saveProduct(CatalogProduct product) async {
     try {
-      final now = DateTime.now();
-      final id = product.id?.isNotEmpty == true
-          ? product.id!
-          : 'prd_${now.millisecondsSinceEpoch}';
+      final uid = _uid ?? 'guest';
+      await _ensureMediaUploaded(uid);
 
-      final uid = _uid;
+      // تنظيف واستخراج روابط الوسائط المعتمدة (HTTPS فقط)
+      String finalImageLink = '';
+      List<String> finalAdditionalLinks = [];
+      String? finalVideoUrl;
+
+      // 1. تحديد الصورة الرئيسية والصور الإضافية
+      final validHttpsImages = uploadedImageUrls
+          .where((u) => u.startsWith('http://') || u.startsWith('https://'))
+          .toList();
+
+      if (validHttpsImages.isNotEmpty) {
+        finalImageLink = validHttpsImages.first;
+        finalAdditionalLinks = validHttpsImages.length > 1 ? validHttpsImages.sublist(1) : [];
+      } else if (product.imageLink.startsWith('http')) {
+        finalImageLink = product.imageLink;
+        finalAdditionalLinks = product.additionalImageLinks
+            .where((u) => u.startsWith('http'))
+            .toList();
+      }
+
+      // 2. تحديد الفيديو
+      if (uploadedVideoUrl.value.startsWith('http')) {
+        finalVideoUrl = uploadedVideoUrl.value;
+      } else if (product.videoUrl != null && product.videoUrl!.startsWith('http')) {
+        finalVideoUrl = product.videoUrl;
+      }
+
+      // تسجيل وسائط المنتج
+      debugPrint('[CATALOG_MEDIA] imageLink=$finalImageLink');
+      if (finalVideoUrl != null && finalVideoUrl.isNotEmpty) {
+        debugPrint('[CATALOG_MEDIA] videoUrl=$finalVideoUrl');
+      }
+
+      // إنشاء معرف فريد وثابت (Idempotent)
+      final now = DateTime.now();
+      final pid = (product.id != null && product.id!.isNotEmpty)
+          ? product.id!
+          : (editingProduct.value?.id != null && editingProduct.value!.id!.isNotEmpty)
+              ? editingProduct.value!.id!
+              : 'prd_${now.millisecondsSinceEpoch}_${math.Random().nextInt(9999)}';
 
       final toSave = product.copyWith(
-        id: id,
-        imageLink: uploadedImageUrls.isNotEmpty
-            ? uploadedImageUrls.first
-            : product.imageLink,
-        additionalImageLinks: uploadedImageUrls.length > 1
-            ? uploadedImageUrls.sublist(1)
-            : product.additionalImageLinks,
-        videoUrl: uploadedVideoUrl.isNotEmpty
-            ? uploadedVideoUrl.value
-            : product.videoUrl,
+        id: pid,
+        imageLink: finalImageLink,
+        additionalImageLinks: finalAdditionalLinks,
+        videoUrl: finalVideoUrl,
         createdAt: product.createdAt ?? now,
         updatedAt: now,
         isSynced: false,
-        creatorUid: product.creatorUid ?? uid ?? 'guest',
-        status: product.status, // الحفاظ على حالة الموافقة أو وضع pending بشكل افتراضي
+        creatorUid: product.creatorUid ?? uid,
+        status: product.status,
+        syncVersion: product.syncVersion,
       );
 
-      if (uid != null) {
-        await FirebaseFirestore.instance
-            .collection('catalog_products')
-            .doc(id)
-            .set(toSave.toMap(), SetOptions(merge: true));
-      } else {
-        await _db.insertRecord('catalog_products', toSave.toMap());
+      final isEdit = editingProduct.value != null || products.any((p) => p.id == pid);
+
+      // 🏛️ الخطوة 1: الكتابة المعتمدة في Back4App كأولوية أساسية
+      final bool primarySuccess = isEdit
+          ? await _catalogRepo.updateProduct(toSave)
+          : await _catalogRepo.saveProduct(toSave);
+
+      if (!primarySuccess) {
+        Get.snackbar(
+          '❌ خطأ في الحفظ',
+          'تعذر حفظ المنتج في الخادم الأساسي (Back4App). يرجى التحقق من الاتصال والمحاولة ثانية.',
+          backgroundColor: const Color(0xFF3A1A1A),
+          colorText: const Color(0xFFE57373),
+          duration: const Duration(seconds: 4),
+        );
+        return false;
       }
-      
+
+      // 🎬 الخطوة 2: مزامنة كائنات وسائط المنتج CatalogProductMedia في Back4App
+      if (finalImageLink.isNotEmpty && finalImageLink.startsWith('http')) {
+        _catalogRepo.addProductMedia(CatalogProductMedia(
+          productId: pid,
+          type: 'image',
+          url: finalImageLink,
+          isPrimary: true,
+          sortOrder: 0,
+          dedupeKey: sha256.convert(utf8.encode('$pid|image|$finalImageLink')).toString(),
+        )).catchError((e) {
+          debugPrint('⚠️ Partial media add failure (primary image): $e');
+          return false;
+        });
+      }
+
+      for (int i = 0; i < finalAdditionalLinks.length; i++) {
+        final addUrl = finalAdditionalLinks[i];
+        _catalogRepo.addProductMedia(CatalogProductMedia(
+          productId: pid,
+          type: 'image',
+          url: addUrl,
+          isPrimary: false,
+          sortOrder: i + 1,
+          dedupeKey: sha256.convert(utf8.encode('$pid|image|$addUrl')).toString(),
+        )).catchError((e) {
+          debugPrint('⚠️ Partial media add failure (additional image $i): $e');
+          return false;
+        });
+      }
+
+      if (finalVideoUrl != null && finalVideoUrl.isNotEmpty && finalVideoUrl.startsWith('http')) {
+        _catalogRepo.addProductMedia(CatalogProductMedia(
+          productId: pid,
+          type: 'video',
+          url: finalVideoUrl,
+          isPrimary: true,
+          sortOrder: 0,
+          dedupeKey: sha256.convert(utf8.encode('$pid|video|$finalVideoUrl')).toString(),
+        )).catchError((e) {
+          debugPrint('⚠️ Partial media add failure (video): $e');
+          return false;
+        });
+      }
+
+      // 🪞 الخطوة 3: عكس وحفظ في Firestore كنسخة احتياطية متوافقة (دون كسر النجاح الأساسي)
+      await _firestoreMirror.mirrorCreateOrUpdate(toSave);
+
+      // 🔄 الخطوة 4: تحديث الواجهة والكتالوج
       resetForm();
+      await loadProducts();
+
       Get.snackbar(
         '✅ تم الحفظ',
-        'تم حفظ المنتج بنجاح في الكتالوج',
+        isEdit ? 'تم تحديث بيانات المنتج والوسائط بنجاح' : 'تم حفظ المنتج الجديد والوسائط بنجاح',
         backgroundColor: const Color(0xFF1A3A1A),
         colorText: const Color(0xFF4CAF50),
         duration: const Duration(seconds: 3),
@@ -641,7 +782,7 @@ class CatalogController extends GetxController {
   }
 
   // ---------------------------------------------------------------------------
-  // 🔗 دمج صور إضافية مع منتج موجود مسبقاً (منع التكرار الهجين)
+  // 🔗 دمج صور إضافية مع منتج موجود مسبقاً
   // ---------------------------------------------------------------------------
   Future<void> mergeProductImages(CatalogProduct existingProduct, List<String> newLocalImages, List<String> newUrls) async {
     isSyncing.value = true;
@@ -661,7 +802,10 @@ class CatalogController extends GetxController {
             file: file,
             mediaType: 'image',
           );
-          if (url != null) uploadedUrls.add(url);
+          if (url != null && url.startsWith('http')) {
+            debugPrint('[CATALOG_MEDIA_UPLOAD] type=image status=success url=$url');
+            uploadedUrls.add(url);
+          }
         }
       }
 
@@ -670,7 +814,7 @@ class CatalogController extends GetxController {
         ...existingProduct.additionalImageLinks,
         ...uploadedUrls,
         ...newUrls
-      }.toList();
+      }.where((u) => u.startsWith('http')).toList();
 
       final updatedProduct = existingProduct.copyWith(
         additionalImageLinks: mergedUrls,
@@ -678,23 +822,29 @@ class CatalogController extends GetxController {
         isSynced: false,
       );
 
-      final uid = _uid;
-      if (uid != null) {
-        await FirebaseFirestore.instance
-            .collection('catalog_products')
-            .doc(existingProduct.id)
-            .set(updatedProduct.toMap(), SetOptions(merge: true));
-      } else {
-        await _db.updateRecord('catalog_products', updatedProduct.toMap(), where: 'id = ?', whereArgs: [existingProduct.id]);
-      }
+      final ok = await _catalogRepo.updateProduct(updatedProduct);
+      if (ok) {
+        for (final u in uploadedUrls) {
+          _catalogRepo.addProductMedia(CatalogProductMedia(
+            productId: existingProduct.id!,
+            type: 'image',
+            url: u,
+            isPrimary: false,
+            sortOrder: mergedUrls.indexOf(u) + 1,
+            dedupeKey: sha256.convert(utf8.encode('${existingProduct.id}|image|$u')).toString(),
+          )).catchError((_) => false);
+        }
+        await _firestoreMirror.mirrorCreateOrUpdate(updatedProduct);
+        await loadProducts();
 
-      Get.snackbar(
-        '✅ تم دمج الصور',
-        'تم إضافة الصور الجديدة للمنتج "${existingProduct.title}" بنجاح.',
-        backgroundColor: const Color(0xFF1A3A1A),
-        colorText: const Color(0xFF4CAF50),
-        duration: const Duration(seconds: 4),
-      );
+        Get.snackbar(
+          '✅ تم دمج الصور',
+          'تم إضافة الصور الجديدة للمنتج "${existingProduct.title}" بنجاح.',
+          backgroundColor: const Color(0xFF1A3A1A),
+          colorText: const Color(0xFF4CAF50),
+          duration: const Duration(seconds: 4),
+        );
+      }
     } catch (e) {
       if (kDebugMode) debugPrint('❌ CatalogController: mergeProductImages error: $e');
       Get.snackbar(
@@ -731,7 +881,10 @@ class CatalogController extends GetxController {
             file: file,
             mediaType: 'image',
           );
-          if (url != null) uploadedUrls.add(url);
+          if (url != null && url.startsWith('http')) {
+            debugPrint('[CATALOG_MEDIA_UPLOAD] type=image status=success url=$url');
+            uploadedUrls.add(url);
+          }
         }
       }
 
@@ -740,7 +893,7 @@ class CatalogController extends GetxController {
         ...existingProduct.additionalImageLinks,
         ...uploadedUrls,
         ...newUrls
-      }.toList();
+      }.where((u) => u.startsWith('http')).toList();
 
       final extractedTitle = aiData['TITLE']?.trim() ?? aiData['product_name']?.trim() ?? existingProduct.title;
       final extractedBrand = aiData['BRAND']?.trim() ?? aiData['brand']?.trim() ?? existingProduct.brand;
@@ -767,23 +920,29 @@ class CatalogController extends GetxController {
         isSynced: false,
       );
 
-      final uid = _uid;
-      if (uid != null) {
-        await FirebaseFirestore.instance
-            .collection('catalog_products')
-            .doc(existingProduct.id)
-            .set(updatedProduct.toMap(), SetOptions(merge: true));
-      } else {
-        await _db.updateRecord('catalog_products', updatedProduct.toMap(), where: 'id = ?', whereArgs: [existingProduct.id]);
-      }
+      final ok = await _catalogRepo.updateProduct(updatedProduct);
+      if (ok) {
+        for (final u in uploadedUrls) {
+          _catalogRepo.addProductMedia(CatalogProductMedia(
+            productId: existingProduct.id!,
+            type: 'image',
+            url: u,
+            isPrimary: false,
+            sortOrder: mergedUrls.indexOf(u) + 1,
+            dedupeKey: sha256.convert(utf8.encode('${existingProduct.id}|image|$u')).toString(),
+          )).catchError((_) => false);
+        }
+        await _firestoreMirror.mirrorCreateOrUpdate(updatedProduct);
+        await loadProducts();
 
-      Get.snackbar(
-        '✅ تم تحديث المنتج',
-        'تم تحديث حقول وصور منتج "${existingProduct.title}" بنجاح بالبيانات الجديدة.',
-        backgroundColor: const Color(0xFF1A3A1A),
-        colorText: const Color(0xFF4CAF50),
-        duration: const Duration(seconds: 4),
-      );
+        Get.snackbar(
+          '✅ تم تحديث المنتج',
+          'تم تحديث حقول وصور منتج "${existingProduct.title}" بنجاح بالبيانات الجديدة.',
+          backgroundColor: const Color(0xFF1A3A1A),
+          colorText: const Color(0xFF4CAF50),
+          duration: const Duration(seconds: 4),
+        );
+      }
     } catch (e) {
       if (kDebugMode) debugPrint('❌ CatalogController: updateProductWithAiData error: $e');
       Get.snackbar(
@@ -799,33 +958,30 @@ class CatalogController extends GetxController {
     }
   }
 
-
   // ---------------------------------------------------------------------------
-  // 🗑️ حذف منتج
+  // 🗑️ حذف منتج (Controlled Dual-Write)
   // ---------------------------------------------------------------------------
   Future<void> deleteProduct(String id) async {
     try {
-      final uid = _uid;
-      if (uid != null) {
-        await FirebaseFirestore.instance
-            .collection('catalog_products')
-            .doc(id)
-            .delete();
+      final ok = await _catalogRepo.deleteProduct(id);
+      if (ok) {
+        await _firestoreMirror.mirrorDelete(id);
+        products.removeWhere((p) => p.id == id);
+        Get.snackbar(
+          '🗑️ تم الحذف',
+          'تم حذف المنتج من الكتالوج',
+          backgroundColor: const Color(0xFF1A1A3A),
+          colorText: const Color(0xFF90CAF9),
+          duration: const Duration(seconds: 2),
+        );
       } else {
-        await _db.deleteRecord(
-          'catalog_products',
-          where: 'id = ?',
-          whereArgs: [id],
+        Get.snackbar(
+          '❌ خطأ في الحذف',
+          'تعذر حذف المنتج من الخادم الأساسي (Back4App)',
+          backgroundColor: const Color(0xFF3A1A1A),
+          colorText: const Color(0xFFE57373),
         );
       }
-      products.removeWhere((p) => p.id == id);
-      Get.snackbar(
-        '🗑️ تم الحذف',
-        'تم حذف المنتج من الكتالوج',
-        backgroundColor: const Color(0xFF1A1A3A),
-        colorText: const Color(0xFF90CAF9),
-        duration: const Duration(seconds: 2),
-      );
     } catch (e) {
       if (kDebugMode) debugPrint('❌ CatalogController: deleteProduct error: $e');
     }
@@ -841,23 +997,20 @@ class CatalogController extends GetxController {
       if (picked.isEmpty) return;
 
       isUploadingMedia.value = true;
-      final uid = _uid;
-      if (uid == null) {
-        // حفظ محلي مؤقت في غياب تسجيل الدخول
-        pickedImages.addAll(picked.map((p) => p.path));
-        uploadedImageUrls.addAll(picked.map((p) => p.path));
-        return;
-      }
+      final uid = _uid ?? 'guest';
 
       for (final xf in picked) {
-        final file = File(xf.path);
         pickedImages.add(xf.path);
+        final file = File(xf.path);
         final url = await _storage.uploadProductMedia(
           uid: uid,
           file: file,
           mediaType: 'image',
         );
-        if (url != null) uploadedImageUrls.add(url);
+        if (url != null && url.startsWith('http')) {
+          debugPrint('[CATALOG_MEDIA_UPLOAD] type=image status=success url=$url');
+          uploadedImageUrls.add(url);
+        }
       }
     } catch (e) {
       if (kDebugMode) debugPrint('❌ CatalogController: pickImages error: $e');
@@ -883,18 +1036,16 @@ class CatalogController extends GetxController {
       isUploadingMedia.value = true;
       pickedVideoPath.value = path;
 
-      final uid = _uid;
-      if (uid == null) {
-        uploadedVideoUrl.value = path;
-        return;
-      }
-
+      final uid = _uid ?? 'guest';
       final url = await _storage.uploadProductMedia(
         uid: uid,
         file: File(path),
         mediaType: 'video',
       );
-      if (url != null) uploadedVideoUrl.value = url;
+      if (url != null && url.startsWith('http')) {
+        debugPrint('[CATALOG_MEDIA_UPLOAD] type=video status=success url=$url');
+        uploadedVideoUrl.value = url;
+      }
     } catch (e) {
       if (kDebugMode) debugPrint('❌ CatalogController: pickVideo error: $e');
     } finally {
@@ -913,7 +1064,7 @@ class CatalogController extends GetxController {
   }
 
   // ---------------------------------------------------------------------------
-  // 📂 استيراد منتجات من Excel (.xlsx) عبر الخدمة المخصصة لمنع أي أخطاء طرف ثالث
+  // 📂 استيراد منتجات من Excel (.xlsx) عبر الدفعات المتحكم بها (Batched Import)
   // ---------------------------------------------------------------------------
   Future<void> importFromExcel() async {
     isImporting.value = true;
@@ -935,55 +1086,33 @@ class CatalogController extends GetxController {
       );
 
       final parsedProducts = importResult.products;
-      final imported = importResult.validProductsCount;
+      final totalValid = importResult.validProductsCount;
       final skipped = importResult.invalidProductsCount;
 
       if (parsedProducts.isNotEmpty) {
-        final uid = _uid;
-        if (uid != null) {
-          final firestore = FirebaseFirestore.instance;
-          final collRef = firestore.collection('catalog_products');
-          
-          const batchSize = 400;
-          for (var i = 0; i < parsedProducts.length; i += batchSize) {
-            final batch = firestore.batch();
-            final chunk = parsedProducts.sublist(
-              i,
-              i + batchSize > parsedProducts.length ? parsedProducts.length : i + batchSize,
-            );
-            
-            for (final prd in chunk) {
-              final prdId = (prd.id != null && prd.id!.isNotEmpty)
-                  ? prd.id!
-                  : 'prd_${DateTime.now().millisecondsSinceEpoch}_${prd.title.hashCode}';
-              final docRef = collRef.doc(prdId);
-              batch.set(
-                docRef, 
-                prd.copyWith(
-                  id: prdId,
-                  creatorUid: uid,
-                  status: 'pending' // الكتالوج المرفوع من Excel يحتاج مراجعة pending
-                ).toMap(), 
-                SetOptions(merge: true)
-              );
-            }
-            await batch.commit();
-          }
-        } else {
-          for (final prd in parsedProducts) {
-            await _db.insertRecord('catalog_products', prd.toMap());
-          }
-        }
-      }
+        final uid = _uid ?? 'helal_admin';
+        final prepared = parsedProducts.map((p) {
+          final pid = (p.id != null && p.id!.isNotEmpty)
+              ? p.id!
+              : 'prd_${DateTime.now().millisecondsSinceEpoch}_${math.Random().nextInt(9999)}';
+          return p.copyWith(id: pid, creatorUid: uid, status: 'pending');
+        }).toList();
 
-      await loadProducts();
-      Get.snackbar(
-        '📂 اكتمل الاستيراد',
-        'تم استيراد $imported منتج${skipped > 0 ? " (تم تخطي $skipped صف)" : ""}',
-        backgroundColor: const Color(0xFF1A3A1A),
-        colorText: const Color(0xFF4CAF50),
-        duration: const Duration(seconds: 4),
-      );
+        // حفظ دفعي مع Back4App
+        final savedCount = await _catalogRepo.batchSaveProducts(prepared, batchSize: 25);
+
+        // عكس دفعي مع Firestore
+        await _firestoreMirror.mirrorBatch(prepared, batchSize: 200);
+
+        await loadProducts();
+        Get.snackbar(
+          '📂 اكتمل الاستيراد',
+          'تم استيراد $savedCount من إجمالي $totalValid منتج بنجاح${skipped > 0 ? " (تم تخطي $skipped صف غير صالح)" : ""}',
+          backgroundColor: const Color(0xFF1A3A1A),
+          colorText: const Color(0xFF4CAF50),
+          duration: const Duration(seconds: 4),
+        );
+      }
     } catch (e, st) {
       debugPrint(
         '❌ CatalogController: importFromExcel error: $e\n$st',

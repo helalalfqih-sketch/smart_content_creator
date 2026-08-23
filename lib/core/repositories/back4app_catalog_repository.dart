@@ -196,97 +196,216 @@ class Back4AppCatalogRepository implements CatalogRepository {
       creatorUid: product.creatorUid ?? getCurrentUid() ?? 'helal_admin',
     );
 
-    // 1. حفظ فوري في SQLite
-    await dbService.insertRecord('catalog_products', toSave.toMap());
+    try {
+      final token = await getFirebaseIdToken();
+      final body = {
+        'productId': pid,
+        'retailerId': pid,
+        'title': toSave.title,
+        'description': toSave.description,
+        'availability': toSave.availability,
+        'condition': toSave.condition,
+        'price': toSave.price,
+        'currency': toSave.currency,
+        'link': toSave.link,
+        'imageLink': toSave.imageLink,
+        'additionalImageLinks': toSave.additionalImageLinks,
+        'videoUrl': toSave.videoUrl,
+        'brand': toSave.brand,
+        'googleProductCategory': toSave.googleProductCategory,
+        'fbProductCategory': toSave.fbProductCategory,
+        'categoryId': toSave.categoryId,
+        'categoryName': toSave.categoryName,
+        'metaProductType': toSave.metaProductType,
+        'quantity': toSave.quantity,
+        'salePrice': toSave.salePrice,
+        'salePriceEffectiveDate': toSave.salePriceEffectiveDate,
+        'itemGroupId': toSave.itemGroupId,
+        'gender': toSave.gender,
+        'color': toSave.color,
+        'size': toSave.size,
+        'ageGroup': toSave.ageGroup,
+        'material': toSave.material,
+        'pattern': toSave.pattern,
+        'shipping': toSave.shipping,
+        'shippingWeight': toSave.shippingWeight,
+        'gtin': toSave.gtin,
+        'productTags': toSave.productTags,
+        'style': toSave.style,
+        'status': toSave.status,
+        'scope': 'global',
+        'source': 'app',
+        if (token != null) 'firebaseIdToken': token,
+      };
 
-    // 2. إضافة إلى طابور المزامنة المحلي
-    await dbService.insertRecord('catalog_sync_queue', {
-      'product_id': pid,
-      'operation': 'create',
-      'payload_json': json.encode(toSave.toMap()),
-      'retry_count': 0,
-      'status': 'pending',
-      'created_at': now.toIso8601String(),
-      'updated_at': now.toIso8601String(),
-    });
+      final response = await http.post(
+        Uri.parse('$_parseBaseUrl/functions/catalogCreate'),
+        headers: _headers,
+        body: json.encode(body),
+      ).timeout(const Duration(seconds: 15));
 
-    // 3. محاولة المزامنة الفورية مع السحابة
-    _drainSyncQueue().catchError((e) {
-      if (kDebugMode) debugPrint('⚠️ Instant sync error: $e');
-    });
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['result']?['success'] == true) {
+          debugPrint('[CATALOG_WRITE] backend=back4app operation=create productId=$pid');
+          await dbService.insertRecord('catalog_products', toSave.toMap());
+          return true;
+        }
+      }
 
-    return true;
+      debugPrint('❌ [CATALOG_WRITE] backend=back4app operation=create productId=$pid status=${response.statusCode} error=${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('❌ [CATALOG_WRITE] backend=back4app operation=create productId=$pid exception=$e');
+      return false;
+    }
   }
 
   @override
   Future<bool> updateProduct(CatalogProduct product) async {
-    if (product.id == null) return false;
+    if (product.id == null || product.id!.isEmpty) return false;
+    final pid = product.id!;
     final now = DateTime.now();
-
     final toUpdate = product.copyWith(updatedAt: now);
-    await dbService.updateRecord('catalog_products', toUpdate.toMap(), where: 'id = ?', whereArgs: [product.id]);
 
-    await dbService.insertRecord('catalog_sync_queue', {
-      'product_id': product.id!,
-      'operation': 'update',
-      'payload_json': json.encode(toUpdate.toMap()),
-      'retry_count': 0,
-      'status': 'pending',
-      'created_at': now.toIso8601String(),
-      'updated_at': now.toIso8601String(),
-    });
+    try {
+      final token = await getFirebaseIdToken();
+      final body = {
+        'productId': pid,
+        'title': toUpdate.title,
+        'description': toUpdate.description,
+        'availability': toUpdate.availability,
+        'condition': toUpdate.condition,
+        'price': toUpdate.price,
+        'currency': toUpdate.currency,
+        'link': toUpdate.link,
+        'imageLink': toUpdate.imageLink,
+        'additionalImageLinks': toUpdate.additionalImageLinks,
+        'videoUrl': toUpdate.videoUrl,
+        'brand': toUpdate.brand,
+        'googleProductCategory': toUpdate.googleProductCategory,
+        'fbProductCategory': toUpdate.fbProductCategory,
+        'categoryId': toUpdate.categoryId,
+        'categoryName': toUpdate.categoryName,
+        'metaProductType': toUpdate.metaProductType,
+        'quantity': toUpdate.quantity,
+        'salePrice': toUpdate.salePrice,
+        'salePriceEffectiveDate': toUpdate.salePriceEffectiveDate,
+        'itemGroupId': toUpdate.itemGroupId,
+        'gender': toUpdate.gender,
+        'color': toUpdate.color,
+        'size': toUpdate.size,
+        'ageGroup': toUpdate.ageGroup,
+        'material': toUpdate.material,
+        'pattern': toUpdate.pattern,
+        'shipping': toUpdate.shipping,
+        'shippingWeight': toUpdate.shippingWeight,
+        'gtin': toUpdate.gtin,
+        'productTags': toUpdate.productTags,
+        'style': toUpdate.style,
+        'status': toUpdate.status,
+        'expectedSyncVersion': product.syncVersion,
+        if (token != null) 'firebaseIdToken': token,
+      };
 
-    _drainSyncQueue().catchError((_) {});
-    return true;
+      final response = await http.post(
+        Uri.parse('$_parseBaseUrl/functions/catalogUpdate'),
+        headers: _headers,
+        body: json.encode(body),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded['result']?['success'] == true) {
+          debugPrint('[CATALOG_WRITE] backend=back4app operation=update productId=$pid');
+          await dbService.updateRecord(
+            'catalog_products',
+            toUpdate.copyWith(syncVersion: product.syncVersion + 1).toMap(),
+            where: 'id = ?',
+            whereArgs: [pid],
+          );
+          return true;
+        }
+      }
+
+      if (response.statusCode == 409) {
+        debugPrint('⚠️ [CATALOG_WRITE] Optimistic lock conflict (409) updating product $pid: ${response.body}');
+      } else {
+        debugPrint('❌ [CATALOG_WRITE] backend=back4app operation=update productId=$pid status=${response.statusCode} error=${response.body}');
+      }
+      return false;
+    } catch (e) {
+      debugPrint('❌ [CATALOG_WRITE] backend=back4app operation=update productId=$pid exception=$e');
+      return false;
+    }
   }
 
   @override
   Future<bool> deleteProduct(String productId) async {
+    if (productId.isEmpty) return false;
     final now = DateTime.now();
 
-    // حذف ناعم في SQLite
-    await dbService.updateRecord('catalog_products', {
-      'status': 'deleted',
-      'deleted_at': now.toIso8601String(),
-      'updated_at': now.toIso8601String(),
-    }, where: 'id = ?', whereArgs: [productId]);
+    try {
+      final token = await getFirebaseIdToken();
+      final response = await http.post(
+        Uri.parse('$_parseBaseUrl/functions/catalogDelete'),
+        headers: _headers,
+        body: json.encode({
+          'productId': productId,
+          if (token != null) 'firebaseIdToken': token,
+        }),
+      ).timeout(const Duration(seconds: 15));
 
-    await dbService.insertRecord('catalog_sync_queue', {
-      'product_id': productId,
-      'operation': 'delete',
-      'payload_json': json.encode({'productId': productId}),
-      'retry_count': 0,
-      'status': 'pending',
-      'created_at': now.toIso8601String(),
-      'updated_at': now.toIso8601String(),
-    });
+      if (response.statusCode == 200) {
+        debugPrint('[CATALOG_WRITE] backend=back4app operation=delete productId=$productId');
+        await dbService.updateRecord('catalog_products', {
+          'status': 'deleted',
+          'deleted_at': now.toIso8601String(),
+          'updated_at': now.toIso8601String(),
+        }, where: 'id = ?', whereArgs: [productId]);
+        return true;
+      }
 
-    _drainSyncQueue().catchError((_) {});
-    return true;
+      debugPrint('❌ [CATALOG_WRITE] backend=back4app operation=delete productId=$productId error=${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('❌ [CATALOG_WRITE] backend=back4app operation=delete productId=$productId exception=$e');
+      return false;
+    }
   }
 
   @override
   Future<bool> restoreProduct(String productId) async {
+    if (productId.isEmpty) return false;
     final now = DateTime.now();
 
-    await dbService.updateRecord('catalog_products', {
-      'status': 'approved',
-      'deleted_at': null,
-      'updated_at': now.toIso8601String(),
-    }, where: 'id = ?', whereArgs: [productId]);
+    try {
+      final token = await getFirebaseIdToken();
+      final response = await http.post(
+        Uri.parse('$_parseBaseUrl/functions/catalogRestore'),
+        headers: _headers,
+        body: json.encode({
+          'productId': productId,
+          if (token != null) 'firebaseIdToken': token,
+        }),
+      ).timeout(const Duration(seconds: 15));
 
-    await dbService.insertRecord('catalog_sync_queue', {
-      'product_id': productId,
-      'operation': 'restore',
-      'payload_json': json.encode({'productId': productId}),
-      'retry_count': 0,
-      'status': 'pending',
-      'created_at': now.toIso8601String(),
-      'updated_at': now.toIso8601String(),
-    });
+      if (response.statusCode == 200) {
+        debugPrint('[CATALOG_WRITE] backend=back4app operation=restore productId=$productId');
+        await dbService.updateRecord('catalog_products', {
+          'status': 'approved',
+          'deleted_at': null,
+          'updated_at': now.toIso8601String(),
+        }, where: 'id = ?', whereArgs: [productId]);
+        return true;
+      }
 
-    _drainSyncQueue().catchError((_) {});
-    return true;
+      debugPrint('❌ [CATALOG_WRITE] backend=back4app operation=restore productId=$productId error=${response.body}');
+      return false;
+    } catch (e) {
+      debugPrint('❌ [CATALOG_WRITE] backend=back4app operation=restore productId=$productId exception=$e');
+      return false;
+    }
   }
 
   @override
@@ -424,19 +543,41 @@ class Back4AppCatalogRepository implements CatalogRepository {
     final toSave = media.copyWith(dedupeKey: dedupeKey);
     await dbService.insertRecord('catalog_product_media', toSave.toMap());
 
-    final token = await getFirebaseIdToken();
     try {
-      await http.post(
+      final token = await getFirebaseIdToken();
+      final res = await http.post(
         Uri.parse('$_parseBaseUrl/functions/catalogMediaAdd'),
         headers: _headers,
         body: json.encode({
-          ...toSave.toMap(),
+          'productId': toSave.productId,
+          'type': toSave.type,
+          'url': toSave.url,
+          'thumbnailUrl': toSave.thumbnailUrl,
+          'mimeType': toSave.mimeType,
+          'filename': toSave.filename,
+          'sortOrder': toSave.sortOrder,
+          'isPrimary': toSave.isPrimary,
+          'source': toSave.source,
+          'status': toSave.status,
+          'width': toSave.width,
+          'height': toSave.height,
+          'durationMs': toSave.durationMs,
+          'dedupeKey': toSave.dedupeKey,
           if (token != null) 'firebaseIdToken': token,
         }),
-      );
-    } catch (_) {}
+      ).timeout(const Duration(seconds: 15));
 
-    return true;
+      if (res.statusCode == 200) {
+        debugPrint('[CATALOG_MEDIA_ADD] type=${toSave.type} primary=${toSave.isPrimary} url=${toSave.url}');
+        return true;
+      } else {
+        debugPrint('⚠️ [CATALOG_MEDIA_ADD] Server responded ${res.statusCode}: ${res.body}');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('⚠️ [CATALOG_MEDIA_ADD] exception: $e');
+      return false;
+    }
   }
 
   @override
@@ -445,6 +586,24 @@ class Back4AppCatalogRepository implements CatalogRepository {
       'status': 'deleted',
     }, where: 'id = ?', whereArgs: [mediaId]);
     return true;
+  }
+
+  @override
+  Future<int> batchSaveProducts(List<CatalogProduct> products, {int batchSize = 25}) async {
+    if (products.isEmpty) return 0;
+    int savedCount = 0;
+
+    for (var i = 0; i < products.length; i += batchSize) {
+      final chunk = products.sublist(
+        i,
+        i + batchSize > products.length ? products.length : i + batchSize,
+      );
+
+      final results = await Future.wait(chunk.map((p) => saveProduct(p)));
+      savedCount += results.where((r) => r == true).length;
+    }
+
+    return savedCount;
   }
 
   @override

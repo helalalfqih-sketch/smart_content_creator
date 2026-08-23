@@ -45,6 +45,8 @@ class MockBack4AppCatalogRepository implements CatalogRepository {
   @override
   Future<bool> deleteProductMedia(String mediaId) async => false;
   @override
+  Future<int> batchSaveProducts(List<CatalogProduct> products, {int batchSize = 25}) async => products.length;
+  @override
   Future<List<CatalogCategory>> getCategories() async => [];
 }
 

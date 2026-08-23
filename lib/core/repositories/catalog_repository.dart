@@ -42,6 +42,9 @@ abstract class CatalogRepository {
   /// حذف وسيط لمنتج
   Future<bool> deleteProductMedia(String mediaId);
 
+  /// حفظ دفعة من المنتجات بتحكم متزامن محدود (للاستيراد السريع)
+  Future<int> batchSaveProducts(List<CatalogProduct> products, {int batchSize = 25});
+
   /// جلب قائمة الفئات
   Future<List<CatalogCategory>> getCategories();
 }

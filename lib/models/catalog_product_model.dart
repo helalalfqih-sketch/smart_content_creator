@@ -41,6 +41,7 @@ class CatalogProduct {
   final bool isSynced; // هل تمت المزامنة مع Meta؟
   final String? creatorUid; // معرف المالك
   final String status; // حالة المراجعة: pending, approved, rejected
+  final int syncVersion; // إصدار المزامنة للتوافق والتحكم في التضارب Optimistic Concurrency
 
   CatalogProduct({
     this.id,
@@ -80,6 +81,7 @@ class CatalogProduct {
     this.isSynced = false,
     this.creatorUid,
     this.status = 'approved',
+    this.syncVersion = 1,
   });
 
   /// ✅ السعر المنسق للمنتج (مثل: 15000 YER)
@@ -201,6 +203,7 @@ class CatalogProduct {
       'is_synced': isSynced ? 1 : 0,
       'creator_uid': creatorUid,
       'status': status,
+      'sync_version': syncVersion,
     };
   }
 
@@ -285,6 +288,7 @@ class CatalogProduct {
           map['isSynced'] == true),
       creatorUid: (map['creator_uid'] ?? map['creatorUid']) as String?,
       status: map['status'] as String? ?? 'approved',
+      syncVersion: (map['sync_version'] ?? map['syncVersion'] as num?)?.toInt() ?? 1,
     );
   }
 
@@ -537,6 +541,7 @@ class CatalogProduct {
     bool? isSynced,
     String? creatorUid,
     String? status,
+    int? syncVersion,
   }) {
     return CatalogProduct(
       id: id ?? this.id,
@@ -577,6 +582,7 @@ class CatalogProduct {
       isSynced: isSynced ?? this.isSynced,
       creatorUid: creatorUid ?? this.creatorUid,
       status: status ?? this.status,
+      syncVersion: syncVersion ?? this.syncVersion,
     );
   }
 

@@ -59,6 +59,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   void initState() {
     super.initState();
     final p = widget.editProduct;
+    ctrl.startEditing(p);
     _titleCtrl = TextEditingController(text: p?.title ?? '');
     _descCtrl = TextEditingController(text: p?.description ?? '');
     _priceCtrl = TextEditingController(text: p != null ? p.price.toStringAsFixed(2) : '');
@@ -1585,7 +1586,7 @@ $cleanedText
     if (_isSaving) return;
     if (!_formKey.currentState!.validate()) return;
 
-    if (ctrl.pickedImages.isEmpty) {
+    if (ctrl.pickedImages.isEmpty && ctrl.uploadedImageUrls.isEmpty && (widget.editProduct?.imageLink.isEmpty ?? true)) {
       Get.snackbar(
         '⚠️ الصورة مطلوبة',
         'يجب إضافة صورة واحدة على الأقل للمنتج ليتم قبوله ومزامنته في Meta Commerce.',
@@ -1627,6 +1628,7 @@ $cleanedText
         size: _sizeCtrl.text.trim().isNotEmpty ? _sizeCtrl.text.trim() : null,
         creatorUid: widget.editProduct?.creatorUid,
         status: Get.find<AuthController>().isAdmin ? _status : 'approved',
+        syncVersion: widget.editProduct?.syncVersion ?? 1,
       );
 
       final success = await ctrl.saveProduct(product);
