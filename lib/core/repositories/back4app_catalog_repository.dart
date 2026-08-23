@@ -130,16 +130,16 @@ class Back4AppCatalogRepository implements CatalogRepository {
 
         // تحديث وتوحيد SQLite لمنع انحراف العدد (Reconcile SQLite cache with authoritative server products)
         try {
-          final localSyncedRows = await dbService.getRecords(
+          final localRows = await dbService.getRecords(
             'catalog_products',
-            where: 'is_synced = 1',
+            where: 'deleted_at IS NULL',
           );
           final serverIdSet = dedupedProducts
               .map((p) => p.id ?? '')
               .where((id) => id.isNotEmpty)
               .toSet();
 
-          final staleIds = localSyncedRows
+          final staleIds = localRows
               .map((r) => r['id']?.toString() ?? '')
               .where((id) => id.isNotEmpty && !serverIdSet.contains(id))
               .toList();
@@ -149,7 +149,7 @@ class Back4AppCatalogRepository implements CatalogRepository {
               final chunk = staleIds.skip(i).take(50).map((id) => "'$id'").join(',');
               await dbService.deleteRecord(
                 'catalog_products',
-                where: 'id IN ($chunk) AND is_synced = 1',
+                where: 'id IN ($chunk)',
                 whereArgs: const [],
               );
             }
