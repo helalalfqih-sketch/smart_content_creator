@@ -45,7 +45,7 @@ class ProductCard extends StatelessWidget {
               child: Stack(
                 children: [
                   CatalogProductImage(
-                    imageUrl: product.imageLink,
+                    imageUrl: product.effectiveImageUrl,
                     productId: product.id,
                     fit: BoxFit.cover,
                     width: double.infinity,

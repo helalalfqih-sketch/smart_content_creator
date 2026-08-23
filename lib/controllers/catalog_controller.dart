@@ -20,6 +20,7 @@ import '../controllers/auth_controller.dart';
 import '../core/storage/app_storage_service.dart';
 import '../core/repositories/catalog_repository.dart';
 import '../core/repositories/back4app_catalog_repository.dart';
+import '../screens/catalog/widgets/catalog_product_image.dart';
 
 /// 🛍️ CatalogController
 /// متحكم إدارة الكتالوج الحصري عبر Back4App Cloud Code و SQLite:
@@ -98,6 +99,7 @@ class CatalogController extends GetxController {
   // ---------------------------------------------------------------------------
   Future<void> loadProducts() async {
     isLoading.value = true;
+    CatalogProductImage.clearFailedCache();
     try {
       // 1. القراءة الأساسية لجميع الصفحات من Back4App CatalogRepository
       final b4aProducts = await _catalogRepo.getProducts(limit: 100, forceRefresh: true);

@@ -84,6 +84,32 @@ class CatalogProduct {
     this.syncVersion = 1,
   });
 
+  /// 🖼️ رابط الصورة الفعالة للعرض (الرئيسية أو أول صورة إضافية متوفرة)
+  String get effectiveImageUrl {
+    final img = imageLink.trim();
+    if (img.isNotEmpty) return img;
+    for (final add in additionalImageLinks) {
+      final clean = add.trim();
+      if (clean.isNotEmpty) return clean;
+    }
+    return '';
+  }
+
+  /// 📸 قائمة جميع روابط الصور المتوفرة للمنتج
+  List<String> get allImageUrls {
+    final list = <String>[];
+    if (imageLink.trim().isNotEmpty) {
+      list.add(imageLink.trim());
+    }
+    for (final add in additionalImageLinks) {
+      final clean = add.trim();
+      if (clean.isNotEmpty && !list.contains(clean)) {
+        list.add(clean);
+      }
+    }
+    return list;
+  }
+
   /// ✅ السعر المنسق للمنتج (مثل: 15000 YER)
   String get formattedPrice => '${price.toStringAsFixed(2)} $currency';
 

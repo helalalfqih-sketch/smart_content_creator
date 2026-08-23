@@ -226,24 +226,26 @@ class CatalogXlsxImportService {
         return rowData[idx] ?? '';
       }
 
-      final id = getVal('id').isNotEmpty ? getVal('id') : getVal('retailer_id');
-      final title = getVal('title').isNotEmpty ? getVal('title') : getVal('name');
-      final description = getVal('description');
-      final priceStr = getVal('price');
-      final link = getVal('link');
-      final imageLink = getVal('image_link').isNotEmpty ? getVal('image_link') : getVal('image');
-      final additionalImageRaw = getVal('additional_image_link').isNotEmpty
-          ? getVal('additional_image_link')
-          : getVal('additional_images');
-      final videoLink = getVal('video_link').isNotEmpty
-          ? getVal('video_link')
-          : (getVal('video_url').isNotEmpty ? getVal('video_url') : getVal('video'));
-      final availability = getVal('availability').isNotEmpty ? getVal('availability') : 'in stock';
-      final condition = getVal('condition').isNotEmpty ? getVal('condition') : 'new';
-      final brand = getVal('brand').isNotEmpty ? getVal('brand') : null;
-      final category = getVal('category_name').isNotEmpty
-          ? getVal('category_name')
-          : (getVal('category').isNotEmpty ? getVal('category') : null);
+      String getAnyVal(List<String> keys) {
+        for (final k in keys) {
+          final v = getVal(k);
+          if (v.isNotEmpty) return v;
+        }
+        return '';
+      }
+
+      final id = getAnyVal(['id', 'retailer_id', 'sku', 'المعرف', 'كود_المنتج', 'رمز_المنتج']);
+      final title = getAnyVal(['title', 'name', 'product_name', 'العنوان', 'اسم_المنتج', 'الاسم']);
+      final description = getAnyVal(['description', 'desc', 'الوصف', 'تفاصيل', 'تفاصيل_المنتج']);
+      final priceStr = getAnyVal(['price', 'amount', 'السعر', 'سعر_المنتج', 'القيمة']);
+      final link = getAnyVal(['link', 'url', 'product_link', 'الرابط', 'رابط_المنتج']);
+      final imageLinkRaw = getAnyVal(['image_link', 'image', 'image_url', 'img', 'photo', 'picture', 'main_image', 'الصورة', 'رابط_الصورة', 'صورة_المنتج', 'صورة']);
+      final additionalImageRaw = getAnyVal(['additional_image_link', 'additional_images', 'additional_image', 'extra_images', 'images', 'photos', 'other_images', 'صور_إضافية', 'الصور_الإضافية', 'صور']);
+      final videoLink = getAnyVal(['video_link', 'video_url', 'video', 'الفيديو', 'رابط_الفيديو']);
+      final availability = getAnyVal(['availability', 'stock', 'الحالة', 'التوفر']).isNotEmpty ? getAnyVal(['availability', 'stock', 'الحالة', 'التوفر']) : 'in stock';
+      final condition = getAnyVal(['condition', 'حالة_المنتج']).isNotEmpty ? getAnyVal(['condition', 'حالة_المنتج']) : 'new';
+      final brand = getAnyVal(['brand', 'الماركة', 'العلامة_التجارية']).isNotEmpty ? getAnyVal(['brand', 'الماركة', 'العلامة_التجارية']) : null;
+      final category = getAnyVal(['category_name', 'category', 'الفئة', 'القسم', 'التصنيف']).isNotEmpty ? getAnyVal(['category_name', 'category', 'الفئة', 'القسم', 'التصنيف']) : null;
 
       if (title.isEmpty && id.isEmpty) {
         invalidCount++;
@@ -267,14 +269,19 @@ class CatalogXlsxImportService {
         }
       }
 
-      // استخراج روابط الصور الإضافية
+      // استخراج وتنظيف روابط الصور (سواء كانت مفصولة بفواصل أو أسطر جديدة أو فواصل منقوطة)
       final List<String> additionalImages = additionalImageRaw.isNotEmpty
           ? additionalImageRaw
-              .split(',')
+              .split(RegExp(r'[,;\n\|]'))
               .map((u) => u.trim())
-              .where((u) => u.startsWith('http'))
+              .where((u) => u.isNotEmpty)
               .toList()
           : [];
+
+      String finalImageLink = imageLinkRaw.trim();
+      if (finalImageLink.isEmpty && additionalImages.isNotEmpty) {
+        finalImageLink = additionalImages.first;
+      }
 
       final product = CatalogProduct(
         id: id.isNotEmpty ? id : 'prd_${DateTime.now().millisecondsSinceEpoch}_$i',
@@ -285,7 +292,7 @@ class CatalogXlsxImportService {
         price: parsedPrice,
         currency: parsedCurrency,
         link: link,
-        imageLink: imageLink,
+        imageLink: finalImageLink,
         additionalImageLinks: additionalImages,
         videoUrl: videoLink.isNotEmpty ? videoLink : null,
         brand: brand,
