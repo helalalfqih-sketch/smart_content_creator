@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:http/http.dart' as http;
 import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
@@ -112,21 +114,74 @@ class FirebaseStorageService extends GetxService {
       final bytes = await file.readAsBytes();
       final contentType = mediaType == 'video' ? 'video/$ext' : 'image/$ext';
 
-      final uploadTask = await ref.putData(
-        bytes,
-        SettableMetadata(contentType: contentType),
-      );
+      try {
+        final uploadTask = await ref.putData(
+          bytes,
+          SettableMetadata(contentType: contentType),
+        );
 
-      if (uploadTask.state == TaskState.success) {
-        final url = await ref.getDownloadURL();
-        debugPrint('[CATALOG_MEDIA_UPLOAD] type=$mediaType status=success url=$url');
-        return url;
+        if (uploadTask.state == TaskState.success) {
+          final url = await ref.getDownloadURL();
+          debugPrint('[CATALOG_MEDIA_UPLOAD] type=$mediaType status=success url=$url');
+          return url;
+        }
+      } catch (storageError) {
+        debugPrint('⚠️ Firebase Storage upload failed ($storageError). Retrying via authenticated Cloud Code...');
       }
+
+      // ☁️ الرفع الاحتياطي الآمن عبر Cloud Code المشفر بمصادقة Firebase Token
+      debugPrint('🚀 Falling back to authenticated Back4App Cloud Code for $mediaType...');
+      final cloudUrl = await _uploadViaBack4AppCloudCode(bytes, fileName, contentType);
+      if (cloudUrl != null) {
+        debugPrint('[CATALOG_MEDIA_UPLOAD] type=$mediaType status=success url=$cloudUrl');
+        return cloudUrl;
+      }
+
       return null;
     } catch (e) {
       debugPrint('❌ Catalog media upload error: $e');
       return null;
     }
+  }
+
+  /// ☁️ رفع ملف عبر Cloud Code الآمن بدون أي مفاتيح سرية في Flutter
+  Future<String?> _uploadViaBack4AppCloudCode(
+    List<int> bytes,
+    String fileName,
+    String mimeType,
+  ) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      final token = await user?.getIdToken();
+
+      final base64Data = base64Encode(bytes);
+      final response = await http.post(
+        Uri.parse('https://parseapi.back4app.com/functions/catalogUploadMedia'),
+        headers: {
+          'X-Parse-Application-Id': 'uWUMmdbdRjcuOKuCcl9Pg7zEYxnYGVaLXjmveGF2',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          if (token != null) 'firebaseIdToken': token,
+          'fileBase64': base64Data,
+          'fileName': fileName,
+          'mimeType': mimeType,
+        }),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final url = data['result']?['url'] as String?;
+        if (url != null && url.startsWith('http')) {
+          return url;
+        }
+      } else {
+        debugPrint('⚠️ catalogUploadMedia returned HTTP ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Back4App Cloud Code media upload fallback error: $e');
+    }
+    return null;
   }
 
   /// 📑 رفع ملف CSV للكتالوج إلى Firebase Storage (مسار عالمي موحد)
