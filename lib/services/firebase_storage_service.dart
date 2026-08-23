@@ -118,18 +118,57 @@ class FirebaseStorageService extends GetxService {
 
           if (uploadTask.state == TaskState.success) {
             final url = await ref.getDownloadURL();
-            debugPrint('✅ Catalog media uploaded successfully: $url');
+            debugPrint('✅ Catalog media uploaded successfully to Firebase Storage: $url');
             return url;
           }
         } catch (bucketError) {
           debugPrint('⚠️ Storage attempt for bucket (${storage.bucket}) failed: $bucketError');
         }
       }
+
+      // 🔄 Fallback المباشر: الرفع إلى Back4App Parse Files لضمان توفر الرابط دائماً
+      debugPrint('🚀 Falling back to Back4App Parse File storage for $mediaType...');
+      final b4aUrl = await _uploadToBack4AppFiles(bytes, fileName, contentType);
+      if (b4aUrl != null) {
+        debugPrint('✅ Catalog media uploaded successfully to Back4App: $b4aUrl');
+        return b4aUrl;
+      }
+
       return null;
     } catch (e) {
       debugPrint('❌ Catalog media upload error: $e');
       return null;
     }
+  }
+
+  /// ☁️ رفع ملف إلى Parse Files في Back4App كخطة احتياطية فائقة الموثوقية
+  Future<String?> _uploadToBack4AppFiles(List<int> bytes, String fileName, String mimeType) async {
+    try {
+      final uri = Uri.parse('https://parseapi.back4app.com/files/$fileName');
+      final response = await dio.Dio().postUri(
+        uri,
+        data: dio.Stream.fromIterable([bytes]),
+        options: dio.Options(
+          headers: {
+            'X-Parse-Application-Id': 'uWUMmdbdRjcuOKuCcl9Pg7zEYxnYGVaLXjmveGF2',
+            'X-Parse-REST-API-Key': 'Zsvk14ko9rvXD25G1hflNeY2Dg2hJtkocPvh6tMp',
+            'Content-Type': mimeType,
+            'Content-Length': bytes.length.toString(),
+          },
+        ),
+      );
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final data = response.data;
+        final url = (data is Map) ? data['url'] as String? : null;
+        if (url != null && url.startsWith('http')) {
+          return url;
+        }
+      }
+    } catch (e) {
+      debugPrint('⚠️ Back4App Parse Files fallback error: $e');
+    }
+    return null;
   }
 
   /// 📑 رفع ملف CSV للكتالوج إلى Firebase Storage (مسار عالمي موحد)
