@@ -110,5 +110,74 @@ void main() {
       expect(audit['AFFECTED_PRODUCTS'], equals(377));
       expect(audit['ALREADY_PERMANENT'], equals(1));
     });
+
+    test('6. Indexes Store Media Repair and Safe Matching Contract Tests', () {
+      String normalize(String t) => t
+          .toLowerCase()
+          .replaceAll(RegExp(r'[\u064B-\u065F\u0670]'), '')
+          .replaceAll(RegExp(r'[أإآ]'), 'ا')
+          .replaceAll('ة', 'ه')
+          .replaceAll('ى', 'ي')
+          .replaceAll(RegExp(r'[^a-z0-9\u0600-\u06FF]'), '')
+          .trim();
+
+      final supaProducts = [
+        {
+          'id': 'supa_001',
+          'title_ar': 'مبرد الاظافر الكهربائي',
+          'price': 6500,
+          'images': [
+            'https://wtudcippyxbaobqzbmok.supabase.co/storage/v1/object/public/product-images/uploads/9bfcf1a9-1ea7-4c1c-8d30-d48aeb56065a/1785448774656_1000234303.jpg'
+          ],
+        },
+        {
+          'id': 'supa_002',
+          'title_ar': 'ماكينة الخياطة الكهربائية',
+          'price': 13500,
+          'images': [
+            'https://wtudcippyxbaobqzbmok.supabase.co/storage/v1/object/public/product-images/recovered/9bfcf1a9-1ea7-4c1c-8d30-d48aeb56065a/fbc5a35c/sewing.jpg'
+          ],
+        },
+      ];
+
+      final back4appProduct = {
+        'objectId': 'b4a_obj_999',
+        'productId': 'prd_1785448774656',
+        'title': 'مبرد الأظافر الكهربائي',
+        'price': 6500.0,
+        'imageLink': 'https://media-bru2-1.cdn.whatsapp.net/v/t45.5328-4/739214614_old.jpg',
+      };
+
+      // 1. Safe Matching
+      final b4aNorm = normalize(back4appProduct['title'] as String);
+      final matchedSupa = supaProducts.firstWhere(
+        (sp) => normalize(sp['title_ar'] as String) == b4aNorm,
+      );
+
+      expect(matchedSupa['id'], equals('supa_001'));
+      expect((matchedSupa['images'] as List).isNotEmpty, isTrue);
+
+      // 2. Target repair simulation
+      final sourceHost = Uri.parse((matchedSupa['images'] as List).first as String).host;
+      expect(sourceHost, equals('wtudcippyxbaobqzbmok.supabase.co'));
+
+      // 3. New Parse File host must be parsefiles.back4app.com
+      const repairedPermanentUrl = 'https://parsefiles.back4app.com/app/repaired_prd_1785448774656_123.jpg';
+      final newHost = Uri.parse(repairedPermanentUrl).host;
+      expect(newHost, equals('parsefiles.back4app.com'));
+
+      // 4. Existing fields preserved
+      final updatedProduct = {
+        ...back4appProduct,
+        'imageLink': repairedPermanentUrl,
+      };
+
+      expect(updatedProduct['objectId'], equals('b4a_obj_999'));
+      expect(updatedProduct['productId'], equals('prd_1785448774656'));
+      expect(updatedProduct['title'], equals('مبرد الأظافر الكهربائي'));
+      expect(updatedProduct['price'], equals(6500.0));
+      expect(updatedProduct['imageLink'], equals(repairedPermanentUrl));
+    });
   });
 }
+

@@ -1976,6 +1976,256 @@ Parse.Cloud.define("catalogRecoverLegacyWhatsappMedia", async (request) => {
   };
 });
 
+// 🛠️ catalogRepairMediaFromIndexesStore: Recover legacy WhatsApp media using active Indexes Store production media
+Parse.Cloud.define("catalogRepairMediaFromIndexesStore", async (request) => {
+  const auth = await extractAuthUser(request);
+  if (!auth) throw new Parse.Error(401, "Authentication required");
+
+  const params = request.params || {};
+  const sampleLimit = params.sampleLimit !== undefined ? parseInt(params.sampleLimit, 10) : 10;
+  const dryRun = Boolean(params.dryRun);
+  const tenantId = params.tenantId || "9bfcf1a9-1ea7-4c1c-8d30-d48aeb56065a";
+
+  const supabaseUrl = "https://wtudcippyxbaobqzbmok.supabase.co";
+  const anonKey = "sb_publishable_xAxjCnoAAUs5x1d7Njbsbw_HHpypzrz";
+
+  const normalizeTitleStr = (t) => {
+    if (!t) return "";
+    return t
+      .toLowerCase()
+      .replace(/[\u064B-\u065F\u0670]/g, "")
+      .replace(/[أإآ]/g, "ا")
+      .replace(/ة/g, "ه")
+      .replace(/ى/g, "ي")
+      .replace(/[^a-z0-9\u0600-\u06FF]/g, "")
+      .trim();
+  };
+
+  const httpsGetBuffer = async (url) => {
+    return new Promise((resolve, reject) => {
+      const https = require("https");
+      https.get(url, { headers: { "User-Agent": "Back4App-Media-Recovery/1.0" } }, (res) => {
+        if (res.statusCode !== 200) {
+          return resolve({ success: false, status: res.statusCode });
+        }
+        const chunks = [];
+        res.on("data", (c) => chunks.push(c));
+        res.on("end", () => {
+          const buffer = Buffer.concat(chunks);
+          const mimeType = res.headers["content-type"] || "image/jpeg";
+          resolve({ success: true, status: 200, buffer, mimeType });
+        });
+      }).on("error", (err) => resolve({ success: false, status: 500, error: err.message }));
+    });
+  };
+
+  // 1. Fetch Indexes Store products from Supabase REST
+  const httpsGetJson = async (url) => {
+    return new Promise((resolve, reject) => {
+      const https = require("https");
+      https.get(url, {
+        headers: {
+          "apikey": anonKey,
+          "Authorization": `Bearer ${anonKey}`,
+          "Content-Type": "application/json"
+        }
+      }, (res) => {
+        let data = "";
+        res.on("data", (c) => data += c);
+        res.on("end", () => {
+          try {
+            resolve(JSON.parse(data));
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }).on("error", reject);
+    });
+  };
+
+  let supaProducts = [];
+  try {
+    supaProducts = await httpsGetJson(`${supabaseUrl}/rest/v1/products?select=*&tenant_id=eq.${tenantId}&limit=1000`);
+  } catch (e) {
+    throw new Parse.Error(500, `Failed to query Indexes Store catalog: ${e.message}`);
+  }
+
+  if (!Array.isArray(supaProducts)) {
+    throw new Parse.Error(500, "Invalid Indexes Store product catalog response");
+  }
+
+  // 2. Build safe lookup indices
+  const indexByBarcode = new Map();
+  const indexBySku = new Map();
+  const indexByExtId = new Map();
+  const indexByTitle = new Map();
+
+  for (const sp of supaProducts) {
+    if (sp.barcode) indexByBarcode.set(String(sp.barcode).trim(), sp);
+    if (sp.sku) indexBySku.set(String(sp.sku).trim(), sp);
+    if (sp.external_id) indexByExtId.set(String(sp.external_id).trim(), sp);
+    if (sp.id) indexByExtId.set(String(sp.id).trim(), sp);
+
+    const normAr = normalizeTitleStr(sp.title_ar);
+    const normEn = normalizeTitleStr(sp.title_en);
+    if (normAr) {
+      if (!indexByTitle.has(normAr)) indexByTitle.set(normAr, []);
+      indexByTitle.get(normAr).push(sp);
+    }
+    if (normEn && normEn !== normAr) {
+      if (!indexByTitle.has(normEn)) indexByTitle.set(normEn, []);
+      indexByTitle.get(normEn).push(sp);
+    }
+  }
+
+  // 3. Query candidate Back4App products with legacy/broken media
+  const CatalogProduct = Parse.Object.extend("CatalogProduct");
+  const pQuery = new Parse.Query(CatalogProduct);
+  pQuery.doesNotExist("deleted_at");
+  pQuery.limit(1000);
+  const products = await pQuery.find({ useMasterKey: true });
+
+  const verificationItems = [];
+  let matchedCount = 0;
+  let ambiguousCount = 0;
+  let unmatchedCount = 0;
+  let repairedCount = 0;
+
+  for (const product of products) {
+    if (sampleLimit > 0 && repairedCount >= sampleLimit) break;
+
+    const pId = product.get("productId") || product.id;
+    const title = (product.get("title") || "").trim();
+    const barcode = (product.get("barcode") || "").trim();
+    const retailerId = (product.get("retailerId") || "").trim();
+    const currentImg = (product.get("imageLink") || "").trim();
+    const isWhatsappCdn = currentImg.includes("cdn.whatsapp.net");
+
+    if (!isWhatsappCdn && !currentImg.includes("broken_legacy")) continue;
+
+    // Match Back4App product with Indexes Store
+    let matchedSupa = null;
+    let matchType = "UNMATCHED";
+
+    if (barcode && indexByBarcode.has(barcode)) {
+      matchedSupa = indexByBarcode.get(barcode);
+      matchType = "BARCODE";
+    } else if (retailerId && indexByExtId.has(retailerId)) {
+      matchedSupa = indexByExtId.get(retailerId);
+      matchType = "EXTERNAL_ID";
+    } else {
+      const normTitle = normalizeTitleStr(title);
+      if (normTitle && indexByTitle.has(normTitle)) {
+        const candidates = indexByTitle.get(normTitle);
+        if (candidates.length === 1) {
+          matchedSupa = candidates[0];
+          matchType = "EXACT_TITLE";
+        } else {
+          // Disambiguate by price
+          const pPrice = Number(product.get("price")) || 0;
+          const priceMatched = candidates.filter((c) => Math.abs(Number(c.price || 0) - pPrice) < 1.0);
+          if (priceMatched.length === 1) {
+            matchedSupa = priceMatched[0];
+            matchType = "TITLE_AND_PRICE";
+          } else {
+            ambiguousCount++;
+            continue;
+          }
+        }
+      }
+    }
+
+    if (!matchedSupa) {
+      unmatchedCount++;
+      continue;
+    }
+
+    matchedCount++;
+    const supaImages = Array.isArray(matchedSupa.images) ? matchedSupa.images : [];
+    const sourceMediaUrl = supaImages.length > 0 ? supaImages[0] : null;
+
+    if (!sourceMediaUrl || !sourceMediaUrl.startsWith("http")) {
+      unmatchedCount++;
+      continue;
+    }
+
+    let oldHost = "unknown";
+    try { oldHost = new URL(currentImg).hostname; } catch (_) {}
+    let sourceHost = "unknown";
+    try { sourceHost = new URL(sourceMediaUrl).hostname; } catch (_) {}
+
+    // Download from Supabase and upload permanently to Back4App Parse Files
+    const downloadRes = await httpsGetBuffer(sourceMediaUrl);
+    if (!downloadRes.success || !downloadRes.buffer) {
+      verificationItems.push({
+        productTitle: title,
+        productId: pId,
+        oldSmartContentCreatorHost: oldHost,
+        matchedIndexesStoreMediaHost: sourceHost,
+        httpStatusOfSourceMedia: downloadRes.status,
+        newBack4AppMediaHost: "FAILED_DOWNLOAD",
+        result: "FAILED_DOWNLOAD",
+      });
+      continue;
+    }
+
+    let newParseFileUrl = sourceMediaUrl;
+    if (!dryRun) {
+      const fileName = `repaired_${pId}_${Date.now()}.jpg`;
+      const parseFile = new Parse.File(fileName, { base64: downloadRes.buffer.toString("base64") }, downloadRes.mimeType);
+      await parseFile.save({ useMasterKey: true });
+      newParseFileUrl = parseFile.url();
+
+      // Update existing CatalogProduct media ONLY (preserve all other fields)
+      product.set("imageLink", newParseFileUrl);
+      if (product.get("status") === "broken_legacy") {
+        product.set("status", "active");
+      }
+      await product.save(null, { useMasterKey: true });
+
+      // Update CatalogProductMedia
+      const CatalogProductMedia = Parse.Object.extend("CatalogProductMedia");
+      const mQuery = new Parse.Query(CatalogProductMedia);
+      mQuery.equalTo("productId", pId);
+      mQuery.equalTo("isPrimary", true);
+      const pmRecord = await mQuery.first({ useMasterKey: true });
+      if (pmRecord) {
+        pmRecord.set("url", newParseFileUrl);
+        pmRecord.set("status", "active");
+        pmRecord.set("storageProvider", "back4app");
+        await pmRecord.save(null, { useMasterKey: true });
+      }
+    }
+
+    let newHost = "unknown";
+    try { newHost = new URL(newParseFileUrl).hostname; } catch (_) {}
+
+    repairedCount++;
+    verificationItems.push({
+      productTitle: title,
+      productId: pId,
+      oldSmartContentCreatorHost: oldHost,
+      matchedIndexesStoreMediaHost: sourceHost,
+      httpStatusOfSourceMedia: downloadRes.status,
+      newBack4AppMediaHost: newHost,
+      result: "SUCCESS",
+    });
+  }
+
+  return {
+    success: true,
+    dryRun,
+    sampleLimit,
+    summary: {
+      matchedCount,
+      ambiguousCount,
+      unmatchedCount,
+      repairedCount,
+    },
+    verificationItems,
+  };
+});
+
 // ⚡ catalogPullChanges: Delta synchronization with opaque server cursor
 Parse.Cloud.define("catalogPullChanges", async (request) => {
   const params = request.params || {};
