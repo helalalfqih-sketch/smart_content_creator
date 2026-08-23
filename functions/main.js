@@ -1758,6 +1758,224 @@ Parse.Cloud.define("catalogCategoryUpsert", async (request) => {
   return { success: true, category: { id: cat.id, ...cat.toJSON() } };
 });
 
+// 🔄 catalogRecoverLegacyWhatsappMedia: Audit and recover expired WhatsApp CDN media to Back4App Parse Files
+Parse.Cloud.define("catalogRecoverLegacyWhatsappMedia", async (request) => {
+  const auth = await extractAuthUser(request);
+  if (!auth || !auth.admin) throw new Parse.Error(403, "Admin authorization required");
+
+  const params = request.params || {};
+  const dryRun = params.dryRun !== false; // Default is true for safety
+  const maxLimit = Number(params.limit) || 1000;
+
+  const isWhatsappCdnUrl = (url) => {
+    if (!url || typeof url !== "string") return false;
+    const clean = url.trim().toLowerCase();
+    return clean.includes("cdn.whatsapp.net") || clean.includes("pps.whatsapp.net");
+  };
+
+  const isBack4AppPermanentUrl = (url) => {
+    if (!url || typeof url !== "string") return false;
+    return url.trim().includes("parsefiles.back4app.com");
+  };
+
+  // 1. Audit CatalogProduct records
+  const CatalogProduct = Parse.Object.extend("CatalogProduct");
+  const pQuery = new Parse.Query(CatalogProduct);
+  pQuery.limit(maxLimit);
+  const products = await pQuery.find({ useMasterKey: true });
+
+  const totalProducts = products.length;
+  let affectedProducts = 0;
+  let expiredPrimaryImages = 0;
+  let expiredAdditionalImages = 0;
+  let expiredVideos = 0;
+  let alreadyPermanent = 0;
+  let recoverableMedia = 0;
+  let unrecoverableMedia = 0;
+
+  const sample = [];
+
+  for (const product of products) {
+    const pId = product.get("productId") || product.id;
+    const imgLink = (product.get("imageLink") || "").trim();
+    const additionalLinks = product.get("additionalImageLinks") || [];
+    const vidUrl = (product.get("videoUrl") || "").trim();
+
+    let productHasExpiredMedia = false;
+    let primaryExpired = false;
+    const additionalExpiredIndices = [];
+    let videoExpired = false;
+
+    if (isWhatsappCdnUrl(imgLink)) {
+      productHasExpiredMedia = true;
+      primaryExpired = true;
+      expiredPrimaryImages++;
+    } else if (isBack4AppPermanentUrl(imgLink)) {
+      alreadyPermanent++;
+    }
+
+    additionalLinks.forEach((link, idx) => {
+      if (isWhatsappCdnUrl(link)) {
+        productHasExpiredMedia = true;
+        additionalExpiredIndices.push(idx);
+        expiredAdditionalImages++;
+      } else if (isBack4AppPermanentUrl(link)) {
+        alreadyPermanent++;
+      }
+    });
+
+    if (isWhatsappCdnUrl(vidUrl)) {
+      productHasExpiredMedia = true;
+      videoExpired = true;
+      expiredVideos++;
+    } else if (isBack4AppPermanentUrl(vidUrl)) {
+      alreadyPermanent++;
+    }
+
+    if (productHasExpiredMedia) {
+      affectedProducts++;
+      if (sample.length < 20) {
+        sample.push({
+          productId: pId,
+          title: (product.get("title") || "").slice(0, 40),
+          hasPrimaryExpired: primaryExpired,
+          expiredAdditionalCount: additionalExpiredIndices.length,
+          hasVideoExpired: videoExpired,
+        });
+      }
+
+      if (!dryRun) {
+        let updated = false;
+
+        // 1. Try recovering primary image
+        if (primaryExpired && imgLink) {
+          try {
+            const resp = await axios.get(imgLink, { responseType: "arraybuffer", timeout: 7000 });
+            if (resp.status === 200 && resp.data && resp.data.length > 0) {
+              const fileName = `recovered_p_${pId}_${Date.now()}.jpg`;
+              const mimeType = resp.headers["content-type"] || "image/jpeg";
+              const parseFile = new Parse.File(fileName, { base64: Buffer.from(resp.data).toString("base64") }, mimeType);
+              await parseFile.save({ useMasterKey: true });
+              product.set("imageLink", parseFile.url());
+              recoverableMedia++;
+              updated = true;
+              console.log(`[LEGACY_MEDIA_RECOVERY] productId=${pId} type=image status=recovered`);
+            } else {
+              unrecoverableMedia++;
+              console.log(`[LEGACY_MEDIA_RECOVERY] productId=${pId} type=image status=unrecoverable`);
+            }
+          } catch (e) {
+            unrecoverableMedia++;
+            console.log(`[LEGACY_MEDIA_RECOVERY] productId=${pId} type=image status=unrecoverable`);
+          }
+        }
+
+        // 2. Try recovering additional images
+        if (additionalExpiredIndices.length > 0) {
+          const newAdditional = [...additionalLinks];
+          for (const idx of additionalExpiredIndices) {
+            const url = newAdditional[idx];
+            try {
+              const resp = await axios.get(url, { responseType: "arraybuffer", timeout: 7000 });
+              if (resp.status === 200 && resp.data && resp.data.length > 0) {
+                const fileName = `recovered_add_${pId}_${idx}_${Date.now()}.jpg`;
+                const mimeType = resp.headers["content-type"] || "image/jpeg";
+                const parseFile = new Parse.File(fileName, { base64: Buffer.from(resp.data).toString("base64") }, mimeType);
+                await parseFile.save({ useMasterKey: true });
+                newAdditional[idx] = parseFile.url();
+                recoverableMedia++;
+                updated = true;
+                console.log(`[LEGACY_MEDIA_RECOVERY] productId=${pId} type=additional_image status=recovered`);
+              } else {
+                unrecoverableMedia++;
+                console.log(`[LEGACY_MEDIA_RECOVERY] productId=${pId} type=additional_image status=unrecoverable`);
+              }
+            } catch (e) {
+              unrecoverableMedia++;
+              console.log(`[LEGACY_MEDIA_RECOVERY] productId=${pId} type=additional_image status=unrecoverable`);
+            }
+          }
+          if (updated) {
+            product.set("additionalImageLinks", newAdditional);
+          }
+        }
+
+        // 3. Try recovering video
+        if (videoExpired && vidUrl) {
+          try {
+            const resp = await axios.get(vidUrl, { responseType: "arraybuffer", timeout: 12000 });
+            if (resp.status === 200 && resp.data && resp.data.length > 0) {
+              const fileName = `recovered_vid_${pId}_${Date.now()}.mp4`;
+              const mimeType = resp.headers["content-type"] || "video/mp4";
+              const parseFile = new Parse.File(fileName, { base64: Buffer.from(resp.data).toString("base64") }, mimeType);
+              await parseFile.save({ useMasterKey: true });
+              product.set("videoUrl", parseFile.url());
+              recoverableMedia++;
+              updated = true;
+              console.log(`[LEGACY_MEDIA_RECOVERY] productId=${pId} type=video status=recovered`);
+            } else {
+              unrecoverableMedia++;
+              console.log(`[LEGACY_MEDIA_RECOVERY] productId=${pId} type=video status=unrecoverable`);
+            }
+          } catch (e) {
+            unrecoverableMedia++;
+            console.log(`[LEGACY_MEDIA_RECOVERY] productId=${pId} type=video status=unrecoverable`);
+          }
+        }
+
+        if (updated) {
+          const nextVersion = (product.get("syncVersion") || 1) + 1;
+          product.set("syncVersion", nextVersion);
+          await product.save(null, { useMasterKey: true });
+        }
+      }
+    }
+  }
+
+  // 2. Audit and update CatalogProductMedia records
+  const CatalogProductMedia = Parse.Object.extend("CatalogProductMedia");
+  const mQuery = new Parse.Query(CatalogProductMedia);
+  mQuery.limit(maxLimit);
+  const mediaRecords = await mQuery.find({ useMasterKey: true });
+
+  for (const m of mediaRecords) {
+    const url = (m.get("url") || "").trim();
+    if (isWhatsappCdnUrl(url)) {
+      if (!dryRun) {
+        if (m.get("status") !== "broken_legacy") {
+          m.set("status", "broken_legacy");
+          m.set("metadata", {
+            ...(m.get("metadata") || {}),
+            legacyHost: "cdn.whatsapp.net",
+            httpStatus: 403,
+            recoveryStatus: "unavailable"
+          });
+          await m.save(null, { useMasterKey: true });
+        }
+      }
+    }
+  }
+
+  const totalExpiredMedia = expiredPrimaryImages + expiredAdditionalImages + expiredVideos;
+
+  return {
+    success: true,
+    dryRun,
+    report: {
+      TOTAL_PRODUCTS: totalProducts,
+      AFFECTED_PRODUCTS: affectedProducts,
+      EXPIRED_PRIMARY_IMAGES: expiredPrimaryImages,
+      EXPIRED_ADDITIONAL_IMAGES: expiredAdditionalImages,
+      EXPIRED_VIDEOS: expiredVideos,
+      TOTAL_EXPIRED_MEDIA: totalExpiredMedia,
+      ALREADY_PERMANENT: alreadyPermanent,
+      RECOVERABLE_MEDIA: recoverableMedia,
+      UNRECOVERABLE_MEDIA: dryRun ? totalExpiredMedia : unrecoverableMedia,
+    },
+    sample,
+  };
+});
+
 // ⚡ catalogPullChanges: Delta synchronization with opaque server cursor
 Parse.Cloud.define("catalogPullChanges", async (request) => {
   const params = request.params || {};

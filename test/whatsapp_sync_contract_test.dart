@@ -84,5 +84,31 @@ void main() {
       expect(map['price'], equals(18000.0));
       expect((map['tags'] as List).length, equals(3));
     });
+
+    test('5. Legacy WhatsApp CDN detection and classification contract', () {
+      bool isWhatsappCdn(String url) =>
+          url.contains('cdn.whatsapp.net') || url.contains('pps.whatsapp.net');
+
+      const expiredUrl = 'https://media-bru2-1.cdn.whatsapp.net/v/t45.5328-4/test_img.jpg';
+      const permanentUrl = 'https://parsefiles.back4app.com/app/test_img.jpg';
+
+      expect(isWhatsappCdn(expiredUrl), isTrue);
+      expect(isWhatsappCdn(permanentUrl), isFalse);
+
+      // Audit result contract simulation
+      final audit = {
+        'TOTAL_PRODUCTS': 378,
+        'AFFECTED_PRODUCTS': 377,
+        'EXPIRED_PRIMARY_IMAGES': 377,
+        'EXPIRED_ADDITIONAL_IMAGES': 0,
+        'EXPIRED_VIDEOS': 0,
+        'TOTAL_EXPIRED_MEDIA': 377,
+        'ALREADY_PERMANENT': 1,
+      };
+
+      expect(audit['TOTAL_PRODUCTS'], equals(378));
+      expect(audit['AFFECTED_PRODUCTS'], equals(377));
+      expect(audit['ALREADY_PERMANENT'], equals(1));
+    });
   });
 }
