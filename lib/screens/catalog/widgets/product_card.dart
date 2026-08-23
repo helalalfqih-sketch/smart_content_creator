@@ -292,11 +292,45 @@ class ProductCard extends StatelessWidget {
   }
 
   Widget _placeholder() {
+    IconData catIcon = Icons.inventory_2_outlined;
+    final cat = (product.categoryName ?? '').toLowerCase();
+    if (cat.contains('ملابس') || cat.contains('fashion') || cat.contains('clothing')) {
+      catIcon = Icons.checkroom_outlined;
+    } else if (cat.contains('عناية') || cat.contains('جمال') || cat.contains('beauty') || cat.contains('صحة')) {
+      catIcon = Icons.spa_outlined;
+    } else if (cat.contains('إلكترون') || cat.contains('tech') || cat.contains('هاتف') || cat.contains('phone')) {
+      catIcon = Icons.devices_outlined;
+    } else if (cat.contains('ساعات') || cat.contains('watch')) {
+      catIcon = Icons.watch_outlined;
+    } else if (cat.contains('حقائب') || cat.contains('bag')) {
+      catIcon = Icons.shopping_bag_outlined;
+    }
+
     return Container(
-      color: const Color(0xFF1A1A2E),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF1E1E38), Color(0xFF101020)],
+        ),
+      ),
       child: Center(
-        child: Icon(Icons.shopping_bag_outlined,
-            color: Colors.white.withValues(alpha: 0.15), size: 36),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(catIcon, color: Colors.white.withValues(alpha: 0.35), size: 36),
+            const SizedBox(height: 6),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                product.resolvedCategoryName.isNotEmpty ? product.resolvedCategoryName : 'منتج',
+                style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.4), fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
