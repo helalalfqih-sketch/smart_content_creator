@@ -737,8 +737,24 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               ),
                             ),
-                            errorWidget: const Center(
-                              child: Icon(Icons.broken_image, color: Colors.white30),
+                            errorWidget: Container(
+                              color: const Color(0xFF1B1B2F),
+                              child: const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.image_not_supported_outlined, color: Colors.amber, size: 22),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    'رابط منتهي\nاستبدلها',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.amber,
+                                      fontSize: 8,
+                                      fontFamily: 'IBMPlexSansArabic',
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
