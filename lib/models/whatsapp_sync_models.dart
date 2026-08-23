@@ -1,5 +1,6 @@
 /// 📱 WhatsApp Sync Data Models
 /// نماذج بيانات تكامل ومزامنة وسائط الواتساب
+library;
 
 class WhatsAppWabaAccount {
   final String name;

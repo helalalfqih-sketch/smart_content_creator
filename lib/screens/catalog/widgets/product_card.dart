@@ -353,7 +353,7 @@ class ProductCard extends StatelessWidget {
                   ? Get.find<WhatsAppSyncService>()
                   : Get.put(WhatsAppSyncService());
               final ok = await service.sendProductToWhatsApp(
-                productId: product.productId.isNotEmpty ? product.productId : (product.id ?? ''),
+                productId: product.id ?? '',
                 destinationPhone: phone,
               );
               if (ok) {

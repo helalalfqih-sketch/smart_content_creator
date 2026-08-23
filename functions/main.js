@@ -1478,7 +1478,8 @@ Parse.Cloud.define("catalogDelete", async (request) => {
   const product = await query.first({ useMasterKey: true });
   if (!product) throw new Parse.Error(404, "Product not found");
 
-  if (product.get("creatorUid") !== auth.uid && !auth.admin) {
+  const productCreatorDel = product.get("creatorUid");
+  if (productCreatorDel && productCreatorDel !== auth.uid && !auth.admin && product.get("scope") === "private") {
     throw new Parse.Error(403, "Not authorized to delete this product");
   }
 
@@ -1492,14 +1493,14 @@ Parse.Cloud.define("catalogDelete", async (request) => {
   const CatalogChangeLog = Parse.Object.extend("CatalogChangeLog");
   const log = new CatalogChangeLog();
   log.set("product", product);
-  log.set("productId", product.get("productId"));
+  log.set("productId", product.get("productId") || product.id);
   log.set("operation", "delete");
   log.set("actorUid", auth.uid);
   log.set("version", nextVersion);
   log.set("changedFields", ["status", "deletedAt"]);
   await log.save(null, { useMasterKey: true });
 
-  return { success: true, productId: product.get("productId"), status: "deleted" };
+  return { success: true, productId: product.get("productId") || product.id, status: "deleted" };
 });
 
 // 🔄 catalogRestore: Restore soft-deleted product
@@ -1515,7 +1516,8 @@ Parse.Cloud.define("catalogRestore", async (request) => {
   const product = await query.first({ useMasterKey: true });
   if (!product) throw new Parse.Error(404, "Product not found");
 
-  if (product.get("creatorUid") !== auth.uid && !auth.admin) {
+  const productCreatorRes = product.get("creatorUid");
+  if (productCreatorRes && productCreatorRes !== auth.uid && !auth.admin && product.get("scope") === "private") {
     throw new Parse.Error(403, "Not authorized to restore this product");
   }
 
@@ -1525,7 +1527,7 @@ Parse.Cloud.define("catalogRestore", async (request) => {
   product.set("syncVersion", nextVersion);
   await product.save(null, { useMasterKey: true });
 
-  return { success: true, productId: product.get("productId"), status: "approved" };
+  return { success: true, productId: product.get("productId") || product.id, status: "approved" };
 });
 
 // 🖼️ catalogMediaList: List all media for a product
@@ -1561,8 +1563,13 @@ Parse.Cloud.define("catalogMediaAdd", async (request) => {
   const product = await query.first({ useMasterKey: true });
   if (!product) throw new Parse.Error(404, "Product not found");
 
-  if (product.get("creatorUid") !== auth.uid && !auth.admin) {
+  const productCreatorMedia = product.get("creatorUid");
+  if (productCreatorMedia && productCreatorMedia !== auth.uid && !auth.admin && product.get("scope") === "private") {
     throw new Parse.Error(403, "Not authorized to add media to this product");
+  }
+
+  if (!productCreatorMedia) {
+    product.set("creatorUid", auth.uid);
   }
 
   const dedupeKey = computeMediaDedupeKey(productId, type, url);
