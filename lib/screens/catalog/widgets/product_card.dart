@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'catalog_product_image.dart';
 import '../../../models/catalog_product_model.dart';
 import '../../../controllers/auth_controller.dart';
+import '../../../services/whatsapp_sync_service.dart';
 
 /// 📇 كارت عرض المنتج في شبكة الكتالوج
 class ProductCard extends StatelessWidget {
@@ -167,6 +168,17 @@ class ProductCard extends StatelessWidget {
 
                         return [
                           PopupMenuItem(
+                            value: 'whatsapp',
+                            child: Row(children: [
+                              const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF25D366), size: 16),
+                              const SizedBox(width: 8),
+                              const Text('إرسال عبر واتساب',
+                                  style: TextStyle(
+                                      color: Colors.white,
+                                      fontFamily: 'IBMPlexSansArabic')),
+                            ]),
+                          ),
+                          PopupMenuItem(
                             value: 'share',
                             child: Row(children: [
                               const Icon(Icons.share_rounded, color: Colors.purpleAccent, size: 16),
@@ -215,7 +227,9 @@ class ProductCard extends StatelessWidget {
                         ];
                       },
                       onSelected: (v) {
-                        if (v == 'edit') {
+                        if (v == 'whatsapp') {
+                          _showSendWhatsAppDialog(context);
+                        } else if (v == 'edit') {
                           onEdit();
                         } else if (v == 'delete') {
                           onDelete();
@@ -283,6 +297,81 @@ class ProductCard extends StatelessWidget {
       child: Center(
         child: Icon(Icons.shopping_bag_outlined,
             color: Colors.white.withValues(alpha: 0.15), size: 36),
+      ),
+    );
+  }
+
+  void _showSendWhatsAppDialog(BuildContext context) {
+    final phoneCtrl = TextEditingController();
+    Get.dialog(
+      AlertDialog(
+        backgroundColor: const Color(0xFF141426),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.chat_bubble_outline, color: Color(0xFF25D366), size: 22),
+            const SizedBox(width: 8),
+            Text('إرسال "${product.title}" عبر واتساب',
+                style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('أدخل رقم هاتف المستلم (مع مفتاح الدولة):',
+                style: TextStyle(fontSize: 12, color: Colors.white70)),
+            const SizedBox(height: 8),
+            TextField(
+              controller: phoneCtrl,
+              autofocus: true,
+              keyboardType: TextInputType.phone,
+              style: const TextStyle(fontSize: 13, color: Colors.white),
+              decoration: InputDecoration(
+                hintText: '+9677XXXXXXXX',
+                hintStyle: const TextStyle(fontSize: 12, color: Colors.white30),
+                filled: true,
+                fillColor: const Color(0xFF0A0A16),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Get.back(),
+            child: const Text('إلغاء', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final phone = phoneCtrl.text.trim();
+              if (phone.isEmpty) return;
+              Get.back();
+              Get.snackbar('⏳ جاري الإرسال', 'جاري إرسال المنتج عبر WhatsApp Cloud API...',
+                  backgroundColor: const Color(0xFF1A1A2E), colorText: Colors.white);
+              final service = Get.isRegistered<WhatsAppSyncService>()
+                  ? Get.find<WhatsAppSyncService>()
+                  : Get.put(WhatsAppSyncService());
+              final ok = await service.sendProductToWhatsApp(
+                productId: product.productId.isNotEmpty ? product.productId : (product.id ?? ''),
+                destinationPhone: phone,
+              );
+              if (ok) {
+                Get.snackbar('✅ تم الإرسال', 'تم إرسال بطاقة المنتج بنجاح إلى $phone ✨',
+                    backgroundColor: const Color(0xFF1A3A1A), colorText: const Color(0xFF4CAF50));
+              } else {
+                Get.snackbar('❌ خطأ', 'فشل إرسال المنتج عبر الواتساب',
+                    backgroundColor: const Color(0xFF3A1A1A), colorText: const Color(0xFFE57373));
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF25D366),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('إرسال الآن', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }

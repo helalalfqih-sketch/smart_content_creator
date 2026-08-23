@@ -13,6 +13,7 @@ import '../../core/storage/app_storage_service.dart';
 import 'widgets/product_card.dart';
 import 'widgets/catalog_product_image.dart';
 import 'product_form_screen.dart';
+import 'whatsapp/whatsapp_media_sync_screen.dart';
 import '../../services/facebook_page_service.dart';
 import '../../controllers/settings_controller.dart';
 
@@ -70,6 +71,11 @@ class ProductCatalogScreen extends StatelessWidget {
         ),
       ),
       actions: [
+        IconButton(
+          icon: const Icon(Icons.chat_bubble_outline, color: Color(0xFF25D366)),
+          tooltip: 'WhatsApp Media Sync',
+          onPressed: () => Get.to(() => const WhatsAppMediaSyncScreen()),
+        ),
         Obx(() => ctrl.isSyncing.value
             ? const Padding(
                 padding: EdgeInsets.all(16),

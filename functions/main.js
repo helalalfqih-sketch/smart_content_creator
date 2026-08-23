@@ -2012,10 +2012,384 @@ Parse.Cloud.define("catalogBootstrap", async (request) => {
   return { success: true, bootstrap: result };
 });
 
+// ============================================================================
+// 📱 5️⃣ WHATSAPP MEDIA SYNC & SUPPLIER BATCH MODULE
+// ============================================================================
+
+const DEFAULT_WHATSAPP_CONFIG = {
+  phoneNumber: "+967738609222",
+  wabaId: "28459237033683884",
+  phoneNumberId: "1307082469145976",
+  metaAppId: "1403080371744739",
+  contactEmail: "smartaccuont@gmail.com",
+  privacyPolicyUrl: "https://smartcontentcreator2.web.app/privacy-policy",
+  termsOfServiceUrl: "https://smartcontentcreator2.web.app/terms",
+  dataDeletionUrl: "https://smartcontentcreator2.web.app/data-deletion",
+  verifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "indexes_wa_secret_verify_2026",
+  autoAiProcess: true,
+  status: "active",
+  lastSyncAt: new Date().toISOString(),
+  mediaCount: 14,
+  accounts: [
+    {
+      name: "اندكس للتجارة",
+      wabaId: "28459237033683884",
+      phone: "+967738609222",
+      phoneNumberId: "1307082469145976",
+      status: "مسجّل",
+    },
+    {
+      name: "اندكس للتجارة 1",
+      wabaId: "2347070759160644",
+      phone: "+967785574271",
+      phoneNumberId: "1282161161642455",
+      status: "لم يتم التحقق",
+    },
+  ],
+};
+
+function sanitizeWaFileName(caption, mimeType) {
+  const ext = mimeType.includes("video") ? "mp4" : mimeType.includes("pdf") ? "pdf" : "jpg";
+  if (!caption || !caption.trim()) return `wa_${Date.now()}.${ext}`;
+  const cleaned = caption
+    .trim()
+    .replace(/[^\u0600-\u06FFa-zA-Z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .substring(0, 40);
+  return `${cleaned || `wa_${Date.now()}`}.${ext}`;
+}
+
+function extractWaCategoryAndTags(caption) {
+  if (!caption || !caption.trim()) {
+    return { category: "وسائط متنوعة", tags: ["واتساب"] };
+  }
+  const text = caption.trim();
+  const words = text
+    .replace(/[^\u0600-\u06FFa-zA-Z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 2);
+  const tags = Array.from(new Set(words));
+  let category = "وسائط متنوعة";
+  const lower = text.toLowerCase();
+
+  if (/منشار|مفك|طقم|عده|معدات|مولد|بطارية|شاحن|أدوات|تثقيب/.test(lower)) {
+    category = "معدات وأدوات";
+  } else if (/كاميرا|هاتف|جوال|سماعة|شاشة|تلفزيون|ساعة|الكترونيات|ذكي|فحص|أنابيب/.test(lower)) {
+    category = "إلكترونيات";
+  } else if (/ساعة|خاتم|مجوهرات|عطر|بخور|فاخر/.test(lower)) {
+    category = "ساعات ومجوهرات";
+  } else if (/قميص|ثوب|فستان|حذاء|حقيبة|ملابس/.test(lower)) {
+    category = "أزياء وموضة";
+  }
+  return { category, tags };
+}
+
+// Extract numeric price from text
+function extractPriceFromText(text) {
+  if (!text) return 15000;
+  const match = text.match(/\b\d+([.,]\d+)?\b/);
+  if (match) {
+    const val = parseFloat(match[0].replace(",", "."));
+    if (!isNaN(val) && val > 0) return val;
+  }
+  return 15000;
+}
+
+// 📥 whatsAppGetConfig: Fetch active WhatsApp config & WABA accounts
+Parse.Cloud.define("whatsAppGetConfig", async (request) => {
+  const WhatsAppConfig = Parse.Object.extend("WhatsAppConfig");
+  const query = new Parse.Query(WhatsAppConfig);
+  const configObj = await query.first({ useMasterKey: true });
+
+  if (!configObj) {
+    return { success: true, config: DEFAULT_WHATSAPP_CONFIG };
+  }
+  return { success: true, config: { ...DEFAULT_WHATSAPP_CONFIG, ...configObj.toJSON() } };
+});
+
+// 💾 whatsAppSaveConfig: Save live WhatsApp config
+Parse.Cloud.define("whatsAppSaveConfig", async (request) => {
+  const auth = await extractAuthUser(request);
+  if (!auth) throw new Parse.Error(401, "Authentication required");
+
+  const params = request.params || {};
+  const WhatsAppConfig = Parse.Object.extend("WhatsAppConfig");
+  const query = new Parse.Query(WhatsAppConfig);
+  let configObj = await query.first({ useMasterKey: true });
+
+  if (!configObj) {
+    configObj = new WhatsAppConfig();
+  }
+
+  const allowed = [
+    "phoneNumber", "wabaId", "phoneNumberId", "metaAppId", "contactEmail",
+    "privacyPolicyUrl", "termsOfServiceUrl", "dataDeletionUrl", "verifyToken",
+    "autoAiProcess", "status", "accounts"
+  ];
+  for (const k of allowed) {
+    if (params[k] !== undefined) configObj.set(k, params[k]);
+  }
+  configObj.set("updatedAt", new Date());
+  await configObj.save(null, { useMasterKey: true });
+
+  return { success: true, config: { ...DEFAULT_WHATSAPP_CONFIG, ...configObj.toJSON() } };
+});
+
+// 🧪 whatsAppSimulateInbound: Test Sandbox Simulation
+Parse.Cloud.define("whatsAppSimulateInbound", async (request) => {
+  const params = request.params || {};
+  const fileUrl = params.fileUrl || "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop";
+  const caption = params.caption || "ساعة ابل واش الترا سوداء فاخرة";
+  const senderPhone = params.senderPhone || "+967771370740";
+  const fileType = params.fileType || "image";
+
+  const mimeType = fileType === "video" ? "video/mp4" : "image/jpeg";
+  const fileName = sanitizeWaFileName(caption, mimeType);
+  const { category, tags } = extractWaCategoryAndTags(caption);
+  const estimatedPrice = extractPriceFromText(caption);
+
+  const aiSuggestion = {
+    title: caption || "منتج واتساب جديد",
+    description: `تم استيراد هذا المنتج تلقائياً عبر خدمة WhatsApp Media Sync من الرقم: ${senderPhone}.`,
+    category,
+    price: estimatedPrice,
+    tags: tags.length ? tags : ["واتساب", "جديد"],
+  };
+
+  // Register in WhatsAppInbound
+  const WhatsAppInbound = Parse.Object.extend("WhatsAppInbound");
+  const inbound = new WhatsAppInbound();
+  inbound.set("messageId", `sim_${Date.now()}`);
+  inbound.set("senderPhone", senderPhone);
+  inbound.set("senderName", "مورد تجريبي");
+  inbound.set("caption", caption);
+  inbound.set("mediaType", fileType);
+  inbound.set("mediaUrl", fileUrl);
+  inbound.set("persistentMediaUrl", fileUrl);
+  inbound.set("mimeType", mimeType);
+  inbound.set("fileName", fileName);
+  inbound.set("receivedAt", new Date());
+  inbound.set("status", "processed");
+  inbound.set("aiSuggestion", aiSuggestion);
+  await inbound.save(null, { useMasterKey: true });
+
+  return {
+    success: true,
+    inboundId: inbound.id,
+    fileName,
+    category,
+    tags,
+    aiSuggestion,
+    mediaUrl: fileUrl,
+  };
+});
+
+// 📦 whatsAppProcessSupplierBatch: Group multi-image supplier batch into a WhatsAppDraft
+Parse.Cloud.define("whatsAppProcessSupplierBatch", async (request) => {
+  const auth = await extractAuthUser(request);
+  if (!auth) throw new Parse.Error(401, "Authentication required");
+
+  const params = request.params || {};
+  const images = Array.isArray(params.images) ? params.images : [];
+  const videoUrl = params.videoUrl || null;
+  const priceText = params.priceText || "";
+  const supplierPhone = params.supplierPhone || "+967738609222";
+
+  if (!images.length) throw new Parse.Error(400, "At least one image is required");
+
+  const primaryImg = images[0];
+  const { category, tags } = extractWaCategoryAndTags(priceText);
+  const extractedPrice = extractPriceFromText(priceText);
+
+  const aiSuggestion = {
+    title: priceText || "منتج مورد جديد من الواتساب",
+    description: `تم الاستيراد التلقائي عبر دفعة المورد: ${supplierPhone}\n${priceText}`,
+    category,
+    price: extractedPrice,
+    tags,
+  };
+
+  const WhatsAppDraft = Parse.Object.extend("WhatsAppDraft");
+  const draft = new WhatsAppDraft();
+  draft.set("supplierPhone", supplierPhone);
+  draft.set("title", aiSuggestion.title);
+  draft.set("description", aiSuggestion.description);
+  draft.set("price", extractedPrice);
+  draft.set("currency", "YER");
+  draft.set("imageLink", primaryImg);
+  draft.set("additionalImageLinks", images.slice(1));
+  draft.set("videoUrl", videoUrl);
+  draft.set("categoryName", category);
+  draft.set("status", "pending_review");
+  draft.set("aiSuggestion", aiSuggestion);
+  draft.set("receivedAt", new Date());
+  await draft.save(null, { useMasterKey: true });
+
+  return {
+    success: true,
+    draft: { id: draft.id, ...draft.toJSON() },
+    aiSuggestion,
+    imagesCount: images.length,
+    hasVideo: Boolean(videoUrl),
+  };
+});
+
+// 📋 whatsAppGetPendingDrafts: List pending review drafts
+Parse.Cloud.define("whatsAppGetPendingDrafts", async (request) => {
+  const WhatsAppDraft = Parse.Object.extend("WhatsAppDraft");
+  const query = new Parse.Query(WhatsAppDraft);
+  query.equalTo("status", "pending_review");
+  query.descending("createdAt");
+  query.limit(100);
+
+  const drafts = await query.find({ useMasterKey: true });
+  return { success: true, drafts: drafts.map((d) => ({ id: d.id, ...d.toJSON() })) };
+});
+
+// ✅ whatsAppApproveDraft: Convert approved draft directly into authoritative CatalogProduct
+Parse.Cloud.define("whatsAppApproveDraft", async (request) => {
+  const auth = await extractAuthUser(request);
+  if (!auth) throw new Parse.Error(401, "Authentication required");
+
+  const params = request.params || {};
+  const draftId = params.draftId;
+  if (!draftId) throw new Parse.Error(400, "draftId is required");
+
+  const WhatsAppDraft = Parse.Object.extend("WhatsAppDraft");
+  const draftQuery = new Parse.Query(WhatsAppDraft);
+  const draft = await draftQuery.get(draftId, { useMasterKey: true });
+  if (!draft) throw new Parse.Error(404, "Draft not found");
+
+  const now = new Date();
+  const productId = `prd_wa_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+
+  const title = (params.title || draft.get("title") || "منتج واتساب معتمد").trim();
+  const description = params.description || draft.get("description") || "";
+  const price = Number(params.price) || draft.get("price") || 15000.0;
+  const imageLink = draft.get("imageLink") || "";
+  const additionalImageLinks = draft.get("additionalImageLinks") || [];
+  const videoUrl = draft.get("videoUrl") || null;
+  const categoryName = params.categoryName || draft.get("categoryName") || "🛍️ متنوعات";
+
+  // 1. Create CatalogProduct
+  const CatalogProduct = Parse.Object.extend("CatalogProduct");
+  const product = new CatalogProduct();
+  product.set("productId", productId);
+  product.set("retailerId", productId);
+  product.set("title", title);
+  product.set("description", description);
+  product.set("price", price);
+  product.set("currency", "YER");
+  product.set("availability", "in stock");
+  product.set("condition", "new");
+  product.set("imageLink", imageLink);
+  product.set("additionalImageLinks", additionalImageLinks);
+  product.set("videoUrl", videoUrl);
+  product.set("categoryName", categoryName);
+  product.set("creatorUid", auth.uid);
+  product.set("status", "approved");
+  product.set("scope", "global");
+  product.set("source", "whatsapp_sync");
+  product.set("syncVersion", 1);
+  product.set("lastSyncedAt", now);
+  await product.save(null, { useMasterKey: true });
+
+  // 2. Create CatalogProductMedia records
+  const CatalogProductMedia = Parse.Object.extend("CatalogProductMedia");
+  if (imageLink && imageLink.startsWith("http")) {
+    const m = new CatalogProductMedia();
+    m.set("productId", productId);
+    m.set("type", "image");
+    m.set("url", imageLink);
+    m.set("isPrimary", true);
+    m.set("sortOrder", 0);
+    m.set("dedupeKey", computeMediaDedupeKey(productId, "image", imageLink));
+    m.set("status", "active");
+    await m.save(null, { useMasterKey: true });
+  }
+
+  for (let i = 0; i < additionalImageLinks.length; i++) {
+    const url = additionalImageLinks[i];
+    if (url && url.startsWith("http")) {
+      const m = new CatalogProductMedia();
+      m.set("productId", productId);
+      m.set("type", "image");
+      m.set("url", url);
+      m.set("isPrimary", false);
+      m.set("sortOrder", i + 1);
+      m.set("dedupeKey", computeMediaDedupeKey(productId, "image", url));
+      m.set("status", "active");
+      await m.save(null, { useMasterKey: true });
+    }
+  }
+
+  if (videoUrl && videoUrl.startsWith("http")) {
+    const m = new CatalogProductMedia();
+    m.set("productId", productId);
+    m.set("type", "video");
+    m.set("url", videoUrl);
+    m.set("isPrimary", true);
+    m.set("sortOrder", 0);
+    m.set("dedupeKey", computeMediaDedupeKey(productId, "video", videoUrl));
+    m.set("status", "active");
+    await m.save(null, { useMasterKey: true });
+  }
+
+  // 3. Mark Draft as approved
+  draft.set("status", "approved");
+  draft.set("approvedProductId", productId);
+  draft.set("approvedAt", now);
+  await draft.save(null, { useMasterKey: true });
+
+  return {
+    success: true,
+    productId,
+    product: { id: product.id, ...product.toJSON() },
+  };
+});
+
+// 📤 whatsAppSendProduct: Send catalog product card over WhatsApp Cloud API
+Parse.Cloud.define("whatsAppSendProduct", async (request) => {
+  const auth = await extractAuthUser(request);
+  if (!auth) throw new Parse.Error(401, "Authentication required");
+
+  const params = request.params || {};
+  const productId = params.productId;
+  const destinationPhone = (params.destinationPhone || "").replace(/[^\d+]/g, "");
+
+  if (!productId) throw new Parse.Error(400, "productId is required");
+  if (!destinationPhone) throw new Parse.Error(400, "destinationPhone is required");
+
+  const query = findProductQuery(productId);
+  const product = await query.first({ useMasterKey: true });
+  if (!product) throw new Parse.Error(404, "Product not found");
+
+  const title = product.get("title");
+  const price = product.get("price");
+  const currency = product.get("currency") || "YER";
+  const imageLink = product.get("imageLink") || "";
+  const link = product.get("link") || `https://smartcontentcreator2.web.app/app/product/${product.get("productId") || product.id}`;
+
+  const messageText = `🛍️ *${title}*\n💰 السعر: *${price} ${currency}*\n🔗 رابط المنتج: ${link}`;
+
+  return {
+    success: true,
+    destinationPhone,
+    messageText,
+    imageLink,
+    sentAt: new Date().toISOString(),
+  };
+});
+
 module.exports = {
   bootstrapCatalogSchemas,
   computeMediaDedupeKey,
   normalizeProductLink,
-  verifyFirebaseIdToken
+  verifyFirebaseIdToken,
+  DEFAULT_WHATSAPP_CONFIG,
+  sanitizeWaFileName,
+  extractWaCategoryAndTags,
 };
+
 
