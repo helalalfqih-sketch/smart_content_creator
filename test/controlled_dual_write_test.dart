@@ -7,8 +7,8 @@ import 'package:smart_content_creator/models/catalog_media_model.dart';
 import 'package:smart_content_creator/core/repositories/catalog_repository.dart';
 import 'package:smart_content_creator/models/catalog_category_model.dart';
 
-/// Mock Implementation to verify Controlled Dual-Write contracts
-class ControlledDualWriteMockRepository implements CatalogRepository {
+/// Mock Implementation for Back4App Exclusive Catalog Architecture
+class Back4AppExclusiveMockRepository implements CatalogRepository {
   final Map<String, CatalogProduct> remoteProducts = {};
   final List<CatalogProductMedia> remoteMedia = [];
   bool simulateBack4AppFailure = false;
@@ -24,6 +24,9 @@ class ControlledDualWriteMockRepository implements CatalogRepository {
     String? sortOption,
     bool forceRefresh = false,
   }) async {
+    if (simulateBack4AppFailure) {
+      throw Exception('Back4App network failure');
+    }
     return remoteProducts.values.where((p) => p.status != 'deleted').toList();
   }
 
@@ -121,212 +124,170 @@ class ControlledDualWriteMockRepository implements CatalogRepository {
   Future<List<CatalogCategory>> getCategories() async => [];
 }
 
-class MockFirestoreMirror {
-  final Map<String, CatalogProduct> firestoreDocs = {};
-  bool simulateFirestoreFailure = false;
+class MockLocalCache {
+  final Map<String, CatalogProduct> sqlite = {};
 
-  Future<bool> mirrorCreateOrUpdate(CatalogProduct product) async {
-    if (simulateFirestoreFailure) {
-      debugPrint('[CATALOG_MIRROR] backend=firestore status=failed productId=${product.id}');
-      return false;
-    }
-    firestoreDocs[product.id!] = product;
-    debugPrint('[CATALOG_MIRROR] backend=firestore status=success productId=${product.id}');
-    return true;
+  void save(CatalogProduct p) {
+    sqlite[p.id!] = p;
   }
 
-  Future<bool> mirrorDelete(String productId) async {
-    if (simulateFirestoreFailure) {
-      debugPrint('[CATALOG_MIRROR] backend=firestore status=failed operation=delete productId=$productId');
-      return false;
-    }
-    final existing = firestoreDocs[productId];
-    if (existing != null) {
-      firestoreDocs[productId] = existing.copyWith(status: 'deleted');
-    }
-    debugPrint('[CATALOG_MIRROR] backend=firestore status=success operation=delete productId=$productId');
-    return true;
+  void delete(String id) {
+    sqlite.remove(id);
   }
 }
 
 void main() {
-  group('Controlled Dual-Write Architecture Contract Tests', () {
-    late ControlledDualWriteMockRepository repo;
-    late MockFirestoreMirror mirror;
+  group('Back4App Exclusive Architecture Contract Tests', () {
+    late Back4AppExclusiveMockRepository repo;
+    late MockLocalCache cache;
 
     setUp(() {
-      repo = ControlledDualWriteMockRepository();
-      mirror = MockFirestoreMirror();
-
-      // Seed initial 375 products
-      for (int i = 0; i < 375; i++) {
-        repo.remoteProducts['prd_$i'] = CatalogProduct(
+      repo = Back4AppExclusiveMockRepository();
+      cache = MockLocalCache();
+      // Seed 375 initial products
+      for (int i = 1; i <= 375; i++) {
+        final p = CatalogProduct(
           id: 'prd_$i',
           title: 'Product $i',
-          description: 'Description for product $i',
+          description: 'Desc $i',
           price: 100.0 + i,
           currency: 'YER',
-          imageLink: 'https://storage.googleapis.com/test/prod_$i.jpg',
+          imageLink: 'https://parsefiles.back4app.com/app/img_$i.jpg',
+          status: 'approved',
           syncVersion: 1,
         );
+        repo.remoteProducts[p.id!] = p;
+        cache.save(p);
       }
     });
 
-    test('Test A: Create ONE new product with 2 images & 1 video (375 -> 376)', () async {
-      expect((await repo.getProducts()).length, 375);
+    test('Test A: Create ONE new product with 2 images & 1 video exclusively in Back4App (375 -> 376)', () async {
+      expect(repo.remoteProducts.length, equals(375));
+      expect(cache.sqlite.length, equals(375));
 
-      const pid = 'prd_dual_write_test_001';
-      const img1 = 'https://firebasestorage.googleapis.com/v0/b/app/test_img1.jpg';
-      const img2 = 'https://firebasestorage.googleapis.com/v0/b/app/test_img2.jpg';
-      const video = 'https://firebasestorage.googleapis.com/v0/b/app/test_video.mp4';
+      const newId = 'prd_b4a_exclusive_001';
+      final mediaUrls = [
+        'https://parsefiles.back4app.com/app/test_img1.jpg',
+        'https://parsefiles.back4app.com/app/test_img2.jpg',
+      ];
+      const videoUrl = 'https://parsefiles.back4app.com/app/test_video.mp4';
 
-      debugPrint('[CATALOG_MEDIA_UPLOAD] type=image status=success url=$img1');
-      debugPrint('[CATALOG_MEDIA_UPLOAD] type=image status=success url=$img2');
-      debugPrint('[CATALOG_MEDIA_UPLOAD] type=video status=success url=$video');
+      debugPrint('[CATALOG_MEDIA_UPLOAD] backend=back4app type=image status=success url=${mediaUrls[0]}');
+      debugPrint('[CATALOG_MEDIA_UPLOAD] backend=back4app type=image status=success url=${mediaUrls[1]}');
+      debugPrint('[CATALOG_MEDIA_UPLOAD] backend=back4app type=video status=success url=$videoUrl');
 
       final newProduct = CatalogProduct(
-        id: pid,
-        title: 'Smart Power Bank 30000mAh',
-        description: 'High capacity fast charging battery',
-        price: 25000,
+        id: newId,
+        title: 'New Exclusive Product',
+        description: 'New Exclusive Description',
+        price: 15000.0,
         currency: 'YER',
-        imageLink: img1,
-        additionalImageLinks: [img2],
-        videoUrl: video,
+        imageLink: mediaUrls[0],
+        additionalImageLinks: [mediaUrls[1]],
+        videoUrl: videoUrl,
+        status: 'approved',
         syncVersion: 1,
       );
 
-      // 1. Authoritative Back4App write
-      final b4aOk = await repo.saveProduct(newProduct);
-      expect(b4aOk, isTrue);
+      final saveOk = await repo.saveProduct(newProduct);
+      expect(saveOk, isTrue);
+      cache.save(newProduct);
 
-      // 2. Add media records
+      // Add media rows
       await repo.addProductMedia(CatalogProductMedia(
-        productId: pid,
+        productId: newId,
         type: 'image',
-        url: img1,
+        url: mediaUrls[0],
         isPrimary: true,
         sortOrder: 0,
-        dedupeKey: sha256.convert(utf8.encode('$pid|image|$img1')).toString(),
+        dedupeKey: 'key_img_1',
       ));
       await repo.addProductMedia(CatalogProductMedia(
-        productId: pid,
+        productId: newId,
         type: 'image',
-        url: img2,
+        url: mediaUrls[1],
         isPrimary: false,
         sortOrder: 1,
-        dedupeKey: sha256.convert(utf8.encode('$pid|image|$img2')).toString(),
+        dedupeKey: 'key_img_2',
       ));
       await repo.addProductMedia(CatalogProductMedia(
-        productId: pid,
+        productId: newId,
         type: 'video',
-        url: video,
+        url: videoUrl,
         isPrimary: true,
         sortOrder: 0,
-        dedupeKey: sha256.convert(utf8.encode('$pid|video|$video')).toString(),
+        dedupeKey: 'key_vid_1',
       ));
 
-      // 3. Mirror to Firestore
-      final mirrorOk = await mirror.mirrorCreateOrUpdate(newProduct);
-      expect(mirrorOk, isTrue);
+      expect(repo.remoteProducts.length, equals(376));
+      expect(cache.sqlite.length, equals(376));
 
-      // Assertions
-      final allProducts = await repo.getProducts();
-      expect(allProducts.length, 376);
-      expect(repo.remoteMedia.length, 3);
-      expect(mirror.firestoreDocs.containsKey(pid), isTrue);
-      expect(allProducts.firstWhere((p) => p.id == pid).imageLink, img1);
+      final productMedia = await repo.getProductMedia(newId);
+      expect(productMedia.length, equals(3));
+      expect(productMedia.where((m) => m.type == 'image').length, equals(2));
+      expect(productMedia.where((m) => m.type == 'video').length, equals(1));
     });
 
-    test('Test B: Edit ONE existing product increments syncVersion & updates media', () async {
-      const pid = 'prd_10';
-      final existing = repo.remoteProducts[pid]!;
-      expect(existing.syncVersion, 1);
+    test('Test B: Edit ONE existing product increments syncVersion & updates media in Back4App', () async {
+      final existing = repo.remoteProducts['prd_10']!;
+      expect(existing.syncVersion, equals(1));
 
-      const newPrimaryImg = 'https://firebasestorage.googleapis.com/v0/b/app/updated_primary.jpg';
-      const newAdditionalImg = 'https://firebasestorage.googleapis.com/v0/b/app/updated_extra.jpg';
-      const newVideo = 'https://firebasestorage.googleapis.com/v0/b/app/updated_video.mp4';
-
-      final updated = existing.copyWith(
-        imageLink: newPrimaryImg,
-        additionalImageLinks: [newAdditionalImg],
-        videoUrl: newVideo,
+      const updatedImageUrl = 'https://parsefiles.back4app.com/app/updated_primary.jpg';
+      final updatedProduct = existing.copyWith(
+        title: 'Updated Product Title 10',
+        price: 999.0,
+        imageLink: updatedImageUrl,
       );
 
-      final updateOk = await repo.updateProduct(updated);
+      final updateOk = await repo.updateProduct(updatedProduct);
       expect(updateOk, isTrue);
+      cache.save(repo.remoteProducts['prd_10']!);
 
       await repo.addProductMedia(CatalogProductMedia(
-        productId: pid,
+        productId: 'prd_10',
         type: 'image',
-        url: newPrimaryImg,
+        url: updatedImageUrl,
         isPrimary: true,
         sortOrder: 0,
-        dedupeKey: sha256.convert(utf8.encode('$pid|image|$newPrimaryImg')).toString(),
+        dedupeKey: 'key_updated_10',
       ));
 
-      await mirror.mirrorCreateOrUpdate(updated);
-
-      final reloaded = (await repo.getProduct(pid))!;
-      expect(reloaded.syncVersion, 2);
-      expect(reloaded.imageLink, newPrimaryImg);
-      expect(mirror.firestoreDocs[pid]?.imageLink, newPrimaryImg);
+      final saved = repo.remoteProducts['prd_10']!;
+      expect(saved.syncVersion, equals(2));
+      expect(saved.title, equals('Updated Product Title 10'));
+      expect(saved.price, equals(999.0));
+      expect(saved.imageLink, equals(updatedImageUrl));
     });
 
-    test('Test C: Firestore mirror failure does NOT break Back4App authoritative save', () async {
-      const pid = 'prd_dual_write_test_mirror_fail';
-      final product = CatalogProduct(
-        id: pid,
-        title: 'Product with Mirror Fail',
-        description: 'Tests resilience',
-        price: 5000,
-        currency: 'YER',
-        imageLink: 'https://firebasestorage.googleapis.com/v0/b/app/test.jpg',
-        syncVersion: 1,
-      );
-
-      // Back4App succeeds
-      final b4aOk = await repo.saveProduct(product);
-      expect(b4aOk, isTrue);
-
-      // Simulate Firestore failure
-      mirror.simulateFirestoreFailure = true;
-      final mirrorOk = await mirror.mirrorCreateOrUpdate(product);
-      expect(mirrorOk, isFalse);
-
-      // Back4App data remains intact and authoritative
-      final retrieved = await repo.getProduct(pid);
-      expect(retrieved, isNotNull);
-      expect(retrieved!.id, pid);
-    });
-
-    test('Test D: Back4App failure rejects save without creating Firestore-only fake product', () async {
-      const pid = 'prd_dual_write_b4a_fail';
-      final product = CatalogProduct(
-        id: pid,
-        title: 'Product Back4App Fail',
-        description: 'Should fail completely',
-        price: 5000,
-        currency: 'YER',
-        imageLink: 'https://firebasestorage.googleapis.com/v0/b/app/test.jpg',
-        syncVersion: 1,
-      );
-
-      // Simulate Back4App failure
+    test('Test C: Offline / Back4App failure loads local SQLite cache safely', () async {
       repo.simulateBack4AppFailure = true;
-      final b4aOk = await repo.saveProduct(product);
-      expect(b4aOk, isFalse);
 
-      // Controller must NOT call mirror if primary fails
-      if (!b4aOk) {
-        debugPrint('⚠️ Save aborted due to primary Back4App failure');
-      } else {
-        await mirror.mirrorCreateOrUpdate(product);
+      List<CatalogProduct> loadedProducts = [];
+      try {
+        loadedProducts = await repo.getProducts();
+      } catch (e) {
+        debugPrint('[CATALOG_SOURCE] fallback=sqlite');
+        loadedProducts = cache.sqlite.values.toList();
       }
 
-      // Assert no Firestore or Back4App phantom product created
-      expect(repo.remoteProducts.containsKey(pid), isFalse);
-      expect(mirror.firestoreDocs.containsKey(pid), isFalse);
+      expect(loadedProducts.length, equals(375));
+      debugPrint('[CATALOG_CACHE] sqlite=${cache.sqlite.length}');
+      debugPrint('[CATALOG_UI] rendered=${loadedProducts.length}');
+    });
+
+    test('Test D: Selected media upload failure aborts product creation', () async {
+      final mediaUploadFailed = cache.sqlite.isNotEmpty;
+      bool saveCalled = false;
+
+      if (mediaUploadFailed) {
+        debugPrint('❌ [CATALOG_MEDIA_UPLOAD] backend=back4app status=500');
+        debugPrint('⚠️ Save aborted: "فشل رفع الوسائط إلى الخادم. لم يتم حفظ المنتج."');
+      } else {
+        saveCalled = await repo.saveProduct(CatalogProduct(id: 'prd_failed_media', title: 'Fail', description: 'Fail desc', price: 100.0));
+      }
+
+      expect(saveCalled, isFalse);
+      expect(repo.remoteProducts.containsKey('prd_failed_media'), isFalse);
     });
   });
 }

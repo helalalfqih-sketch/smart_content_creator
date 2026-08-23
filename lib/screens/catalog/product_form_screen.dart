@@ -11,7 +11,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../models/catalog_product_model.dart';
 import '../../controllers/catalog_controller.dart';
 import '../../controllers/auth_controller.dart';
-import '../../services/firebase_storage_service.dart';
+import '../../services/back4app_catalog_media_service.dart';
 import '../../services/unified_ai_service.dart';
 import '../../services/secure_storage_service.dart';
 import '../../services/product_matching_service.dart';
@@ -934,14 +934,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
       ctrl.pickedImages.insert(0, picked.path);
       final uid = ctrl.editingProduct.value?.id ?? Get.find<AuthController>().firebaseUid;
-      if (uid != null) {
-        final url = await Get.find<FirebaseStorageService>().uploadProductMedia(
-          uid: uid,
-          file: File(picked.path),
-          mediaType: 'image',
-        );
-        if (url != null) ctrl.uploadedImageUrls.insert(0, url);
-      }
+      final mediaService = Get.isRegistered<Back4AppCatalogMediaService>()
+          ? Get.find<Back4AppCatalogMediaService>()
+          : Get.put(Back4AppCatalogMediaService());
+      final url = await mediaService.uploadProductMedia(
+        file: File(picked.path),
+        mediaType: 'image',
+        uid: uid,
+      );
+      if (url != null) ctrl.uploadedImageUrls.insert(0, url);
 
       if (Get.isRegistered<UnifiedAIService>()) {
         final ai = Get.find<UnifiedAIService>();

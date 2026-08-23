@@ -1625,6 +1625,34 @@ Parse.Cloud.define("catalogUploadMedia", async (request) => {
   }
 });
 
+// 📑 catalogUploadFeed: Server-side secure CSV feed upload to Back4App Parse Files
+Parse.Cloud.define("catalogUploadFeed", async (request) => {
+  const auth = await extractAuthUser(request);
+  if (!auth) throw new Parse.Error(401, "Authentication required");
+
+  const params = request.params || {};
+  const csvContent = params.csvContent || "";
+  const fileBase64 = params.fileBase64 || Buffer.from(csvContent, "utf8").toString("base64");
+  const fileName = (params.fileName || `catalog_${auth.uid}_feed.csv`).replace(/[^a-zA-Z0-9_.-]/g, "_");
+
+  if (!fileBase64 && !csvContent) throw new Parse.Error(400, "csvContent or fileBase64 is required");
+
+  try {
+    const parseFile = new Parse.File(fileName, { base64: fileBase64 }, "text/csv; charset=utf-8");
+    await parseFile.save({ useMasterKey: true });
+    const fileUrl = parseFile.url();
+
+    return {
+      success: true,
+      url: fileUrl,
+      name: parseFile.name(),
+    };
+  } catch (error) {
+    console.error("catalogUploadFeed error:", error);
+    throw new Parse.Error(500, `Failed to upload CSV feed to Back4App storage: ${error.message}`);
+  }
+});
+
 // 🗂️ catalogCategoriesList: Return active categories
 Parse.Cloud.define("catalogCategoriesList", async () => {
   const CatalogCategory = Parse.Object.extend("CatalogCategory");

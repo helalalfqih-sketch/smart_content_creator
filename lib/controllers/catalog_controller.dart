@@ -3,36 +3,34 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:crypto/crypto.dart';
-import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../models/catalog_product_model.dart';
 import '../models/catalog_media_model.dart';
 import '../services/db_service.dart';
-import '../services/firebase_storage_service.dart';
+import '../services/back4app_catalog_media_service.dart';
 import '../services/secure_storage_service.dart';
 import '../services/catalog_xlsx_import_service.dart';
-import '../services/catalog_firestore_mirror_service.dart';
 import '../controllers/auth_controller.dart';
 import '../core/storage/app_storage_service.dart';
 import '../core/repositories/catalog_repository.dart';
 import '../core/repositories/back4app_catalog_repository.dart';
 
 /// 🛍️ CatalogController
-/// متحكم إدارة الكتالوج: إضافة / تعديل / حذف المنتجات، استيراد Excel، ومزامنة Meta
+/// متحكم إدارة الكتالوج الحصري عبر Back4App Cloud Code و SQLite:
+/// إضافة / تعديل / حذف المنتجات، إدارة الوسائط، استيراد Excel، ومزامنة Meta
 class CatalogController extends GetxController {
   DBService get _db => Get.find<DBService>();
-  FirebaseStorageService get _storage => Get.find<FirebaseStorageService>();
   AppStorageService get _appStorage => Get.find<AppStorageService>();
-  CatalogFirestoreMirrorService get _firestoreMirror =>
-      Get.isRegistered<CatalogFirestoreMirrorService>()
-          ? Get.find<CatalogFirestoreMirrorService>()
-          : Get.put(CatalogFirestoreMirrorService());
+  Back4AppCatalogMediaService get _mediaService =>
+      Get.isRegistered<Back4AppCatalogMediaService>()
+          ? Get.find<Back4AppCatalogMediaService>()
+          : Get.put(Back4AppCatalogMediaService());
 
   // ---------------------------------------------------------------------------
   // 📊 المتغيرات التفاعلية (Reactive State)
@@ -44,7 +42,6 @@ class CatalogController extends GetxController {
   final isUploadingMedia = false.obs;
   final searchQuery = ''.obs;
   final feedUrl = ''.obs; // رابط الكتالوج لـ Meta
-  final isMigrating = false.obs; // تتبع حالة الترحيل السحابي
   final gridColumns = 2.obs; // تفضيل عدد الأعمدة في شبكة المنتجات
 
   // ---------------------------------------------------------------------------
@@ -56,8 +53,6 @@ class CatalogController extends GetxController {
   final pickedVideoPath = ''.obs;
   final uploadedVideoUrl = ''.obs;
 
-  StreamSubscription<QuerySnapshot>? _productsSubscription;
-
   String? get _uid => Get.isRegistered<AuthController>() ? Get.find<AuthController>().firebaseUid : null;
 
   CatalogRepository get _catalogRepo {
@@ -67,12 +62,10 @@ class CatalogController extends GetxController {
     return Back4AppCatalogRepository(
       dbService: _db,
       getFirebaseIdToken: () async {
-        // Provide a real Firebase ID token for authenticated catalog access.
-        // Returns null for anonymous/public catalog reads.
         final user = firebase_auth.FirebaseAuth.instance.currentUser;
         if (user == null) return null;
         try {
-          return await user.getIdToken();
+          return await user.getIdToken(true);
         } catch (e) {
           if (kDebugMode) debugPrint('⚠️ Failed to get Firebase ID token: $e');
           return null;
@@ -89,21 +82,8 @@ class CatalogController extends GetxController {
     feedUrl.value = _appStorage.readString('catalog_feed_url') ?? '';
     gridColumns.value = _appStorage.readInt('catalog_grid_columns', defaultValue: 2) ?? 2;
     
-    // 🔄 Dual-Read Verification Mode: Back4App primary with Firestore fallback
+    // 🏛️ تحميل المنتجات من Back4App مع الكاش المحلي SQLite
     loadProducts();
-
-    if (Get.isRegistered<AuthController>()) {
-      final auth = Get.find<AuthController>();
-      ever(auth.firebaseUidRx, (String? newUid) {
-        if (newUid != null) {
-          runMigrationIfNeeded();
-        }
-      });
-
-      if (auth.firebaseUid != null) {
-        runMigrationIfNeeded();
-      }
-    }
   }
 
   /// تحديث عدد الأعمدة في شبكة المنتجات وحفظ التفضيل محلياً
@@ -113,19 +93,8 @@ class CatalogController extends GetxController {
     await _appStorage.writeInt('catalog_grid_columns', count);
   }
 
-  void _cancelSubscription() {
-    _productsSubscription?.cancel();
-    _productsSubscription = null;
-  }
-
-  @override
-  void onClose() {
-    _cancelSubscription();
-    super.onClose();
-  }
-
   // ---------------------------------------------------------------------------
-  // 🔄 Dual-Read Verification: Back4App Primary مع المقارنة والتخزين في SQLite
+  // 🏛️ التحميل الحصري للكتالوج: Back4App Primary -> SQLite Cache
   // ---------------------------------------------------------------------------
   Future<void> loadProducts() async {
     isLoading.value = true;
@@ -134,11 +103,11 @@ class CatalogController extends GetxController {
       final b4aProducts = await _catalogRepo.getProducts(limit: 100, forceRefresh: true);
 
       if (b4aProducts.isNotEmpty) {
-        // 2. قراءة عدد السجلات من كاش SQLite بعد التحديث الكامل
+        // 2. قراءة كاش SQLite المحدث
         final sqliteRows = await _db.getRecords('catalog_products', where: 'deleted_at IS NULL');
         final sqliteCount = sqliteRows.length;
 
-        // 3. عرض المنتجات الكاملة في الواجهة
+        // 3. عرض المنتجات في الواجهة
         b4aProducts.sort((a, b) {
           final aTime = a.createdAt ?? DateTime.now();
           final bTime = b.createdAt ?? DateTime.now();
@@ -147,324 +116,34 @@ class CatalogController extends GetxController {
         products.value = b4aProducts;
         isLoading.value = false;
 
-        // 4. طباعة سجلات التحقق المطلوبة
+        // 4. طباعة سجلات الحالة الحصرية
         debugPrint('[CATALOG_SOURCE] primary=back4app');
         debugPrint('[CATALOG_COUNT] back4app=${b4aProducts.length}');
         debugPrint('[CATALOG_CACHE] sqlite=$sqliteCount');
         debugPrint('[CATALOG_UI] rendered=${products.length}');
-
-        // 5. مقارنة مع Firestore بعد اكتمال جلب كافة صفحات Back4App
-        _compareWithFirestore(b4aProducts);
         return;
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('⚠️ [CATALOG_SOURCE] Back4App dual-read exception, falling back to Firestore: $e');
+      if (kDebugMode) debugPrint('⚠️ [CATALOG_SOURCE] Back4App fetch exception: $e');
     }
 
-    // 6. Fallback إلى Firestore عند حدوث أي خطأ بدون فقدان للبيانات
-    debugPrint('[CATALOG_SOURCE] fallback=firestore');
-    setupProductsListener();
-  }
-
-  void _compareWithFirestore(List<CatalogProduct> b4aProducts) {
-    FirebaseFirestore.instance
-        .collection('catalog_products')
-        .get()
-        .then((snapshot) {
-      final firestoreDocs = snapshot.docs;
-      final firestoreCount = firestoreDocs.length;
-      final delta = b4aProducts.length - firestoreCount;
-      debugPrint('[CATALOG_COMPARE] back4app=${b4aProducts.length} firestore=$firestoreCount delta=$delta');
-
-      final b4aIds = b4aProducts.map((p) => p.id).toSet();
-      final firestoreOnlyDocs = firestoreDocs.where((doc) => !b4aIds.contains(doc.id)).map((d) => d.id).toList();
-      if (firestoreOnlyDocs.isNotEmpty) {
-        debugPrint('[CATALOG_COMPARE] firestore_only_ids (count=${firestoreOnlyDocs.length}): $firestoreOnlyDocs');
-      }
-    }).catchError((e) {
-      if (kDebugMode) debugPrint('⚠️ [CATALOG_COMPARE] Firestore comparison query: $e');
-    });
-  }
-
-  // ---------------------------------------------------------------------------
-  // 🎧 الاستماع للكتالوج من Firestore بالوقت الفعلي (Fallback Listener)
-  // ---------------------------------------------------------------------------
-  void setupProductsListener() {
-    _cancelSubscription();
-    isLoading.value = true;
+    // 5. Fallback إلى كاش SQLite المحلي في حال عدم توفر الاتصال
     try {
-      _productsSubscription = FirebaseFirestore.instance
-          .collection('catalog_products')
-          .snapshots()
-          .listen((snapshot) {
-        final parsed = snapshot.docs
-            .map((doc) => CatalogProduct.fromMap(doc.data(), docId: doc.id))
-            .toList();
-        
-        // ترتيب المنتجات حسب الأحدث
-        parsed.sort((a, b) {
-          final aTime = a.createdAt ?? DateTime.now();
-          final bTime = b.createdAt ?? DateTime.now();
-          return bTime.compareTo(aTime);
-        });
-        
-        products.value = parsed;
-        isLoading.value = false;
-      }, onError: (e) {
-        isLoading.value = false;
-        if (kDebugMode) debugPrint('❌ CatalogController: Firestore listen error: $e');
+      final localRows = await _db.getRecords('catalog_products', where: 'deleted_at IS NULL');
+      final localProducts = localRows.map((r) => CatalogProduct.fromMap(r)).toList();
+      localProducts.sort((a, b) {
+        final aTime = a.createdAt ?? DateTime.now();
+        final bTime = b.createdAt ?? DateTime.now();
+        return bTime.compareTo(aTime);
       });
+      products.value = localProducts;
+      debugPrint('[CATALOG_SOURCE] fallback=sqlite');
+      debugPrint('[CATALOG_CACHE] sqlite=${localProducts.length}');
+      debugPrint('[CATALOG_UI] rendered=${products.length}');
     } catch (e) {
+      if (kDebugMode) debugPrint('❌ SQLite local cache read error: $e');
+    } finally {
       isLoading.value = false;
-      if (kDebugMode) debugPrint('❌ CatalogController: setupProductsListener error: $e');
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // 🔍 تفكيك محتوى CSV بشكل آمن متوافق مع RFC 4180
-  // ---------------------------------------------------------------------------
-  List<List<String>> _parseCsv(String csvContent) {
-    final lines = <List<String>>[];
-    final currentFields = <String>[];
-    final currentField = StringBuffer();
-    bool inQuotes = false;
-
-    for (int i = 0; i < csvContent.length; i++) {
-      final char = csvContent[i];
-
-      if (inQuotes) {
-        if (char == '"') {
-          if (i + 1 < csvContent.length && csvContent[i + 1] == '"') {
-            currentField.write('"');
-            i++; // تخطي علامة الاقتباس المزدوجة المهروبة
-          } else {
-            inQuotes = false;
-          }
-        } else {
-          currentField.write(char);
-        }
-      } else {
-        if (char == '"') {
-          inQuotes = true;
-        } else if (char == ',') {
-          currentFields.add(currentField.toString());
-          currentField.clear();
-        } else if (char == '\n' || char == '\r') {
-          if (char == '\r' && i + 1 < csvContent.length && csvContent[i + 1] == '\n') {
-            i++;
-          }
-          currentFields.add(currentField.toString());
-          currentField.clear();
-          if (currentFields.isNotEmpty && currentFields.any((f) => f.isNotEmpty)) {
-            lines.add(List.from(currentFields));
-          }
-          currentFields.clear();
-        } else {
-          currentField.write(char);
-        }
-      }
-    }
-    if (currentField.isNotEmpty || currentFields.isNotEmpty) {
-      currentFields.add(currentField.toString());
-      lines.add(currentFields);
-    }
-    return lines;
-  }
-
-  // ---------------------------------------------------------------------------
-  // 🚀 ترحيل البيانات السابقة لمرة واحدة إلى Firestore
-  // ---------------------------------------------------------------------------
-  Future<void> runMigrationIfNeeded() async {
-    final uid = _uid;
-    if (uid == null) return;
-
-    // 1. ترحيل المنتجات من SQLite/Cloud CSV القديم إلى Firestore العالمي
-    final prefKey = 'catalog_migrated_to_firestore_$uid';
-    final alreadyMigrated = _appStorage.readBool(prefKey) ?? false;
-    if (!alreadyMigrated) {
-      isMigrating.value = true;
-      try {
-        if (kDebugMode) debugPrint('🔄 CatalogController: البدء في ترحيل بيانات الكتالوج للمستخدم $uid');
-        
-        final localRows = await _db.getRecords(
-          'catalog_products',
-          orderBy: 'created_at DESC',
-        );
-        
-        final List<CatalogProduct> toMigrate = [];
-        if (localRows.isNotEmpty) {
-          if (kDebugMode) debugPrint('📦 وجد ${localRows.length} منتج محلي في SQLite للترحيل');
-          toMigrate.addAll(localRows.map((r) => CatalogProduct.fromMap(r)));
-        } else {
-          final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
-          final cloudFeedUrl = userDoc.data()?['catalog_feed_url'] as String?;
-          
-          if (cloudFeedUrl != null && cloudFeedUrl.isNotEmpty) {
-            if (kDebugMode) debugPrint('☁️ SQLite فارغ. جاري سحب البيانات السحابية من: $cloudFeedUrl');
-            final response = await http.get(Uri.parse(cloudFeedUrl));
-            if (response.statusCode == 200) {
-              final csvLines = _parseCsv(response.body);
-              if (csvLines.length > 1) {
-                for (int i = 1; i < csvLines.length; i++) {
-                  final line = csvLines[i];
-                  if (line.isEmpty || line[0].trim().isEmpty) continue;
-                  try {
-                    toMigrate.add(CatalogProduct.fromCsvFields(line));
-                  } catch (e) {
-                    if (kDebugMode) debugPrint('⚠️ فشل تحليل صف CSV رقم $i: $e');
-                  }
-                }
-              }
-            }
-          }
-        }
-
-        if (toMigrate.isNotEmpty) {
-          if (kDebugMode) debugPrint('⚡ جاري رفع ${toMigrate.length} منتج إلى Firestore...');
-          
-          final firestore = FirebaseFirestore.instance;
-          final collRef = firestore.collection('catalog_products');
-          
-          final batchSize = 400;
-          for (var i = 0; i < toMigrate.length; i += batchSize) {
-            final batch = firestore.batch();
-            final chunk = toMigrate.sublist(
-              i,
-              i + batchSize > toMigrate.length ? toMigrate.length : i + batchSize,
-            );
-            
-            for (final prd in chunk) {
-              final prdId = prd.id ?? 'prd_${DateTime.now().millisecondsSinceEpoch}_${prd.title.hashCode}';
-              final docRef = collRef.doc(prdId);
-              batch.set(
-                docRef, 
-                prd.copyWith(
-                  id: prdId,
-                  creatorUid: uid,
-                  status: 'approved' // تعيين حالة المنتجات السابقة المهاجرة إلى approved لأنها كانت نشطة مسبقاً
-                ).toMap(), 
-                SetOptions(merge: true)
-              );
-            }
-            await batch.commit();
-          }
-          if (kDebugMode) debugPrint('✅ تم رفع كافة المنتجات بنجاح لـ Firestore');
-        }
-        
-        await _appStorage.writeBool(prefKey, true);
-      } catch (e) {
-        if (kDebugMode) debugPrint('❌ CatalogController: فشل ترحيل الكتالوج: $e');
-      } finally {
-        isMigrating.value = false;
-      }
-    }
-
-    // 2. ترحيل المنتجات من مستودع Firestore الفردي (users/{uid}/catalog_products) إلى المستودع العالمي الجديد (catalog_products)
-    final globalPrefKey = 'catalog_migrated_to_global_firestore_$uid';
-    final alreadyGlobalMigrated = _appStorage.readBool(globalPrefKey) ?? false;
-    if (!alreadyGlobalMigrated) {
-      isMigrating.value = true;
-      try {
-        if (kDebugMode) debugPrint('🔄 CatalogController: البدء في نقل المنتجات من Firestore الفردي إلى العالمي للمستخدم $uid');
-        
-        final firestore = FirebaseFirestore.instance;
-        final oldSnapshot = await firestore
-            .collection('users')
-            .doc(uid)
-            .collection('catalog_products')
-            .get();
-
-        if (oldSnapshot.docs.isNotEmpty) {
-          final batch = firestore.batch();
-          final globalColl = firestore.collection('catalog_products');
-          
-          for (final doc in oldSnapshot.docs) {
-            final oldData = doc.data();
-            final product = CatalogProduct.fromMap(oldData);
-            
-            final updatedPrd = product.copyWith(
-              creatorUid: uid,
-              status: 'approved', // المنتجات المستوردة من السحابة الفردية تعتبر معتمدة مسبقاً
-            );
-            
-            final docRef = globalColl.doc(doc.id);
-            batch.set(docRef, updatedPrd.toMap(), SetOptions(merge: true));
-          }
-          await batch.commit();
-          if (kDebugMode) debugPrint('✅ تم نقل ${oldSnapshot.docs.length} منتج بنجاح إلى المستودع العالمي.');
-        }
-
-        await _appStorage.writeBool(globalPrefKey, true);
-      } catch (e) {
-        if (kDebugMode) debugPrint('❌ CatalogController: فشل نقل المنتجات إلى المستودع العالمي: $e');
-      } finally {
-        isMigrating.value = false;
-      }
-    }
-
-    // 3. إصلاح وتعديل حالة المنتجات الحالية المرفوعة لتصبح approved بشكل تلقائي لمرة واحدة
-    final approvalPrefKey = 'catalog_existing_approved_fix';
-    final alreadyApprovalFixed = _appStorage.readBool(approvalPrefKey) ?? false;
-    if (!alreadyApprovalFixed) {
-      try {
-        final firestore = FirebaseFirestore.instance;
-        final snapshot = await firestore.collection('catalog_products').get();
-        if (snapshot.docs.isNotEmpty) {
-          final batch = firestore.batch();
-          for (final doc in snapshot.docs) {
-            batch.update(doc.reference, {'status': 'approved'});
-          }
-          await batch.commit();
-        }
-        await _appStorage.writeBool(approvalPrefKey, true);
-        if (kDebugMode) debugPrint('✅ تم تحويل جميع المنتجات المهاجرة إلى حالة معتمدة (Approved).');
-      } catch (e) {
-        if (kDebugMode) debugPrint('❌ CatalogController: فشل تعديل حالة المنتجات إلى Approved: $e');
-      }
-    }
-
-    // 4. مسح روابط واتساب القديمة من حقل link في Firestore (مرة واحدة)
-    final clearWaPrefKey = 'catalog_cleared_wa_links_v1';
-    final alreadyClearedWa = _appStorage.readBool(clearWaPrefKey) ?? false;
-    if (!alreadyClearedWa) {
-      try {
-        final firestore = FirebaseFirestore.instance;
-        final snapshot = await firestore.collection('catalog_products').get();
-        if (snapshot.docs.isNotEmpty) {
-          const batchSize = 400;
-          final docsToFix = snapshot.docs
-              .where((d) {
-                final lnk = (d.data()['link'] as String? ?? '');
-                // امسح الرابط إذا كان رابط واتساب أو يحتوي على معرف المنتج (prd_)
-                return lnk.contains('wa.me') || lnk.contains('prd_');
-              })
-              .toList();
-
-          for (var i = 0; i < docsToFix.length; i += batchSize) {
-            final batch = firestore.batch();
-            final chunk = docsToFix.sublist(
-              i,
-              i + batchSize > docsToFix.length ? docsToFix.length : i + batchSize,
-            );
-            for (final doc in chunk) {
-              // استبدل الرابط بصفحة المنتج في الموقع
-              final productId = doc.data()['id']?.toString() ?? doc.id;
-              final storeLink = productId.isNotEmpty
-                  ? 'https://smartcontentcreator2.web.app/app/product/$productId'
-                  : '';
-              batch.update(doc.reference, {'link': storeLink});
-            }
-            await batch.commit();
-          }
-
-          if (kDebugMode) {
-            debugPrint('✅ تم مسح روابط واتساب من ${docsToFix.length} منتج وتعيين روابط الموقع.');
-          }
-        }
-        await _appStorage.writeBool(clearWaPrefKey, true);
-      } catch (e) {
-        if (kDebugMode) debugPrint('❌ CatalogController: فشل مسح روابط واتساب: $e');
-      }
     }
   }
 
@@ -493,7 +172,7 @@ class CatalogController extends GetxController {
     try {
       final list = customCategories.map((c) => c.toMap()).toList();
       await _appStorage.writeString('custom_categories', json.encode(list));
-      products.refresh(); // تنشيط التحديث التفاعلي للمنتجات والترتيب
+      products.refresh();
     } catch (e) {
       if (kDebugMode) debugPrint('❌ CatalogController: saveCustomCategories error: $e');
     }
@@ -587,7 +266,7 @@ class CatalogController extends GetxController {
     return list;
   }
 
-  /// التحقق من رفع جميع الوسائط المحلية إلى Firebase Storage والحصول على روابط HTTPS
+  /// التحقق من رفع جميع الوسائط المحلية إلى Back4App Parse Files والحصول على روابط HTTPS
   Future<void> _ensureMediaUploaded(String uid) async {
     for (int i = 0; i < pickedImages.length; i++) {
       final path = pickedImages[i];
@@ -598,13 +277,12 @@ class CatalogController extends GetxController {
       } else {
         final file = File(path);
         if (await file.exists()) {
-          final url = await _storage.uploadProductMedia(
-            uid: uid,
+          final url = await _mediaService.uploadProductMedia(
             file: file,
             mediaType: 'image',
+            uid: uid,
           );
           if (url != null && url.startsWith('http')) {
-            debugPrint('[CATALOG_MEDIA_UPLOAD] type=image status=success url=$url');
             if (!uploadedImageUrls.contains(url)) {
               uploadedImageUrls.add(url);
             }
@@ -616,13 +294,12 @@ class CatalogController extends GetxController {
     if (pickedVideoPath.isNotEmpty && !pickedVideoPath.value.startsWith('http')) {
       final file = File(pickedVideoPath.value);
       if (await file.exists()) {
-        final url = await _storage.uploadProductMedia(
-          uid: uid,
+        final url = await _mediaService.uploadProductMedia(
           file: file,
           mediaType: 'video',
+          uid: uid,
         );
         if (url != null && url.startsWith('http')) {
-          debugPrint('[CATALOG_MEDIA_UPLOAD] type=video status=success url=$url');
           uploadedVideoUrl.value = url;
         }
       }
@@ -630,7 +307,7 @@ class CatalogController extends GetxController {
   }
 
   // ---------------------------------------------------------------------------
-  // ➕ إضافة / تعديل منتج (Controlled Dual-Write)
+  // ➕ إضافة / تعديل منتج (Authoritative Back4App Write)
   // ---------------------------------------------------------------------------
   Future<bool> saveProduct(CatalogProduct product) async {
     try {
@@ -677,7 +354,7 @@ class CatalogController extends GetxController {
       if (hasSelectedImages && finalImageLink.isEmpty) {
         Get.snackbar(
           '❌ فشل رفع الصور',
-          'فشل رفع صور المنتج. لم يتم إنشاء المنتج.',
+          'فشل رفع الوسائط إلى الخادم. لم يتم حفظ المنتج.',
           backgroundColor: const Color(0xFF3A1A1A),
           colorText: const Color(0xFFE57373),
           duration: const Duration(seconds: 4),
@@ -688,7 +365,7 @@ class CatalogController extends GetxController {
       if (hasSelectedVideo && (finalVideoUrl == null || finalVideoUrl.isEmpty)) {
         Get.snackbar(
           '❌ فشل رفع الفيديو',
-          'فشل رفع فيديو المنتج. لم يتم إنشاء المنتج.',
+          'فشل رفع الوسائط إلى الخادم. لم يتم حفظ المنتج.',
           backgroundColor: const Color(0xFF3A1A1A),
           colorText: const Color(0xFFE57373),
           duration: const Duration(seconds: 4),
@@ -719,7 +396,7 @@ class CatalogController extends GetxController {
 
       final isEdit = editingProduct.value != null || products.any((p) => p.id == pid);
 
-      // 🏛️ الخطوة 1: الكتابة المعتمدة في Back4App كأولوية أساسية
+      // 🏛️ الخطوة 1: الكتابة المعتمدة في Back4App كخادم أساسي وحيد
       final bool primarySuccess = isEdit
           ? await _catalogRepo.updateProduct(toSave)
           : await _catalogRepo.saveProduct(toSave);
@@ -727,7 +404,7 @@ class CatalogController extends GetxController {
       if (!primarySuccess) {
         Get.snackbar(
           '❌ خطأ في الحفظ',
-          'تعذر حفظ المنتج في الخادم الأساسي (Back4App). يرجى التحقق من الاتصال والمحاولة ثانية.',
+          'تعذر حفظ المنتج في خادم Back4App. يرجى التحقق من الاتصال والمحاولة ثانية.',
           backgroundColor: const Color(0xFF3A1A1A),
           colorText: const Color(0xFFE57373),
           duration: const Duration(seconds: 4),
@@ -779,10 +456,7 @@ class CatalogController extends GetxController {
         });
       }
 
-      // 🪞 الخطوة 3: عكس وحفظ في Firestore كنسخة احتياطية متوافقة (دون كسر النجاح الأساسي)
-      await _firestoreMirror.mirrorCreateOrUpdate(toSave);
-
-      // 🔄 الخطوة 4: تحديث الواجهة والكتالوج
+      // 🔄 الخطوة 3: تحديث الواجهة والكتالوج
       resetForm();
       await loadProducts();
 
@@ -814,8 +488,9 @@ class CatalogController extends GetxController {
     isSyncing.value = true;
     try {
       final List<String> uploadedUrls = [];
+      final uid = existingProduct.creatorUid ?? _uid ?? 'guest';
       
-      // رفع أي صور محلية جديدة لم يتم رفعها بعد
+      // رفع أي صور محلية جديدة عبر Back4App
       for (final path in newLocalImages) {
         if (path.startsWith('http')) {
           uploadedUrls.add(path);
@@ -823,13 +498,12 @@ class CatalogController extends GetxController {
         }
         final file = File(path);
         if (await file.exists()) {
-          final url = await Get.find<FirebaseStorageService>().uploadProductMedia(
-            uid: existingProduct.creatorUid ?? _uid ?? 'guest',
+          final url = await _mediaService.uploadProductMedia(
             file: file,
             mediaType: 'image',
+            uid: uid,
           );
           if (url != null && url.startsWith('http')) {
-            debugPrint('[CATALOG_MEDIA_UPLOAD] type=image status=success url=$url');
             uploadedUrls.add(url);
           }
         }
@@ -860,7 +534,6 @@ class CatalogController extends GetxController {
             dedupeKey: sha256.convert(utf8.encode('${existingProduct.id}|image|$u')).toString(),
           )).catchError((_) => false);
         }
-        await _firestoreMirror.mirrorCreateOrUpdate(updatedProduct);
         await loadProducts();
 
         Get.snackbar(
@@ -893,8 +566,9 @@ class CatalogController extends GetxController {
     isSyncing.value = true;
     try {
       final List<String> uploadedUrls = [];
+      final uid = existingProduct.creatorUid ?? _uid ?? 'guest';
       
-      // رفع أي صور محلية جديدة
+      // رفع أي صور محلية جديدة عبر Back4App
       for (final path in newLocalImages) {
         if (path.startsWith('http')) {
           uploadedUrls.add(path);
@@ -902,13 +576,12 @@ class CatalogController extends GetxController {
         }
         final file = File(path);
         if (await file.exists()) {
-          final url = await Get.find<FirebaseStorageService>().uploadProductMedia(
-            uid: existingProduct.creatorUid ?? _uid ?? 'guest',
+          final url = await _mediaService.uploadProductMedia(
             file: file,
             mediaType: 'image',
+            uid: uid,
           );
           if (url != null && url.startsWith('http')) {
-            debugPrint('[CATALOG_MEDIA_UPLOAD] type=image status=success url=$url');
             uploadedUrls.add(url);
           }
         }
@@ -958,7 +631,6 @@ class CatalogController extends GetxController {
             dedupeKey: sha256.convert(utf8.encode('${existingProduct.id}|image|$u')).toString(),
           )).catchError((_) => false);
         }
-        await _firestoreMirror.mirrorCreateOrUpdate(updatedProduct);
         await loadProducts();
 
         Get.snackbar(
@@ -985,13 +657,12 @@ class CatalogController extends GetxController {
   }
 
   // ---------------------------------------------------------------------------
-  // 🗑️ حذف منتج (Controlled Dual-Write)
+  // 🗑️ حذف منتج من Back4App و SQLite
   // ---------------------------------------------------------------------------
   Future<void> deleteProduct(String id) async {
     try {
       final ok = await _catalogRepo.deleteProduct(id);
       if (ok) {
-        await _firestoreMirror.mirrorDelete(id);
         products.removeWhere((p) => p.id == id);
         Get.snackbar(
           '🗑️ تم الحذف',
@@ -1003,7 +674,7 @@ class CatalogController extends GetxController {
       } else {
         Get.snackbar(
           '❌ خطأ في الحذف',
-          'تعذر حذف المنتج من الخادم الأساسي (Back4App)',
+          'تعذر حذف المنتج من خادم Back4App',
           backgroundColor: const Color(0xFF3A1A1A),
           colorText: const Color(0xFFE57373),
         );
@@ -1014,7 +685,7 @@ class CatalogController extends GetxController {
   }
 
   // ---------------------------------------------------------------------------
-  // 🖼️ اختيار صور المنتج
+  // 🖼️ اختيار صور المنتج ورفعها إلى Back4App Parse Files
   // ---------------------------------------------------------------------------
   Future<void> pickImages() async {
     try {
@@ -1028,13 +699,12 @@ class CatalogController extends GetxController {
       for (final xf in picked) {
         pickedImages.add(xf.path);
         final file = File(xf.path);
-        final url = await _storage.uploadProductMedia(
-          uid: uid,
+        final url = await _mediaService.uploadProductMedia(
           file: file,
           mediaType: 'image',
+          uid: uid,
         );
         if (url != null && url.startsWith('http')) {
-          debugPrint('[CATALOG_MEDIA_UPLOAD] type=image status=success url=$url');
           uploadedImageUrls.add(url);
         }
       }
@@ -1046,7 +716,7 @@ class CatalogController extends GetxController {
   }
 
   // ---------------------------------------------------------------------------
-  // 🎥 اختيار فيديو المنتج
+  // 🎥 اختيار فيديو المنتج ورفعه إلى Back4App Parse Files
   // ---------------------------------------------------------------------------
   Future<void> pickVideo() async {
     try {
@@ -1063,13 +733,12 @@ class CatalogController extends GetxController {
       pickedVideoPath.value = path;
 
       final uid = _uid ?? 'guest';
-      final url = await _storage.uploadProductMedia(
-        uid: uid,
+      final url = await _mediaService.uploadProductMedia(
         file: File(path),
         mediaType: 'video',
+        uid: uid,
       );
       if (url != null && url.startsWith('http')) {
-        debugPrint('[CATALOG_MEDIA_UPLOAD] type=video status=success url=$url');
         uploadedVideoUrl.value = url;
       }
     } catch (e) {
@@ -1090,7 +759,7 @@ class CatalogController extends GetxController {
   }
 
   // ---------------------------------------------------------------------------
-  // 📂 استيراد منتجات من Excel (.xlsx) عبر الدفعات المتحكم بها (Batched Import)
+  // 📂 استيراد منتجات من Excel (.xlsx) عبر Back4App Cloud Code
   // ---------------------------------------------------------------------------
   Future<void> importFromExcel() async {
     isImporting.value = true;
@@ -1127,9 +796,6 @@ class CatalogController extends GetxController {
         // حفظ دفعي مع Back4App
         final savedCount = await _catalogRepo.batchSaveProducts(prepared, batchSize: 25);
 
-        // عكس دفعي مع Firestore
-        await _firestoreMirror.mirrorBatch(prepared, batchSize: 200);
-
         await loadProducts();
         Get.snackbar(
           '📂 اكتمل الاستيراد',
@@ -1140,9 +806,7 @@ class CatalogController extends GetxController {
         );
       }
     } catch (e, st) {
-      debugPrint(
-        '❌ CatalogController: importFromExcel error: $e\n$st',
-      );
+      debugPrint('❌ CatalogController: importFromExcel error: $e\n$st');
       Get.snackbar(
         '❌ خطأ في الاستيراد',
         e.toString(),
@@ -1156,7 +820,7 @@ class CatalogController extends GetxController {
   }
 
   // ---------------------------------------------------------------------------
-  // ☁️ مزامنة الكتالوج مع Meta (رفع CSV إلى Firebase Storage)
+  // ☁️ مزامنة الكتالوج مع Meta (رفع CSV إلى Back4App Parse Files)
   // ---------------------------------------------------------------------------
   Future<void> syncToMeta() async {
     final approvedProducts = products.where((p) => p.status == 'approved').toList();
@@ -1187,18 +851,14 @@ class CatalogController extends GetxController {
     isSyncing.value = true;
     try {
       // 1. توليد محتوى CSV
-      // جلب بيانات المتجر وروابط التواصل الاجتماعي لتوليد روابط احتياطية ذكية
       final signature = await Get.find<SecureStorageService>().getStoreSignature();
       final phone = signature['phone'] ?? '';
       final instagramUrl = _appStorage.readString('instagram_profile_url') ?? '';
-
-      // رابط الموقع الأساسي للمتجر
       const String storeBaseUrl = 'https://smartcontentcreator2.web.app/app';
 
       final buffer = StringBuffer();
       buffer.writeln(CatalogProduct.csvHeader);
       for (final product in approvedProducts) {
-        // أولوية: رابط المنتج المحفوظ → صفحة المنتج في الموقع → واتساب
         String fallbackLink;
         if (product.link.trim().isNotEmpty) {
           fallbackLink = product.link.trim();
@@ -1221,8 +881,8 @@ class CatalogController extends GetxController {
       }
       final csvContent = buffer.toString();
 
-      // 2. رفع CSV إلى Firebase Storage (مسار عالمي موحد)
-      final url = await _storage.uploadCatalogFeed(
+      // 2. رفع CSV إلى Back4App Parse Files
+      final url = await _mediaService.uploadCatalogFeed(
         uid: uid,
         csvContent: csvContent,
       );
@@ -1230,7 +890,7 @@ class CatalogController extends GetxController {
       if (url == null) {
         Get.snackbar(
           '❌ فشل الرفع',
-          'حدث خطأ أثناء رفع ملف الكتالوج',
+          'حدث خطأ أثناء رفع ملف الكتالوج إلى الخادم',
           backgroundColor: const Color(0xFF3A1A1A),
           colorText: const Color(0xFFE57373),
           duration: const Duration(seconds: 4),
@@ -1238,52 +898,19 @@ class CatalogController extends GetxController {
         return;
       }
 
-      // 3. حفظ الرابط
-      final formattedUrl = '$url&ext=.csv';
-      feedUrl.value = formattedUrl;
-      await _appStorage.writeString('catalog_feed_url', formattedUrl);
+      // 3. حفظ الرابط ونسخه للحافظة
+      feedUrl.value = url;
+      await _appStorage.writeString('catalog_feed_url', url);
 
-      // ✅ نسخ الرابط إلى الحافظة تلقائياً للتسهيل على المستخدم لمنع نسخ الروابط المبتورة (...)
       try {
-        await Clipboard.setData(ClipboardData(text: formattedUrl));
+        await Clipboard.setData(ClipboardData(text: url));
       } catch (e) {
         if (kDebugMode) debugPrint('❌ Failed to copy to clipboard: $e');
       }
 
-      // 4. تحديث حالة المزامنة في قاعدة البيانات للمنتجات المعتمدة فقط
-      final firestore = FirebaseFirestore.instance;
-      final collRef = firestore.collection('catalog_products');
-      
-      final batchSize = 400;
-      for (var i = 0; i < approvedProducts.length; i += batchSize) {
-        final batch = firestore.batch();
-        final chunk = approvedProducts.sublist(
-          i,
-          i + batchSize > approvedProducts.length ? approvedProducts.length : i + batchSize,
-        );
-        for (final prd in chunk) {
-          if (prd.id != null) {
-            final docRef = collRef.doc(prd.id);
-            batch.update(docRef, {
-              'is_synced': 1,
-              'updated_at': DateTime.now().toIso8601String(),
-            });
-          }
-        }
-        await batch.commit();
-      }
-
-      // 5. حفظ الرابط في Firestore للمدير
-      try {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .update({'catalog_feed_url': formattedUrl, 'catalog_synced_at': FieldValue.serverTimestamp()});
-      } catch (_) {}
-
       Get.snackbar(
         '✅ تمت المزامنة ونسخ الرابط',
-        'تم رفع الكتالوج ونسخ رابط التغذية تلقائياً إلى الحافظة! 📋',
+        'تم رفع الكتالوج بنجاح ونسخ الرابط إلى الحافظة! 📋',
         backgroundColor: const Color(0xFF1A3A1A),
         colorText: const Color(0xFF4CAF50),
         duration: const Duration(seconds: 5),
@@ -1326,6 +953,5 @@ class CatalogController extends GetxController {
     editingProduct.value = null;
   }
 
-  /// عدد المنتجات غير المتزامنة
   int get unsyncedCount => products.where((p) => !p.isSynced).length;
 }
