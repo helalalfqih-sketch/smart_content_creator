@@ -94,7 +94,7 @@ class Back4AppCatalogRepository implements CatalogRepository {
           debugPrint('[CATALOG_PAGE] page=$currentPage count=${data.length}');
 
           final pageProducts = data
-              .map((item) => CatalogProduct.fromMap(Map<String, dynamic>.from(item)))
+              .map((item) => CatalogProduct.fromMap(Map<String, dynamic>.from(item)).copyWith(isSynced: true))
               .toList();
 
           allFetchedProducts.addAll(pageProducts);
@@ -117,7 +117,7 @@ class Back4AppCatalogRepository implements CatalogRepository {
         for (final p in allFetchedProducts) {
           final key = p.id ?? '';
           if (key.isNotEmpty) {
-            dedupedMap[key] = p;
+            dedupedMap[key] = p.copyWith(isSynced: true);
           }
         }
         final dedupedProducts = dedupedMap.values.toList();

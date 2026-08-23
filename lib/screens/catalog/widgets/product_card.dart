@@ -52,7 +52,8 @@ class ProductCard extends StatelessWidget {
                     width: double.infinity,
                     height: double.infinity,
                     memCacheWidth: 350,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(16)),
                     placeholderWidget: _placeholder(),
                     errorWidget: _placeholder(),
                   ),
@@ -62,7 +63,8 @@ class ProductCard extends StatelessWidget {
                     left: columns >= 4 ? 6 : 8,
                     child: columns >= 4
                         ? Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.black54,
                               borderRadius: BorderRadius.circular(4),
@@ -89,7 +91,9 @@ class ProductCard extends StatelessWidget {
                                   width: 6,
                                   height: 6,
                                   decoration: BoxDecoration(
-                                    color: product.isSynced ? Colors.blue : Colors.grey,
+                                    color: product.isSynced
+                                        ? Colors.blue
+                                        : Colors.grey,
                                     shape: BoxShape.circle,
                                   ),
                                 ),
@@ -102,13 +106,15 @@ class ProductCard extends StatelessWidget {
                               // شارة الحالة (pending, approved, rejected)
                               Container(
                                 margin: const EdgeInsets.only(bottom: 4),
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 3),
                                 decoration: BoxDecoration(
                                   color: product.status == 'approved'
                                       ? Colors.green.withValues(alpha: 0.85)
                                       : product.status == 'rejected'
                                           ? Colors.red.withValues(alpha: 0.85)
-                                          : Colors.amber.withValues(alpha: 0.85),
+                                          : Colors.amber
+                                              .withValues(alpha: 0.85),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
@@ -127,7 +133,8 @@ class ProductCard extends StatelessWidget {
                               ),
                               // شارة المزامنة
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 3),
                                 decoration: BoxDecoration(
                                   color: product.isSynced
                                       ? Colors.blue.withValues(alpha: 0.85)
@@ -136,8 +143,12 @@ class ProductCard extends StatelessWidget {
                                 ),
                                 child: Text(
                                   product.isSynced
-                                      ? (columns == 3 ? '✓ متزامن' : '✓ متزامن Meta')
-                                      : (columns == 3 ? '⏳ معلق' : '⏳ غير متزامن'),
+                                      ? (columns == 3
+                                          ? '✓ متزامن'
+                                          : '✓ متزامن Meta')
+                                      : (columns == 3
+                                          ? '⏳ معلق'
+                                          : '⏳ غير متزامن'),
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 9,
@@ -155,11 +166,17 @@ class ProductCard extends StatelessWidget {
                     right: columns >= 4 ? 2 : 4,
                     child: PopupMenuButton<String>(
                       icon: Icon(Icons.more_vert,
-                          color: Colors.white.withValues(alpha: 0.7), size: columns >= 4 ? 14 : 18),
-                      padding: columns >= 4 ? EdgeInsets.zero : const EdgeInsets.all(8),
-                      constraints: columns >= 4 ? const BoxConstraints(minWidth: 80) : null,
+                          color: Colors.white.withValues(alpha: 0.7),
+                          size: columns >= 4 ? 14 : 18),
+                      padding: columns >= 4
+                          ? EdgeInsets.zero
+                          : const EdgeInsets.all(8),
+                      constraints: columns >= 4
+                          ? const BoxConstraints(minWidth: 80)
+                          : null,
                       color: const Color(0xFF1A1A2E),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                       itemBuilder: (_) {
                         final auth = Get.find<AuthController>();
                         final currentUid = auth.firebaseUid;
@@ -170,7 +187,8 @@ class ProductCard extends StatelessWidget {
                           PopupMenuItem(
                             value: 'whatsapp',
                             child: Row(children: [
-                              const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF25D366), size: 16),
+                              const Icon(Icons.chat_bubble_outline_rounded,
+                                  color: Color(0xFF25D366), size: 16),
                               const SizedBox(width: 8),
                               const Text('إرسال عبر واتساب',
                                   style: TextStyle(
@@ -181,7 +199,8 @@ class ProductCard extends StatelessWidget {
                           PopupMenuItem(
                             value: 'share',
                             child: Row(children: [
-                              const Icon(Icons.share_rounded, color: Colors.purpleAccent, size: 16),
+                              const Icon(Icons.share_rounded,
+                                  color: Colors.purpleAccent, size: 16),
                               const SizedBox(width: 8),
                               const Text('مشاركة عامة',
                                   style: TextStyle(
@@ -192,7 +211,8 @@ class ProductCard extends StatelessWidget {
                           PopupMenuItem(
                             value: 'facebook',
                             child: Row(children: [
-                              const Icon(Icons.facebook_rounded, color: Color(0xFF1877F2), size: 16),
+                              const Icon(Icons.facebook_rounded,
+                                  color: Color(0xFF1877F2), size: 16),
                               const SizedBox(width: 8),
                               const Text('نشر في فيسبوك',
                                   style: TextStyle(
@@ -204,7 +224,8 @@ class ProductCard extends StatelessWidget {
                             PopupMenuItem(
                               value: 'edit',
                               child: Row(children: [
-                                const Icon(Icons.edit_rounded, color: Colors.blue, size: 16),
+                                const Icon(Icons.edit_rounded,
+                                    color: Colors.blue, size: 16),
                                 const SizedBox(width: 8),
                                 const Text('تعديل',
                                     style: TextStyle(
@@ -215,7 +236,8 @@ class ProductCard extends StatelessWidget {
                             PopupMenuItem(
                               value: 'delete',
                               child: Row(children: [
-                                const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 16),
+                                const Icon(Icons.delete_outline_rounded,
+                                    color: Colors.red, size: 16),
                                 const SizedBox(width: 8),
                                 const Text('حذف',
                                     style: TextStyle(
@@ -271,7 +293,9 @@ class ProductCard extends StatelessWidget {
                       fontSize: columns >= 4 ? 11 : 13,
                     ),
                   ),
-                  if (columns < 4 && product.brand != null && product.brand!.isNotEmpty) ...[
+                  if (columns < 4 &&
+                      product.brand != null &&
+                      product.brand!.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(
                       product.brand!,
@@ -292,45 +316,11 @@ class ProductCard extends StatelessWidget {
   }
 
   Widget _placeholder() {
-    IconData catIcon = Icons.inventory_2_outlined;
-    final cat = (product.categoryName ?? '').toLowerCase();
-    if (cat.contains('ملابس') || cat.contains('fashion') || cat.contains('clothing')) {
-      catIcon = Icons.checkroom_outlined;
-    } else if (cat.contains('عناية') || cat.contains('جمال') || cat.contains('beauty') || cat.contains('صحة')) {
-      catIcon = Icons.spa_outlined;
-    } else if (cat.contains('إلكترون') || cat.contains('tech') || cat.contains('هاتف') || cat.contains('phone')) {
-      catIcon = Icons.devices_outlined;
-    } else if (cat.contains('ساعات') || cat.contains('watch')) {
-      catIcon = Icons.watch_outlined;
-    } else if (cat.contains('حقائب') || cat.contains('bag')) {
-      catIcon = Icons.shopping_bag_outlined;
-    }
-
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF1E1E38), Color(0xFF101020)],
-        ),
-      ),
+      color: const Color(0xFF1A1A2E),
       child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(catIcon, color: Colors.white.withValues(alpha: 0.35), size: 36),
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                product.resolvedCategoryName.isNotEmpty ? product.resolvedCategoryName : 'منتج',
-                style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.4), fontWeight: FontWeight.bold),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
+        child: Icon(Icons.shopping_bag_outlined,
+            color: Colors.white.withValues(alpha: 0.15), size: 36),
       ),
     );
   }
@@ -343,10 +333,14 @@ class ProductCard extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.chat_bubble_outline, color: Color(0xFF25D366), size: 22),
+            const Icon(Icons.chat_bubble_outline,
+                color: Color(0xFF25D366), size: 22),
             const SizedBox(width: 8),
             Text('إرسال "${product.title}" عبر واتساب',
-                style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold)),
+                style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold)),
           ],
         ),
         content: Column(
@@ -366,7 +360,9 @@ class ProductCard extends StatelessWidget {
                 hintStyle: const TextStyle(fontSize: 12, color: Colors.white30),
                 filled: true,
                 fillColor: const Color(0xFF0A0A16),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none),
               ),
             ),
           ],
@@ -381,8 +377,10 @@ class ProductCard extends StatelessWidget {
               final phone = phoneCtrl.text.trim();
               if (phone.isEmpty) return;
               Get.back();
-              Get.snackbar('⏳ جاري الإرسال', 'جاري إرسال المنتج عبر WhatsApp Cloud API...',
-                  backgroundColor: const Color(0xFF1A1A2E), colorText: Colors.white);
+              Get.snackbar('⏳ جاري الإرسال',
+                  'جاري إرسال المنتج عبر WhatsApp Cloud API...',
+                  backgroundColor: const Color(0xFF1A1A2E),
+                  colorText: Colors.white);
               final service = Get.isRegistered<WhatsAppSyncService>()
                   ? Get.find<WhatsAppSyncService>()
                   : Get.put(WhatsAppSyncService());
@@ -391,19 +389,24 @@ class ProductCard extends StatelessWidget {
                 destinationPhone: phone,
               );
               if (ok) {
-                Get.snackbar('✅ تم الإرسال', 'تم إرسال بطاقة المنتج بنجاح إلى $phone ✨',
-                    backgroundColor: const Color(0xFF1A3A1A), colorText: const Color(0xFF4CAF50));
+                Get.snackbar(
+                    '✅ تم الإرسال', 'تم إرسال بطاقة المنتج بنجاح إلى $phone ✨',
+                    backgroundColor: const Color(0xFF1A3A1A),
+                    colorText: const Color(0xFF4CAF50));
               } else {
                 Get.snackbar('❌ خطأ', 'فشل إرسال المنتج عبر الواتساب',
-                    backgroundColor: const Color(0xFF3A1A1A), colorText: const Color(0xFFE57373));
+                    backgroundColor: const Color(0xFF3A1A1A),
+                    colorText: const Color(0xFFE57373));
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF25D366),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('إرسال الآن', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: const Text('إرسال الآن',
+                style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),

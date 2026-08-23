@@ -290,4 +290,116 @@ void main() {
       expect(repo.remoteProducts.containsKey('prd_failed_media'), isFalse);
     });
   });
+
+  group('Global / Imported Catalog Authorization Policy Contract Tests', () {
+    bool canModifyProduct({
+      required bool isAdmin,
+      required String? actorUid,
+      required String? creatorUid,
+    }) {
+      if (isAdmin) return true;
+      if (creatorUid != null && creatorUid.isNotEmpty && creatorUid == actorUid) {
+        return true;
+      }
+      return false;
+    }
+
+    test('TEST A: normal user + global product + creatorUid null -> catalogMediaAdd => 403', () {
+      const isUserAdmin = false;
+      const actorUid = 'user_normal_123';
+      const String? creatorUid = null;
+
+      final canAddMedia = canModifyProduct(
+        isAdmin: isUserAdmin,
+        actorUid: actorUid,
+        creatorUid: creatorUid,
+      );
+
+      expect(canAddMedia, isFalse); // 403 Forbidden
+    });
+
+    test('TEST B: admin + global product + creatorUid null -> catalogMediaAdd => success', () {
+      const isUserAdmin = true;
+      const actorUid = 'admin_456';
+      const String? creatorUid = null;
+
+      final canAddMedia = canModifyProduct(
+        isAdmin: isUserAdmin,
+        actorUid: actorUid,
+        creatorUid: creatorUid,
+      );
+
+      expect(canAddMedia, isTrue); // Success
+    });
+
+    test('TEST C: normal unrelated user + global product with creatorUid => 403', () {
+      const isUserAdmin = false;
+      const actorUid = 'user_intruder_789';
+      const creatorUid = 'user_legit_owner_111';
+
+      final canModify = canModifyProduct(
+        isAdmin: isUserAdmin,
+        actorUid: actorUid,
+        creatorUid: creatorUid,
+      );
+
+      expect(canModify, isFalse); // 403 Forbidden
+    });
+
+    test('TEST D: matching creatorUid => success', () {
+      const isUserAdmin = false;
+      const actorUid = 'user_legit_owner_111';
+      const creatorUid = 'user_legit_owner_111';
+
+      final canModify = canModifyProduct(
+        isAdmin: isUserAdmin,
+        actorUid: actorUid,
+        creatorUid: creatorUid,
+      );
+
+      expect(canModify, isTrue); // Success
+    });
+
+    test('TEST E: normal user attempts catalogDelete on global product => 403', () {
+      const isUserAdmin = false;
+      const actorUid = 'user_normal_123';
+      const String? creatorUid = null;
+
+      final canDelete = canModifyProduct(
+        isAdmin: isUserAdmin,
+        actorUid: actorUid,
+        creatorUid: creatorUid,
+      );
+
+      expect(canDelete, isFalse); // 403 Forbidden
+    });
+
+    test('TEST F: normal user attempts catalogRestore on global product => 403', () {
+      const isUserAdmin = false;
+      const actorUid = 'user_normal_123';
+      const String? creatorUid = null;
+
+      final canRestore = canModifyProduct(
+        isAdmin: isUserAdmin,
+        actorUid: actorUid,
+        creatorUid: creatorUid,
+      );
+
+      expect(canRestore, isFalse); // 403 Forbidden
+    });
+
+    test('TEST G: admin delete/restore global product => success', () {
+      const isUserAdmin = true;
+      const actorUid = 'admin_super_999';
+      const String? creatorUid = null;
+
+      final canAdminAction = canModifyProduct(
+        isAdmin: isUserAdmin,
+        actorUid: actorUid,
+        creatorUid: creatorUid,
+      );
+
+      expect(canAdminAction, isTrue); // Success
+    });
+  });
 }

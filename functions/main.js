@@ -1402,13 +1402,10 @@ Parse.Cloud.define("catalogUpdate", async (request) => {
   const product = await query.first({ useMasterKey: true });
   if (!product) throw new Parse.Error(404, "Product not found");
 
-  const productCreator = product.get("creatorUid");
-  if (productCreator && productCreator !== auth.uid && !auth.admin && product.get("scope") === "private") {
+  const creatorUid = product.get("creatorUid");
+  const canModify = auth.admin || (Boolean(creatorUid) && creatorUid === auth.uid);
+  if (!canModify) {
     throw new Parse.Error(403, "Not authorized to update this product");
-  }
-
-  if (!productCreator) {
-    product.set("creatorUid", auth.uid);
   }
 
   const beforeData = product.toJSON();
@@ -1478,8 +1475,9 @@ Parse.Cloud.define("catalogDelete", async (request) => {
   const product = await query.first({ useMasterKey: true });
   if (!product) throw new Parse.Error(404, "Product not found");
 
-  const productCreatorDel = product.get("creatorUid");
-  if (productCreatorDel && productCreatorDel !== auth.uid && !auth.admin && product.get("scope") === "private") {
+  const creatorUid = product.get("creatorUid");
+  const canModify = auth.admin || (Boolean(creatorUid) && creatorUid === auth.uid);
+  if (!canModify) {
     throw new Parse.Error(403, "Not authorized to delete this product");
   }
 
@@ -1516,8 +1514,9 @@ Parse.Cloud.define("catalogRestore", async (request) => {
   const product = await query.first({ useMasterKey: true });
   if (!product) throw new Parse.Error(404, "Product not found");
 
-  const productCreatorRes = product.get("creatorUid");
-  if (productCreatorRes && productCreatorRes !== auth.uid && !auth.admin && product.get("scope") === "private") {
+  const creatorUid = product.get("creatorUid");
+  const canModify = auth.admin || (Boolean(creatorUid) && creatorUid === auth.uid);
+  if (!canModify) {
     throw new Parse.Error(403, "Not authorized to restore this product");
   }
 
@@ -1528,6 +1527,45 @@ Parse.Cloud.define("catalogRestore", async (request) => {
   await product.save(null, { useMasterKey: true });
 
   return { success: true, productId: product.get("productId") || product.id, status: "approved" };
+});
+
+// 👑 catalogAssignOwner: Admin-only function to assign owner of products
+Parse.Cloud.define("catalogAssignOwner", async (request) => {
+  const auth = await extractAuthUser(request);
+  if (!auth) throw new Parse.Error(401, "Authentication required");
+  if (!auth.admin) throw new Parse.Error(403, "Admin authorization required");
+
+  const params = request.params || {};
+  const productId = params.productId || params.id;
+  const targetUid = (params.targetUid || "").trim();
+  if (!productId || !targetUid) {
+    throw new Parse.Error(400, "productId and targetUid are required");
+  }
+
+  const query = findProductQuery(productId);
+  const product = await query.first({ useMasterKey: true });
+  if (!product) throw new Parse.Error(404, "Product not found");
+
+  const oldUid = product.get("creatorUid") || null;
+  product.set("creatorUid", targetUid);
+  const nextVersion = (product.get("syncVersion") || 1) + 1;
+  product.set("syncVersion", nextVersion);
+  await product.save(null, { useMasterKey: true });
+
+  // Audit Log
+  const CatalogChangeLog = Parse.Object.extend("CatalogChangeLog");
+  const log = new CatalogChangeLog();
+  log.set("product", product);
+  log.set("productId", product.get("productId") || product.id);
+  log.set("operation", "assign_owner");
+  log.set("actorUid", auth.uid);
+  log.set("version", nextVersion);
+  log.set("changedFields", ["creatorUid"]);
+  log.set("beforeData", { creatorUid: oldUid });
+  log.set("afterData", { creatorUid: targetUid });
+  await log.save(null, { useMasterKey: true });
+
+  return { success: true, productId: product.get("productId") || product.id, creatorUid: targetUid };
 });
 
 // 🖼️ catalogMediaList: List all media for a product
@@ -1563,13 +1601,10 @@ Parse.Cloud.define("catalogMediaAdd", async (request) => {
   const product = await query.first({ useMasterKey: true });
   if (!product) throw new Parse.Error(404, "Product not found");
 
-  const productCreatorMedia = product.get("creatorUid");
-  if (productCreatorMedia && productCreatorMedia !== auth.uid && !auth.admin && product.get("scope") === "private") {
-    throw new Parse.Error(403, "Not authorized to add media to this product");
-  }
-
-  if (!productCreatorMedia) {
-    product.set("creatorUid", auth.uid);
+  const creatorUid = product.get("creatorUid");
+  const canModify = auth.admin || (Boolean(creatorUid) && creatorUid === auth.uid);
+  if (!canModify) {
+    throw new Parse.Error(403, "Not authorized to modify media for this product");
   }
 
   const dedupeKey = computeMediaDedupeKey(productId, type, url);
