@@ -99,18 +99,31 @@ class FirebaseStorageService extends GetxService {
       final filePath = 'users/$uid/catalog_media/$fileName';
 
       debugPrint('🚀 Uploading catalog $mediaType to: $filePath');
-      final ref = _storage.ref().child(filePath);
       final bytes = await file.readAsBytes();
       final contentType = mediaType == 'video' ? 'video/$ext' : 'image/$ext';
-      final uploadTask = await ref.putData(
-        bytes,
-        SettableMetadata(contentType: contentType),
-      );
 
-      if (uploadTask.state == TaskState.success) {
-        final url = await ref.getDownloadURL();
-        debugPrint('✅ Catalog media uploaded: $url');
-        return url;
+      final List<FirebaseStorage> storageTargets = [
+        _storage,
+        FirebaseStorage.instanceFor(bucket: 'smartcontentcreator2.appspot.com'),
+        FirebaseStorage.instanceFor(bucket: 'smartcontentcreator2.firebasestorage.app'),
+      ];
+
+      for (final storage in storageTargets) {
+        try {
+          final ref = storage.ref().child(filePath);
+          final uploadTask = await ref.putData(
+            bytes,
+            SettableMetadata(contentType: contentType),
+          );
+
+          if (uploadTask.state == TaskState.success) {
+            final url = await ref.getDownloadURL();
+            debugPrint('✅ Catalog media uploaded successfully: $url');
+            return url;
+          }
+        } catch (bucketError) {
+          debugPrint('⚠️ Storage attempt for bucket (${storage.bucket}) failed: $bucketError');
+        }
       }
       return null;
     } catch (e) {
@@ -128,23 +141,34 @@ class FirebaseStorageService extends GetxService {
     try {
       final filePath = 'catalogs/$uid/catalog.csv';
       debugPrint('🚀 Uploading catalog CSV feed to: $filePath');
-
-      final ref = _storage.ref().child(filePath);
-      final uploadTask = await ref.putData(
-        Uint8List.fromList(utf8.encode(csvContent)),
-        SettableMetadata(
-          contentType: 'text/csv; charset=utf-8',
-          customMetadata: {
-            'uploaded_by': uid,
-            'uploaded_at': DateTime.now().toIso8601String(),
-          },
-        ),
+      final bytes = Uint8List.fromList(utf8.encode(csvContent));
+      final metadata = SettableMetadata(
+        contentType: 'text/csv; charset=utf-8',
+        customMetadata: {
+          'uploaded_by': uid,
+          'uploaded_at': DateTime.now().toIso8601String(),
+        },
       );
 
-      if (uploadTask.state == TaskState.success) {
-        final url = await ref.getDownloadURL();
-        debugPrint('✅ Global Catalog feed uploaded: $url');
-        return url;
+      final List<FirebaseStorage> storageTargets = [
+        _storage,
+        FirebaseStorage.instanceFor(bucket: 'smartcontentcreator2.appspot.com'),
+        FirebaseStorage.instanceFor(bucket: 'smartcontentcreator2.firebasestorage.app'),
+      ];
+
+      for (final storage in storageTargets) {
+        try {
+          final ref = storage.ref().child(filePath);
+          final uploadTask = await ref.putData(bytes, metadata);
+
+          if (uploadTask.state == TaskState.success) {
+            final url = await ref.getDownloadURL();
+            debugPrint('✅ Global Catalog feed uploaded successfully: $url');
+            return url;
+          }
+        } catch (bucketError) {
+          debugPrint('⚠️ Storage attempt for catalog CSV (${storage.bucket}) failed: $bucketError');
+        }
       }
       return null;
     } catch (e) {
