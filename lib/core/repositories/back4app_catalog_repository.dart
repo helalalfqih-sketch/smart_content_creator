@@ -129,14 +129,35 @@ class Back4AppCatalogRepository implements CatalogRepository {
         }
 
         // تحديث وتوحيد SQLite لمنع انحراف العدد (Reconcile SQLite cache with authoritative server products)
-        final serverIds = dedupedProducts.map((p) => "'${p.id}'").join(',');
-        if (serverIds.isNotEmpty) {
-          await dbService.deleteRecord(
+        try {
+          final localSyncedRows = await dbService.getRecords(
             'catalog_products',
-            where: 'id NOT IN ($serverIds) AND is_synced = 1',
-            whereArgs: const [],
+            where: 'is_synced = 1',
           );
+          final serverIdSet = dedupedProducts
+              .map((p) => p.id ?? '')
+              .where((id) => id.isNotEmpty)
+              .toSet();
+
+          final staleIds = localSyncedRows
+              .map((r) => r['id']?.toString() ?? '')
+              .where((id) => id.isNotEmpty && !serverIdSet.contains(id))
+              .toList();
+
+          if (staleIds.isNotEmpty) {
+            for (int i = 0; i < staleIds.length; i += 50) {
+              final chunk = staleIds.skip(i).take(50).map((id) => "'$id'").join(',');
+              await dbService.deleteRecord(
+                'catalog_products',
+                where: 'id IN ($chunk) AND is_synced = 1',
+                whereArgs: const [],
+              );
+            }
+          }
+        } catch (e) {
+          if (kDebugMode) debugPrint('⚠️ SQLite reconciliation error: $e');
         }
+
         await dbService.batchInsertRecords(
           'catalog_products',
           dedupedProducts.map((p) => p.toMap()).toList(),
