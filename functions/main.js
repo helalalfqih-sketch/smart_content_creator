@@ -1255,6 +1255,18 @@ Parse.Cloud.define("catalogList", async (request) => {
   };
 });
 
+// 🔎 Helper: Query product by either objectId or custom productId
+function findProductQuery(productId) {
+  const CatalogProduct = Parse.Object.extend("CatalogProduct");
+  const queryById = new Parse.Query(CatalogProduct);
+  queryById.equalTo("objectId", productId);
+
+  const queryByProductId = new Parse.Query(CatalogProduct);
+  queryByProductId.equalTo("productId", productId);
+
+  return Parse.Query.or(queryById, queryByProductId);
+}
+
 // 🔍 catalogGet: Retrieve single product + associated media
 Parse.Cloud.define("catalogGet", async (request) => {
   const params = request.params || {};
@@ -1283,7 +1295,7 @@ Parse.Cloud.define("catalogGet", async (request) => {
   // Load associated media
   const CatalogProductMedia = Parse.Object.extend("CatalogProductMedia");
   const mediaQuery = new Parse.Query(CatalogProductMedia);
-  mediaQuery.equalTo("productId", product.get("productId"));
+  mediaQuery.equalTo("productId", product.get("productId") || product.id);
   mediaQuery.equalTo("status", "active");
   mediaQuery.descending("isPrimary");
   mediaQuery.ascending("sortOrder");
@@ -1332,8 +1344,8 @@ Parse.Cloud.define("catalogCreate", async (request) => {
   product.set("categoryId", params.categoryId || null);
   product.set("categoryName", params.categoryName || null);
   product.set("metaProductType", params.metaProductType || null);
-  product.set("quantity", Number(params.quantity) || 1);
-  product.set("salePrice", params.salePrice != null ? Number(params.salePrice) : null);
+  product.set("quantity", parseInt(params.quantity, 10) || 1);
+  product.set("salePrice", params.salePrice ? Number(params.salePrice) : null);
   product.set("salePriceEffectiveDate", params.salePriceEffectiveDate || null);
   product.set("itemGroupId", params.itemGroupId || null);
   product.set("gender", params.gender || null);
@@ -1390,8 +1402,13 @@ Parse.Cloud.define("catalogUpdate", async (request) => {
   const product = await query.first({ useMasterKey: true });
   if (!product) throw new Parse.Error(404, "Product not found");
 
-  if (product.get("creatorUid") !== auth.uid && !auth.admin) {
+  const productCreator = product.get("creatorUid");
+  if (productCreator && productCreator !== auth.uid && !auth.admin && product.get("scope") === "private") {
     throw new Parse.Error(403, "Not authorized to update this product");
+  }
+
+  if (!productCreator) {
+    product.set("creatorUid", auth.uid);
   }
 
   const beforeData = product.toJSON();
