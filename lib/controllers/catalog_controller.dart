@@ -670,6 +670,32 @@ class CatalogController extends GetxController {
         debugPrint('[CATALOG_MEDIA] videoUrl=$finalVideoUrl');
       }
 
+      // 🛑 التحقق الصارم من اكتمال رفع الوسائط المختارة قبل إنشاء المنتج
+      final hasSelectedImages = pickedImages.isNotEmpty;
+      final hasSelectedVideo = pickedVideoPath.isNotEmpty;
+
+      if (hasSelectedImages && finalImageLink.isEmpty) {
+        Get.snackbar(
+          '❌ فشل رفع الصور',
+          'فشل رفع صور المنتج. لم يتم إنشاء المنتج.',
+          backgroundColor: const Color(0xFF3A1A1A),
+          colorText: const Color(0xFFE57373),
+          duration: const Duration(seconds: 4),
+        );
+        return false;
+      }
+
+      if (hasSelectedVideo && (finalVideoUrl == null || finalVideoUrl.isEmpty)) {
+        Get.snackbar(
+          '❌ فشل رفع الفيديو',
+          'فشل رفع فيديو المنتج. لم يتم إنشاء المنتج.',
+          backgroundColor: const Color(0xFF3A1A1A),
+          colorText: const Color(0xFFE57373),
+          duration: const Duration(seconds: 4),
+        );
+        return false;
+      }
+
       // إنشاء معرف فريد وثابت (Idempotent)
       final now = DateTime.now();
       final pid = (product.id != null && product.id!.isNotEmpty)

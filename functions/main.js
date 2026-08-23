@@ -1576,6 +1576,34 @@ Parse.Cloud.define("catalogMediaAdd", async (request) => {
   return { success: true, created: isNew, media: { id: media.id, ...media.toJSON() } };
 });
 
+// 📤 catalogUploadMedia: Server-side secure file upload to Back4App Parse Files
+Parse.Cloud.define("catalogUploadMedia", async (request) => {
+  const auth = await extractAuthUser(request);
+  if (!auth) throw new Parse.Error(401, "Authentication required");
+
+  const params = request.params || {};
+  const fileBase64 = params.fileBase64;
+  const fileName = (params.fileName || `media_${Date.now()}.jpg`).replace(/[^a-zA-Z0-9_.-]/g, "_");
+  const mimeType = params.mimeType || "image/jpeg";
+
+  if (!fileBase64) throw new Parse.Error(400, "fileBase64 is required");
+
+  try {
+    const parseFile = new Parse.File(fileName, { base64: fileBase64 }, mimeType);
+    await parseFile.save({ useMasterKey: true });
+    const fileUrl = parseFile.url();
+
+    return {
+      success: true,
+      url: fileUrl,
+      name: parseFile.name(),
+    };
+  } catch (error) {
+    console.error("catalogUploadMedia error:", error);
+    throw new Parse.Error(500, `Failed to upload file to Back4App storage: ${error.message}`);
+  }
+});
+
 // 🗂️ catalogCategoriesList: Return active categories
 Parse.Cloud.define("catalogCategoriesList", async () => {
   const CatalogCategory = Parse.Object.extend("CatalogCategory");

@@ -128,7 +128,15 @@ class Back4AppCatalogRepository implements CatalogRepository {
           debugPrint('⚠️ [CATALOG_SYNC_WARNING] fetched (${dedupedProducts.length}) != server total ($serverTotal)');
         }
 
-        // تحديث SQLite دفعة واحدة (Batch Transaction)
+        // تحديث وتوحيد SQLite لمنع انحراف العدد (Reconcile SQLite cache with authoritative server products)
+        final serverIds = dedupedProducts.map((p) => "'${p.id}'").join(',');
+        if (serverIds.isNotEmpty) {
+          await dbService.deleteRecord(
+            'catalog_products',
+            where: 'id NOT IN ($serverIds) AND is_synced = 1',
+            whereArgs: const [],
+          );
+        }
         await dbService.batchInsertRecords(
           'catalog_products',
           dedupedProducts.map((p) => p.toMap()).toList(),
