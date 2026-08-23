@@ -152,7 +152,7 @@ class FirebaseStorageService extends GetxService {
   ) async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      final token = await user?.getIdToken();
+      final token = await user?.getIdToken(true);
 
       final base64Data = base64Encode(bytes);
       final response = await http.post(

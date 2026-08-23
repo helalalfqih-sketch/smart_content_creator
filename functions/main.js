@@ -214,6 +214,27 @@ async function deriveTrustedUserId(request) {
   return null;
 }
 
+async function extractAuthUser(request) {
+  if (request.user && request.user.id) {
+    return {
+      uid: request.user.id,
+      admin: Boolean(ADMIN_UIDS.has(request.user.id) || request.user.get("role") === "admin"),
+      user: request.user,
+    };
+  }
+
+  const params = request.params || {};
+  const firebaseToken = params.firebaseIdToken || (request.headers && (request.headers["x-firebase-id-token"] || (request.headers["authorization"] ? request.headers["authorization"].replace(/^Bearer\s+/i, "") : null)));
+  if (firebaseToken) {
+    const verified = await verifyFirebaseIdToken(firebaseToken);
+    if (verified) {
+      return verified;
+    }
+  }
+
+  return null;
+}
+
 function isTerminalTaskError(statusCode, errorBody) {
   if (statusCode === 404) return { isTerminal: true, reason: "task_not_found_404" };
 
