@@ -23,7 +23,7 @@ class Back4AppCatalogMediaService extends GetxService {
   Future<String?> _getAuthToken() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      return await user?.getIdToken(true);
+      return await user?.getIdToken(false);
     } catch (e) {
       debugPrint('⚠️ Back4AppCatalogMediaService: Failed to get auth token: $e');
       return null;

@@ -21,7 +21,7 @@ class WhatsAppSyncService extends GetxService {
   Future<String?> _getAuthToken() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      return await user?.getIdToken(true);
+      return await user?.getIdToken(false);
     } catch (e) {
       debugPrint('⚠️ WhatsAppSyncService auth error: $e');
       return null;

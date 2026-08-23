@@ -66,7 +66,7 @@ class CatalogController extends GetxController {
         final user = firebase_auth.FirebaseAuth.instance.currentUser;
         if (user == null) return null;
         try {
-          return await user.getIdToken(true);
+          return await user.getIdToken(false);
         } catch (e) {
           if (kDebugMode) debugPrint('⚠️ Failed to get Firebase ID token: $e');
           return null;
