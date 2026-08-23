@@ -825,7 +825,7 @@ class CatalogController extends GetxController {
 
       Get.snackbar(
         '📂 اكتمل الاستيراد والتوزيع',
-        'تم إدراج $savedCount منتجاً في الكتالوج، وعزل $draftedCount مسودة صورة إلى شاشة الموردين للمراجعة.${skipped > 0 ? " (تم تخطي $skipped صف فارغ)" : ""}',
+        'تم إدراج $savedCount من إجمالي $totalValid منتجاً في الكتالوج، وعزل $draftedCount مسودة صورة إلى شاشة الموردين للمراجعة.${skipped > 0 ? " (تم تخطي $skipped صف فارغ)" : ""}',
         backgroundColor: const Color(0xFF1A3A1A),
         colorText: const Color(0xFF4CAF50),
         duration: const Duration(seconds: 5),
