@@ -10,10 +10,12 @@ import 'package:http/http.dart' as http;
 /// عبر خوادم Back4App Cloud Code و Parse Files دون استخدام Firebase Storage
 class Back4AppCatalogMediaService extends GetxService {
   static const String _parseAppId = 'uWUMmdbdRjcuOKuCcl9Pg7zEYxnYGVaLXjmveGF2';
+  static const String _parseRestKey = 'Zsvk14ko9rvXD25G1hflNeY2Dg2hJtkocPvh6tMp';
   static const String _parseBaseUrl = 'https://parseapi.back4app.com/functions';
 
   Map<String, String> get _headers => {
     'X-Parse-Application-Id': _parseAppId,
+    'X-Parse-REST-API-Key': _parseRestKey,
     'Content-Type': 'application/json',
   };
 
