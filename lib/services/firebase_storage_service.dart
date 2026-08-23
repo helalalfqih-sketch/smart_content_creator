@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:dio/dio.dart' as dio;
+import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
@@ -145,21 +146,18 @@ class FirebaseStorageService extends GetxService {
   Future<String?> _uploadToBack4AppFiles(List<int> bytes, String fileName, String mimeType) async {
     try {
       final uri = Uri.parse('https://parseapi.back4app.com/files/$fileName');
-      final response = await dio.Dio().postUri(
+      final response = await http.post(
         uri,
-        data: dio.Stream.fromIterable([bytes]),
-        options: dio.Options(
-          headers: {
-            'X-Parse-Application-Id': 'uWUMmdbdRjcuOKuCcl9Pg7zEYxnYGVaLXjmveGF2',
-            'X-Parse-REST-API-Key': 'Zsvk14ko9rvXD25G1hflNeY2Dg2hJtkocPvh6tMp',
-            'Content-Type': mimeType,
-            'Content-Length': bytes.length.toString(),
-          },
-        ),
+        headers: {
+          'X-Parse-Application-Id': 'uWUMmdbdRjcuOKuCcl9Pg7zEYxnYGVaLXjmveGF2',
+          'X-Parse-REST-API-Key': 'Zsvk14ko9rvXD25G1hflNeY2Dg2hJtkocPvh6tMp',
+          'Content-Type': mimeType,
+        },
+        body: bytes,
       );
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        final data = response.data;
+        final data = json.decode(response.body);
         final url = (data is Map) ? data['url'] as String? : null;
         if (url != null && url.startsWith('http')) {
           return url;
