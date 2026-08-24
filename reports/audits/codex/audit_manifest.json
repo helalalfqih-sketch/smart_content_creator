@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "audit": "Codex comprehensive Flutter audit",
+  "generated_at": "2026-08-24T00:00:00+03:00",
+  "base_commit": "2842535ceecfb21d6c10256e130175c68f9db172",
+  "mode": "READ_ONLY_SOURCE_AUDIT",
+  "tracked_files_in_inventory": 621,
+  "dart_files": 248,
+  "ui_controls_indexed": 279,
+  "findings": 28,
+  "verification": {
+    "dart_analyze": "BLOCKED_BY_ENVIRONMENT",
+    "isolated_test": "BLOCKED_BY_ENVIRONMENT",
+    "build": "NOT_RUN",
+    "network": "BLOCKED_BY_ENVIRONMENT"
+  },
+  "remote_freshness": "UNVERIFIED_SANDBOX_BLOCKED",
+  "antigravity_used_as_evidence": false,
+  "report_files": [
+    "00_executive_summary.md",
+    "01_project_inventory.md",
+    "02_architecture_map.md",
+    "03_routes_and_screens.md",
+    "04_ui_controls_inventory.csv",
+    "05_user_flows.md",
+    "06_network_and_data_flows.md",
+    "07_storage_and_models.md",
+    "08_duplicates_report.md",
+    "09_large_files_and_complexity.md",
+    "10_dead_code_and_unreachable.md",
+    "11_security_and_privacy.md",
+    "12_performance.md",
+    "13_dependencies_and_platforms.md",
+    "14_tests_and_verification.md",
+    "15_errors_and_logs.md",
+    "16_findings_register.csv",
+    "17_recommended_remediation_plan.md",
+    "18_unverified_items.md",
+    "CODEX_REPORT_INFO.md",
+    "audit_manifest.json",
+    "SHA256SUMS.txt"
+  ],
+  "secret_review": {
+    "files_scanned": 21,
+    "secret_value_pattern_hits": 0,
+    "context_review": "Sensitive terms and field names reviewed; one source email captured in UI callback inventory was redacted; remaining email-like matches were asset names such as @2x. Regex alone is not proof of absence."
+  }
+}
