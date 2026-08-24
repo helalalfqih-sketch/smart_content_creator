@@ -1,0 +1,148 @@
+﻿call_id,file_path,line_number,service_type,description,auth_required,timeout_configured,error_handling,status
+NET_1,integration_test/manus_live_verification_test.dart,30,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_2,integration_test/manus_live_verification_test.dart,33,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_3,integration_test/manus_live_verification_test.dart,65,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_4,integration_test/wave1a_live_verification_test.dart,33,App Check,Firebase App Check attestation,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_5,lib/main.dart,81,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_6,lib/main.dart,92,App Check,Firebase App Check attestation,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_7,test/live_dual_read_runner_test.dart,46,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_8,test/live_dual_read_runner_test.dart,68,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_9,lib/controllers/admin_controller.dart,192,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_10,lib/controllers/admin_controller.dart,224,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_11,lib/controllers/admin_controller.dart,336,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_12,lib/controllers/admin_controller.dart,499,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_13,lib/controllers/admin_controller.dart,702,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_14,lib/controllers/admin_controller.dart,907,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_15,lib/controllers/admin_controller.dart,936,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_16,lib/controllers/admin_controller.dart,984,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_17,lib/controllers/auth_controller.dart,106,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_18,lib/controllers/auth_controller.dart,368,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_19,lib/controllers/auth_controller.dart,683,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_20,lib/controllers/auth_controller.dart,1077,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_21,lib/controllers/auth_controller.dart,1170,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_22,lib/controllers/auth_controller.dart,1191,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_23,lib/controllers/catalog_controller.dart,561,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_24,lib/controllers/permissions_controller.dart,61,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_25,lib/controllers/settings_controller.dart,328,HTTP,http package REST call,No/Local,Yes,Caller / Try-Catch handled,STATICALLY_VALID
+NET_26,lib/controllers/settings_controller.dart,502,HTTP,http package REST call,No/Local,Yes,Caller / Try-Catch handled,STATICALLY_VALID
+NET_27,lib/controllers/settings_controller.dart,718,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_28,lib/controllers/settings_controller.dart,769,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_29,lib/controllers/settings_controller.dart,770,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_30,lib/controllers/settings_controller.dart,907,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_31,lib/database/database_helper.dart,33,SQLite,Local SQLite database operation,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_32,lib/services/activity_tracking_service.dart,7,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_33,lib/services/ai_backend_router.dart,45,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_34,lib/services/ai_backend_router.dart,59,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_35,lib/services/ai_backend_router.dart,89,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_36,lib/services/ai_backend_router.dart,126,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_37,lib/services/ai_image_generation_service.dart,118,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_38,lib/services/ai_image_generation_service.dart,259,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_39,lib/services/ai_image_generation_service.dart,516,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_40,lib/services/ai_image_generation_service.dart,540,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_41,lib/services/ai_image_generation_service.dart,629,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_42,lib/services/auth_service.dart,15,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_43,lib/services/auth_service.dart,17,Supabase,Supabase Client API,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_44,lib/services/back4app_catalog_media_service.dart,25,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_45,lib/services/back4app_catalog_media_service.dart,54,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_46,lib/services/back4app_catalog_media_service.dart,91,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_47,lib/services/back4app_gateway_service.dart,60,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_48,lib/services/back4app_gateway_service.dart,139,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_49,lib/services/back4app_gateway_service.dart,191,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_50,lib/services/back4app_gateway_service.dart,208,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_51,lib/services/back4app_gateway_service.dart,236,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_52,lib/services/back4app_gateway_service.dart,288,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_53,lib/services/back4app_gateway_service.dart,368,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_54,lib/services/back4app_gateway_service.dart,433,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_55,lib/services/back4app_gateway_service.dart,533,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_56,lib/services/back4app_gateway_service.dart,604,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_57,lib/services/back4app_gateway_service.dart,622,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_58,lib/services/db_service.dart,38,SQLite,Local SQLite database operation,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_59,lib/services/facebook_page_service.dart,62,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_60,lib/services/facebook_page_service.dart,101,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_61,lib/services/facebook_page_service.dart,131,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_62,lib/services/facebook_page_service.dart,165,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_63,lib/services/facebook_page_service.dart,200,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_64,lib/services/facebook_page_service.dart,228,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_65,lib/services/firebase_storage_service.dart,11,Firebase Storage,Firebase Cloud Storage,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_66,lib/services/firestore_user_service.dart,11,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_67,lib/services/global_config_service.dart,7,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_68,lib/services/google_veo_service.dart,28,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_69,lib/services/google_veo_service.dart,77,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_70,lib/services/instagram_service.dart,180,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_71,lib/services/instagram_service.dart,182,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_72,lib/services/instagram_service.dart,210,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_73,lib/services/instagram_service.dart,240,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_74,lib/services/instagram_service.dart,267,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_75,lib/services/instagram_service.dart,278,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_76,lib/services/instagram_service.dart,280,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_77,lib/services/instagram_service.dart,305,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_78,lib/services/instagram_service.dart,317,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_79,lib/services/instagram_service.dart,319,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_80,lib/services/instagram_service.dart,335,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_81,lib/services/instagram_service.dart,339,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_82,lib/services/instagram_service.dart,412,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_83,lib/services/manus_ai_service.dart,15,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_84,lib/services/manus_ai_service.dart,48,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_85,lib/services/manus_ai_service.dart,242,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_86,lib/services/manus_ai_service.dart,333,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_87,lib/services/marketing_share_service.dart,100,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_88,lib/services/media_processing_service.dart,309,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_89,lib/services/media_processing_service.dart,418,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_90,lib/services/permissions_sync_service.dart,14,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_91,lib/services/product_matching_service.dart,210,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_92,lib/services/secure_storage_service.dart,6,SecureStorage,Hardware encrypted keystore/keychain,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_93,lib/services/subscription_service.dart,8,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_94,lib/services/telegram_service.dart,37,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_95,lib/services/tiktok_account_service.dart,194,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_96,lib/services/tiktok_account_service.dart,196,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_97,lib/services/tiktok_account_service.dart,232,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_98,lib/services/tiktok_account_service.dart,258,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_99,lib/services/tiktok_account_service.dart,276,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_100,lib/services/tiktok_account_service.dart,309,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_101,lib/services/tiktok_account_service.dart,324,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_102,lib/services/tiktok_account_service.dart,326,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_103,lib/services/tiktok_account_service.dart,358,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_104,lib/services/tiktok_account_service.dart,395,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_105,lib/services/tiktok_account_service.dart,419,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_106,lib/services/tiktok_account_service.dart,462,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_107,lib/services/tiktok_account_service.dart,472,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_108,lib/services/tiktok_account_service.dart,487,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_109,lib/services/tiktok_account_service.dart,491,Firestore,Cloud Firestore direct access,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_110,lib/services/unified_ai_service.dart,810,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_111,lib/services/unified_backend_service.dart,17,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_112,lib/services/unified_backend_service.dart,23,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_113,lib/services/whatsapp_sync_service.dart,23,Firebase Auth,Firebase Auth authentication,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_114,lib/services/whatsapp_sync_service.dart,35,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_115,lib/services/whatsapp_sync_service.dart,60,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_116,lib/services/whatsapp_sync_service.dart,87,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_117,lib/services/whatsapp_sync_service.dart,113,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_118,lib/services/whatsapp_sync_service.dart,144,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_119,lib/services/whatsapp_sync_service.dart,173,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_120,lib/services/whatsapp_sync_service.dart,199,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_121,lib/widgets/modern_video_bubble.dart,865,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_122,lib/widgets/modern_video_bubble.dart,894,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_123,lib/widgets/video_full_screen_viewer.dart,65,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_124,lib/widgets/chat/full_screen_viewer.dart,39,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_125,lib/services/ai/google_ai_mode_service.dart,112,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_126,lib/services/api/social_media_api_client.dart,40,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_127,lib/screens/catalog/product_catalog_screen.dart,2119,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_128,lib/screens/catalog/product_form_screen.dart,697,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_129,lib/core/config/supabase_config.dart,15,Supabase,Supabase Client API,Yes (App Check/Token/API Key),Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_130,lib/core/repositories/back4app_catalog_repository.dart,80,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_131,lib/core/repositories/back4app_catalog_repository.dart,198,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_132,lib/core/repositories/back4app_catalog_repository.dart,278,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_133,lib/core/repositories/back4app_catalog_repository.dart,295,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_134,lib/core/repositories/back4app_catalog_repository.dart,370,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_135,lib/core/repositories/back4app_catalog_repository.dart,392,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_136,lib/core/repositories/back4app_catalog_repository.dart,416,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_137,lib/core/repositories/back4app_catalog_repository.dart,450,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_138,lib/core/repositories/back4app_catalog_repository.dart,471,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_139,lib/core/repositories/back4app_catalog_repository.dart,509,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_140,lib/core/repositories/back4app_catalog_repository.dart,544,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_141,lib/core/repositories/back4app_catalog_repository.dart,599,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_142,lib/core/repositories/back4app_catalog_repository.dart,639,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_143,lib/core/repositories/back4app_catalog_repository.dart,673,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_144,lib/core/repositories/back4app_catalog_repository.dart,737,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_145,lib/core/storage/app_storage_service.dart,32,SharedPreferences,Key-value local storage,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_146,lib/ai/ui/image_gallery_widget.dart,659,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID
+NET_147,lib/ai/ui/image_gallery_widget.dart,708,HTTP,http package REST call,No/Local,Default / Unspecified,Caller / Try-Catch handled,STATICALLY_VALID

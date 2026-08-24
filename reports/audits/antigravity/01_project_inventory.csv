@@ -1,0 +1,696 @@
+﻿file_path,extension,role,size_bytes,line_count,complexity,sha256,is_suspicious,git_tracked_status
+.firebaserc,,Other Project File,67,5,Low,88fde163886e3fff09cfdeea7da24f41feaedbdc5d99c1bb156c270aeefb963c,No,Tracked/Audited
+.flutter-plugins-dependencies,,Other Project File,39312,1,Low,2e0b38556e3736a4b511de4984ec4de24f99ac0fcbecdfedfde17adfe1e01e6c,No,Tracked/Audited
+.gitignore,,Other Project File,1036,70,Low,46b18fea5502a17de9c6ca3334dd2597f4cc694bae61339937c9b9926df6f9a7,No,Tracked/Audited
+.metadata,,Other Project File,994,30,Low,10cd01d7c966e47b480237ccc71527f83317d85b74f347301c8b1f974aebbdf9,No,Tracked/Audited
+analysis_options.yaml,.yaml,Configuration / Rules,1622,39,Low,44e79e59c31eb240c05e40920a36a2c305ff0e1f777d396df3a8a64f3d35982c,No,Tracked/Audited
+app_check_debug.txt,.txt,Other Project File,0,0,Low,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,No,Tracked/Audited
+build_error.txt,.txt,Other Project File,458616,3869,High (>500 lines),83cc9089add8e2d4b8dd4d415fa78245a42176343882981536c651260a8ddb32,No,Tracked/Audited
+devtools_options.yaml,.yaml,Configuration / Rules,187,3,Low,99119330d774616e9e8f151014c3b3cf90a5e858fe4b8e459544eeda2acbc0e8,No,Tracked/Audited
+firebase.json,.json,Configuration / Rules,1112,57,Low,030b89f69b04c4253f8122d18248fba43f127e6c648fbf67fa1580b3e97497f0,No,Tracked/Audited
+firestore.indexes.json,.json,Configuration / Rules,356,19,Low,ba222156d959ad097631bceb1a869a439d8b198dbdcbb80a8008f22748257227,No,Tracked/Audited
+firestore.rules,.rules,Configuration / Rules,2115,63,Low,dc79e88854dad75f0c705f0c91049dee8a5cb32cb5055c0b8615fafd2e300309,No,Tracked/Audited
+pubspec.lock,.lock,Configuration / Rules,61270,1946,High (>500 lines),4e8e8691dab252f48f6550d6de138575c3e6c005a7afd1afca1e90ccd68de8cc,No,Tracked/Audited
+pubspec.yaml,.yaml,Configuration / Rules,3772,137,Low,7393d2672800751f44bc9e6e49befec9364eaed033efc1cdd5d6b1e8b6d703ca,No,Tracked/Audited
+README.md,.md,Other Project File,14615,250,Medium (>200 lines),7277b4120aba25e4b0b7bbfbc351431aae18a79be80f8556ff23dd71a7e39745,No,Tracked/Audited
+shorebird.yaml,.yaml,Configuration / Rules,786,14,Low,fd1ffd12dc59720e3aa576e354eff6204beb5160cfaba756a7b29d77cc62d2f3,No,Tracked/Audited
+storage.rules,.rules,Configuration / Rules,1310,32,Low,5d007d956ef7c624a30eca5b9c7d25ea973bdb6a0682137e7a5cb68995dd12b4,No,Tracked/Audited
+.firebase/hosting.d2ViX2xhbmRpbmc.cache,.cache,Other Project File,18049,156,Low,9fa58b4110db5a2cf65a508294cc294e702b9823926154a1df95936a7e82ee7a,No,Tracked/Audited
+.vscode/settings.json,.json,Configuration / Rules,80,3,Low,e56bafa7ffa7805fd8faf1735aee94f4f7896aa97ab7618911e5db8fc1504483,No,Tracked/Audited
+android/.gitignore,,Platform Native Code/Config,267,14,Low,c9af75dbc2c8aa867476a09426c80b178c4aeed8b9393ae48503eedfa3273d71,No,Tracked/Audited
+android/build.gradle.kts,.kts,Platform Native Code/Config,2071,69,Low,6eda1aa0bf05493177414d80dae77336d2d7bd43ae2a839fed926a0ab57990e2,No,Tracked/Audited
+android/gradle.properties,.properties,Platform Native Code/Config,626,17,Low,b44155741665360a4e3cf7ef6c85a9c78eefc9347bf7a682226f5a49e23e2204,No,Tracked/Audited
+android/gradlew,,Platform Native Code/Config,4971,160,Low,ec56c02543666d92d9ac5ae7fcc48f88ce4de0deb8b7f9b39928ca46f68c1b2b,No,Tracked/Audited
+android/gradlew.bat,.bat,Platform Native Code/Config,2404,90,Low,c13c6e91b9a517783976de213d46398c661ea9e17651376d7301e839eaedcc62,No,Tracked/Audited
+android/key.properties,.properties,Platform Native Code/Config,112,4,Low,c71a3dcb8e0cb27ce3904c8c3d955e527ec904a222a1c2b96cb42f2e12655193,No,Tracked/Audited
+android/local.properties,.properties,Platform Native Code/Config,122,5,Low,bf48fe04bd534bc9c3bd6e9b8203df89aea828a490facf3f01f1d6deb390cd50,No,Tracked/Audited
+android/settings.gradle.kts,.kts,Platform Native Code/Config,1485,45,Low,11d487bf4aa5cd4e3840e9c52b5d6e11355d11177dc9f2466dbfc5178a1660c4,No,Tracked/Audited
+docs/BUILD_DIAGNOSTIC_REPORT.md,.md,Documentation,6114,104,Low,1e60026d32d318587f1fb0ec4ce76d8a7bb2a802b35d83f56256ab00d52263f5,No,Tracked/Audited
+docs/firebase_prompt_inventory_verified.md,.md,Documentation,37761,736,High (>500 lines),168d7553e7ce7089fed7372282724e57aa7aa984387160498ca7178d9f357790,No,Tracked/Audited
+docs/firebase_prompt_migration_manifest_final.md,.md,Documentation,38512,893,High (>500 lines),e20b3814459a95d192c8247380b9780c5da60c3416174c2b1af889c21b00ba36,No,Tracked/Audited
+docs/firebase_prompt_wave1a_console_setup.md,.md,Documentation,4083,98,Low,4a9be005cc75f31107407cd57d74fc39d2350a0516fb20612a3dc3e0effebdff,No,Tracked/Audited
+docs/firebase_prompt_wave1_ready.md,.md,Documentation,11162,250,Medium (>200 lines),26b3a21182e721982d825ba4ec6c069fc0f39951777dac6f09712a91436c1bec,No,Tracked/Audited
+docs/native_dependency_removal_audit.md,.md,Documentation,5402,50,Low,b9b91862d52df439e7a11b1ceb7d5f9f14e529a327698f95b79ce9ca0b588458,No,Tracked/Audited
+functions/.env,,Cloud Functions (Firebase),245,3,Low,e5aee4baa218a1b3552a966a4a73c51da1c917383d5388ef4e0b8cda1701c7eb,No,Tracked/Audited
+functions/back4app_cloud_code_manus.js,.js,Cloud Functions (Firebase),28092,824,High (>500 lines),f845481ae7830887d2e7047590c79955b9c27f0f03998cfec5d3116d32c6d4a5,No,Tracked/Audited
+functions/catalog_cloud_code.js,.js,Cloud Functions (Firebase),44229,1198,High (>500 lines),fcf286f31cc86e9127f8dbbccd39821f0c52bcc7b10674ad430a86f57a6a39d4,No,Tracked/Audited
+functions/index.js,.js,Cloud Functions (Firebase),21355,596,High (>500 lines),4aa60ae6edb756277f616067ab4ba110c1ad305a540280ad57cf5454ccda56f7,No,Tracked/Audited
+functions/main.js,.js,Cloud Functions (Firebase),107561,2951,High (>500 lines),8e1c881c39e179c7da44d82506aa41d49011d2506c089ec743e5a0923c74ffdc,No,Tracked/Audited
+functions/make_admin.js,.js,Cloud Functions (Firebase),1169,40,Low,bf0651ca39b77ddfb0b70786273f37f27022c159e75fb7377208000e37ab76bf,No,Tracked/Audited
+functions/package-lock.json,.json,Cloud Functions (Firebase),117404,3051,High (>500 lines),6f5386d3049af94f7ce0eb19044a6b00030ee78a4a713e91ee2f08bd05130c29,No,Tracked/Audited
+functions/package.json,.json,Cloud Functions (Firebase),349,16,Low,084ab13efd6f58f6f35bbefb2ee840ef16f5405bba7f0692942b35b469ab4551,No,Tracked/Audited
+functions/test_live_concurrent_gateway.js,.js,Cloud Functions (Firebase),6151,158,Low,4001e7b7143646d3c3212a630ec27a74eb9c7a22be33cdc1fecd5b32ba80f134,No,Tracked/Audited
+functions/test_manus_gateway.js,.js,Cloud Functions (Firebase),12994,374,Medium (>200 lines),cf0704fa960b0c2ddaa5b6282b3ab30b7a090c65ce5fef5685e46df0a4473551,No,Tracked/Audited
+integration_test/ai_orchestrator_integration_test.dart,.dart,Test Code,1162,30,Low,9cbe00af7e3e23b1b32cfd463cf104b5abaa799ca303a6e2d72bdf0577395b53,No,Tracked/Audited
+integration_test/app_test.dart,.dart,Test Code,2047,54,Low,1b384eb5abb7017369dd8b9bf18e81ebf1cbec710ea71eed8892f392653d0922,No,Tracked/Audited
+integration_test/manus_live_verification_test.dart,.dart,Test Code,6118,137,Low,e063c68b5b97ddc355614ef866f1df8dd0a7c79139dfa65df2ee791257645e39,No,Tracked/Audited
+integration_test/wave1a_live_verification_test.dart,.dart,Test Code,6438,159,Low,0943360d2f0fb29f7a9f72574442d19ae58262e1ea46c3c930bdb969e1d41eca,No,Tracked/Audited
+ios/.gitignore,,Platform Native Code/Config,603,34,Low,e85b4db8ba6ed14708e5f7d3c60336e5a3067ce11329b84aa8ba5d98603ee253,No,Tracked/Audited
+lib/config.dart,.dart,Source Code (Flutter/Dart),766,15,Low,18573bdcad07a120d772e03aa820fca658a37250ca7bedafc29bfb7abaf6587d,No,Tracked/Audited
+lib/main.dart,.dart,Source Code (Flutter/Dart),13045,243,Medium (>200 lines),8985b105b5632fac8fdc3601ce2aacca8cca339d40170d55303beb7209c245be,No,Tracked/Audited
+lib/tree.txt,.txt,Source Code (Flutter/Dart),20192,683,High (>500 lines),0a4bd942b4b050fbb024588482a1587c72c25f2f848a4c3671b24458ac06be4d,No,Tracked/Audited
+linux/.gitignore,,Other Project File,19,1,Low,d7bbeac6ba86e2d94d8ccc63a1a2fbbac5ee7467f52f75c168165412d6ac3b60,No,Tracked/Audited
+linux/CMakeLists.txt,.txt,Other Project File,4909,128,Low,d52cf1ba055618164b074d3c7f4a4ff2d2391e5979bc6524bb9573dd0062cbf7,No,Tracked/Audited
+macos/.gitignore,,Other Project File,96,7,Low,236a523a43625a2d63af3cd0f2ce8600a3668846f8cb278c1c7c5cbfd4aa4088,No,Tracked/Audited
+reports/catalog_media_http_results.csv,.csv,Audit / Execution Report,126555,249,Medium (>200 lines),0d769f84946881368954e4a259cead686e1bb3b84e431b7d24d721413281825d,No,Tracked/Audited
+reports/catalog_media_merge_dry_run.csv,.csv,Audit / Execution Report,112143,134,Low,43bb9a1bfe56e0f76ea600e0a7ab6e40a03870ed710b59f8ee66f7e3cfa70251,No,Tracked/Audited
+reports/catalog_media_merge_dry_run_v2.csv,.csv,Audit / Execution Report,145579,134,Low,eb79808af740ac433ef4b98662c8102e36e8321a630d218211b5f3bdeaeeff2f,No,Tracked/Audited
+reports/catalog_media_merge_summary.txt,.txt,Audit / Execution Report,1197,39,Low,8ddb105856b470fda6d97cc90320a31a2bc2a0ca4b5fea3621829e30ad186024,No,Tracked/Audited
+reports/catalog_media_merge_summary_v2.txt,.txt,Audit / Execution Report,2138,52,Low,5c8b8aeb7d97eeafa6cd1d5a2010f0ac9762e40a8dbec1c14f1932d3b8cbaaad,No,Tracked/Audited
+scratch/all_classes_live_status.json,.json,Configuration / Rules,1559,82,Low,dc963bf87a0378a3551526e26d0fb8a6342bc1c42fe3c9e06cacaca66bbea7ff,No,Tracked/Audited
+scratch/analyze_excel.py,.py,Other Project File,4465,99,Low,20012d3a6175ab06444bd26bc37fe4544e6dcb8fa1b42576a552d41965b03bb7,No,Tracked/Audited
+scratch/audit_firestore_delta.py,.py,Other Project File,4032,104,Low,138eca83d40e315b4aa8333079c7f40445c925449b7381e2c9e4172fa0544e6c,No,Tracked/Audited
+scratch/excel_counts.json,.json,Configuration / Rules,931,55,Low,415600ebde49f77590c314a3bc7c7a4a9014791bd2c0e0986131553c399bdc0f,No,Tracked/Audited
+scratch/excel_inspection.json,.json,Configuration / Rules,9970,98,Low,f743718bf30e34ff18cd1d80e117fe433e2f8f5967705320c0e91047d80bdf40,No,Tracked/Audited
+scratch/import_excel_to_back4app.cjs,.cjs,Other Project File,11317,337,Medium (>200 lines),5c502ebfa138e46ad73ca8383f475ada151b38d54445672f347848048c37ab47,No,Tracked/Audited
+scratch/import_to_back4app.py,.py,Other Project File,14781,366,Medium (>200 lines),b8b3814855cd6a983ac4dc081d1645e69a7b29e69878f3971db534c7b1b11d69,No,Tracked/Audited
+scratch/inspect_excel.dart,.dart,Other Project File,9862,285,Medium (>200 lines),dd33fd8dd280228de08c2aac96fceef42e9bb097e8fe2efca97ba8c2afd9e9ec,No,Tracked/Audited
+scratch/inspect_xlsx.py,.py,Other Project File,3537,80,Low,b0df229b4761540d8d8cdea0b401704fb03db2bcf1edd6b9bc99316328161e7e,No,Tracked/Audited
+scratch/lockdown_clp.cjs,.cjs,Other Project File,3268,116,Low,1d834c40d4f6dd435faf44ff3921cf4c1cb0d874f2a6bf6f917d9c408ab370e0,No,Tracked/Audited
+scratch/merge_cloud_code.cjs,.cjs,Other Project File,3008,91,Low,085601c3e05329a104c0dcbf801272a3e1a9705ab4e782f5fd194c879ddffbe7,No,Tracked/Audited
+scratch/migration_live_report.json,.json,Configuration / Rules,615,24,Low,27ba2b2a97dcd6734237864bc421ef7465f328718ca837edfd8362b8e2ba49af,No,Tracked/Audited
+scratch/provision_live_schema.cjs,.cjs,Other Project File,2070,63,Low,0f3e3589343b20e8306b22ef8b006c240d4d28ed6a0789dae02fc6f6590d169d,No,Tracked/Audited
+scratch/provision_live_schema.js,.js,Other Project File,2330,66,Low,d2fcec11f8be7664dc8ff28089b0949cb3a3a7c7246c0d504cc47b83918a8566,No,Tracked/Audited
+scratch/seed_categories_and_verify_all.py,.py,Other Project File,7558,112,Low,fcfa582585eb962594e56a893a0d692ec227cf3f318a99871023108d5d2cbb1e,No,Tracked/Audited
+scratch/setup_and_lockdown_all.cjs,.cjs,Other Project File,2942,116,Low,1421a529eda09be7e9ea8e242befe536cbae39b3e46542aadf99f0669822fbc1,No,Tracked/Audited
+scratch/test_parse_rest.cjs,.cjs,Other Project File,906,29,Low,4cc8cc01732c636ddd0913fd411a5dad2a129005ea45a152ee3ec1a5cf5c1114,No,Tracked/Audited
+scratch/test_query_products.py,.py,Other Project File,523,13,Low,0b7fbe9b6d38d3ca07020b6816cade094f828ceb478258e9c2a9c95431948dcf,No,Tracked/Audited
+scratch/verify_clp_security.cjs,.cjs,Other Project File,3934,116,Low,ad9deb7fe7faa5edb236c46f525afe5f237891329e654f780228ae8793bae6ff,No,Tracked/Audited
+scratch/verify_live_back4app_full_proof.py,.py,Other Project File,3212,81,Low,657657a6e8d43a98c44018168fc7d3b1a8e8dbc9c6b8dad2dc4e51df8bd0b886,No,Tracked/Audited
+test/ai_backend_router_test.dart,.dart,Test Code,9033,257,Medium (>200 lines),51c666ca0233f00ac6f955d93dbe914c862dfb86b9b0a0585f037c2480cbb410,No,Tracked/Audited
+test/catalog_dual_read_verification_test.dart,.dart,Test Code,2869,85,Low,a4d99fb38e48bf22492b33aba6538477e57aa804b3645d4edb3c207d888c5967,No,Tracked/Audited
+test/catalog_excel_parser_test.dart,.dart,Test Code,3273,86,Low,8c8bb66ab382efc7ac30045601f614a916d8b29ad5ef9f5e7998381eaf993e2e,No,Tracked/Audited
+test/catalog_xlsx_import_service_test.dart,.dart,Test Code,1224,36,Low,5077943fcfc09982ba168cedcd9ddef3c50801bdd46b5485bc8ac37082b11e2f,No,Tracked/Audited
+test/chinese_platform_query_test.dart,.dart,Test Code,2728,58,Low,808d732535ae659d315fb282fe95cadd600149f7ffcf08fc990d12821f1be8ab,No,Tracked/Audited
+test/controlled_dual_write_test.dart,.dart,Test Code,16193,478,Medium (>200 lines),82b2772782aaf8e47ece8ab8d11e29d0a25f93d3f0f72357fcb0e9268baedae7,No,Tracked/Audited
+test/deterministic_router_test.dart,.dart,Test Code,4874,139,Low,189ec9a31225311bc2d72b10a516445bb143a4e2d0229b45c61c328b35ea5ce2,No,Tracked/Audited
+test/firebase_prompt_wave1a_test.dart,.dart,Test Code,6085,168,Low,05a41927ab4fa5e1a8100f2069da921fc72b1bd912d512c041d019a8d1a10dee,No,Tracked/Audited
+test/live_dual_read_runner_test.dart,.dart,Test Code,4283,113,Low,0b6dc5daba83b1b8d32f13246843025fad9b0993756e824616f50cf07014e50a,No,Tracked/Audited
+test/manus_ai_provider_test.dart,.dart,Test Code,8579,203,Medium (>200 lines),52766dd2f1e32da4f288d0497f17244a4960a22da498b7f206e1d1a41057e75c,No,Tracked/Audited
+test/media_audit.dart,.dart,Test Code,1983,62,Low,4d7a3afdb9f3b137cf12bfc6575392be6a8134037219f6ed23b473c23044f29c,No,Tracked/Audited
+test/verify_llava.dart,.dart,Test Code,581,18,Low,6c0624819108540afe177809a9f21ea334d658dff78b242b8f4813c6ff49767b,No,Tracked/Audited
+test/whatsapp_sync_contract_test.dart,.dart,Test Code,7379,183,Low,1fe345586f79dc78263f125d523e06d482566037fc79a00847a4176340fff6c9,No,Tracked/Audited
+test/widget_test.dart,.dart,Test Code,200,8,Low,30482fd8629d94cdfbbee91d9f3985dddf4f84a47c16f425ada24ebde83ec289,No,Tracked/Audited
+tools/catalog_media_http_probe.ps1,.ps1,Tool / Script,8551,244,Medium (>200 lines),fb49b91c9cad2302bc5059f1026f2a0640e1418e9064e5b976eeed27f6b53d75,No,Tracked/Audited
+tools/run_audit.py,.py,Tool / Script,17596,404,Medium (>200 lines),3856c6ee4c2209730c1e9d3b398cc25652923db20e92d9f2350b879f10805918,No,Tracked/Audited
+web/favicon.png,.png,Platform Native Code/Config,917,17,Low,7ab2525f4b86b65d3e4c70358a17e5a1aaf6f437f99cbcc046dad73d59bb9015,No,Tracked/Audited
+web/index.html,.html,Platform Native Code/Config,1593,46,Low,7d6f28cfc7771be56c68990c7270b3b1b471264fe50dd955535d79ea44b7b768,No,Tracked/Audited
+web/manifest.json,.json,Platform Native Code/Config,973,35,Low,78ca60e6cf98180fcf8838cf521ed69221521c8b9706af4eb26e35a7a0f4a727,No,Tracked/Audited
+web_landing/app-arm64-v8a-release.apk,.apk,Other Project File,106962716,1107534,High (>500 lines),648fd0cea278b481c8941ff143ac1504ee702baabd7526004a17de8be8823955,No,Tracked/Audited
+web_landing/app-armeabi-v7a-release.apk,.apk,Other Project File,137134755,1689041,High (>500 lines),ae2aebd08e24bf37e02d4fa2252cad2d638fb87e951497af50e8d3ba3a538e14,No,Tracked/Audited
+web_landing/app-x86_64-release.apk,.apk,Other Project File,118117016,746978,High (>500 lines),132616207a6000b7617fadf550fe77f7477df6b0f1e710dff7e79dccc124d7d7,No,Tracked/Audited
+web_landing/index.html,.html,Other Project File,25064,638,High (>500 lines),e08ab8b8a033bb25c03a3f1feb6589a00a9fe2e1b4f22f4531789719ca387fc3,No,Tracked/Audited
+web_landing/login.html,.html,Other Project File,22551,583,High (>500 lines),b1ab751fc990b7020ae8b93396cbb14ff628ac3fd62b285980052917fc04e8ff,No,Tracked/Audited
+web_landing/meta_app_icon.png,.png,Other Project File,637547,3945,High (>500 lines),a64dfa4b2c6214470f7c4afc6117fbe1f2ff057b2ba00c5e26c8cb7504998f8c,No,Tracked/Audited
+web_landing/privacy.html,.html,Other Project File,8887,162,Low,e211f02f115bcebd673830292279b8d610885fa5c0a6b47769fed26132d081cf,No,Tracked/Audited
+web_landing/terms.html,.html,Other Project File,6320,123,Low,623c2a3f427806fc6ae4cf6c6eee71685acdebcf83d7b53f796629be80d51403,No,Tracked/Audited
+web_landing/tiktok-developers-site-verification.txt,.txt,Other Project File,70,1,Low,181b81b70f67e2f3f20dedc8a3969d9ce7466194d1e6ba85b0e590ed35f6e4f4,No,Tracked/Audited
+web_landing/tiktok82zSIdGTotmj5M5eUY2QFWzmRnKy3sIP.txt,.txt,Other Project File,70,1,Low,278597f7c775b75123f8cbfb08d439a66b5405bd06112d45b7f2f46968d96e49,No,Tracked/Audited
+web_landing/tiktok8EIh0gTFBJvtQX1l3pDMLW2v9QZ4cEfJ.txt,.txt,Other Project File,70,1,Low,f0d888de100b022cb6d7885523e8e0f17d593cb21c878b1492af5d66975d0733,No,Tracked/Audited
+web_landing/tiktokdKN2PnIaTP3N0tUYZLP5v52z1631giK7.txt,.txt,Other Project File,70,1,Low,181b81b70f67e2f3f20dedc8a3969d9ce7466194d1e6ba85b0e590ed35f6e4f4,No,Tracked/Audited
+web_landing/tiktokhQgODAKp59R0QjOFoKqTAQ3ppMbdYGs6.txt,.txt,Other Project File,70,1,Low,a5472e7cf2e0bb9c0a06b2a9afdff887a3ebacf4870d113c08a50506f5d54c4c,No,Tracked/Audited
+web_landing/tiktokJzGAgV3qMHmYAfiDn0vrN5ZvSD9E9Gah.txt,.txt,Other Project File,70,1,Low,59cc6f367d0227cfc4cd5b1447d6ef11362e312cc40f0d620758b1a0afe657d3,No,Tracked/Audited
+web_landing/tiktokOdBLWFPTVhedKJuGsZ5FEoocqiqKeiNs.txt,.txt,Other Project File,70,1,Low,523762b79a7c31c73e7d59739c56d14da6e43ba24bb82de8b03d9935d32efe0c,No,Tracked/Audited
+web_landing/tiktokSsshszdznLvbVECs2iPO63wWRjmENAOrM.txt,.txt,Other Project File,70,1,Low,2766f239e5e09090f94a08a13daf9401e77842eb7eb14c77fa25ec083d0d0bef,No,Tracked/Audited
+web_landing/version.json,.json,Configuration / Rules,557,6,Low,ae87eb135c45c7e82672a7c86ff24118287e2ea1370a1fd4ca6b24863294e797,No,Tracked/Audited
+windows/.gitignore,,Platform Native Code/Config,308,17,Low,955e3110cb16494ee76e1cd5df47e2c212309eb94a49a123fe87f718de413cb8,No,Tracked/Audited
+windows/CMakeLists.txt,.txt,Platform Native Code/Config,4290,108,Low,bd510036bf3028300a97b33e22935c830529f508b3c0b1b9e9f78ac371b23fef,No,Tracked/Audited
+windows/flutter/CMakeLists.txt,.txt,Platform Native Code/Config,3851,109,Low,bd05e3268b2f246bcbafdb778165fe67a7bafdba04eb73599502563a67b8ae7e,No,Tracked/Audited
+windows/flutter/generated_plugins.cmake,.cmake,Platform Native Code/Config,1041,39,Low,5756a86a27e4eee381db02fad62daffbc3a60d79374976e0bc3ef1c04f272e01,No,Tracked/Audited
+windows/flutter/generated_plugin_registrant.cc,.cc,Platform Native Code/Config,2787,56,Low,af26e06aa78dd566c2f95d764100de8cbc83a28fd2cf100c2f51a06e767cc26e,No,Tracked/Audited
+windows/flutter/generated_plugin_registrant.h,.h,Platform Native Code/Config,302,15,Low,dbc11635d7b1ba1887adf40df5b83d634e9c3ab0bee34510c71528bb4d73602a,No,Tracked/Audited
+windows/runner/CMakeLists.txt,.txt,Platform Native Code/Config,1836,40,Low,d765fdd05f63ad099e585a2cced0cbff13ec3229b7de68c8681b2107db850089,No,Tracked/Audited
+windows/runner/flutter_window.cpp,.cpp,Platform Native Code/Config,2193,71,Low,d615eedc06ae37321e59c2c00c7687d1887dcd97904eb7225fafd8dcb5b83da6,No,Tracked/Audited
+windows/runner/flutter_window.h,.h,Platform Native Code/Config,961,33,Low,0252b804f5da380c7709cbe1daff2b8d18daf6c49d7e6dd43e5af3c99c19f56c,No,Tracked/Audited
+windows/runner/main.cpp,.cpp,Platform Native Code/Config,1330,43,Low,340db2f072c8a343698f491ccdce89bcdf151aeca73903a26abfd9b18ac368f3,No,Tracked/Audited
+windows/runner/resource.h,.h,Platform Native Code/Config,448,16,Low,d0e8bf7835468b4b6b1f8f0747f2e8f25c19841f2df2ac60aaa584ddae3aa7c6,No,Tracked/Audited
+windows/runner/runner.exe.manifest,.manifest,Platform Native Code/Config,616,14,Low,639a56233fcd8cbcb8bbefcd93e4680ec2664f32d9acfb3d2ec1d8726a96e090,No,Tracked/Audited
+windows/runner/Runner.rc,.rc,Platform Native Code/Config,3222,121,Low,62ab2df5542f66b612deb9d1dc17bc5e62a6a0faa9f72267ee8283269bce790b,No,Tracked/Audited
+windows/runner/utils.cpp,.cpp,Platform Native Code/Config,1862,65,Low,fbb18524c22593d0ce7869b0733e237be38e668fe045e3023bcf2d0b31784fa3,No,Tracked/Audited
+windows/runner/utils.h,.h,Platform Native Code/Config,691,19,Low,832e246b6758253f89016fb0374b30791242e97ad950d27fc678b3d9feacfdc4,No,Tracked/Audited
+windows/runner/win32_window.cpp,.cpp,Platform Native Code/Config,8822,288,Medium (>200 lines),4e4f4dcf8e86ea6e097562cb3476039e693449bd8045367538afee579c017511,No,Tracked/Audited
+windows/runner/win32_window.h,.h,Platform Native Code/Config,3624,102,Low,d154cf89ba85f820631a9b5bedacbe64fc5815e428fe6bc5da579ce649f69841,No,Tracked/Audited
+windows/runner/resources/app_icon.ico,.ico,Platform Native Code/Config,26495,213,Medium (>200 lines),b2d078725dd62b2d9179f1b8f30ceb6870c1623c485919044bc48c0c8dd19638,No,Tracked/Audited
+web_landing/.well-known/assetlinks.json,.json,Configuration / Rules,274,12,Low,0a45010ea29f9bd51a488d96f42380c2be57770edb6aa0607585ebf68a6c8bc4,No,Tracked/Audited
+web_landing/app/.last_build_id,,Other Project File,32,1,Low,35e771f749126a0b5faec677e5dd86a029fc1add7c275bdefca1bd427e4bf6dd,No,Tracked/Audited
+web_landing/app/favicon.ico,.ico,Other Project File,20373,168,Low,dd821076a9b03adc2173c93956226aea3d92482d7578fc4339c5d3a2e9c24586,No,Tracked/Audited
+web_landing/app/favicon.png,.png,Other Project File,917,17,Low,7ab2525f4b86b65d3e4c70358a17e5a1aaf6f437f99cbcc046dad73d59bb9015,No,Tracked/Audited
+web_landing/app/flutter.js,.js,Other Project File,9553,31,Low,a483fd28f51ed2fadd0da3fade5b672eba56310d549d736ce62eabf624a6a578,No,Tracked/Audited
+web_landing/app/flutter_bootstrap.js,.js,Other Project File,9975,42,Low,b33490e8405190f825109a298d1df26ffa9fc939eead606cb8abbe692485c630,No,Tracked/Audited
+web_landing/app/flutter_service_worker.js,.js,Other Project File,815,31,Low,dbfbe64ae5be5b462abb97338eb9af783ed4ed57a8c73a53c2a44488a26f6416,No,Tracked/Audited
+web_landing/app/index.html,.html,Other Project File,1580,46,Low,07e5fddb6ba395d73188b0edaa1b2f3b3ecb5789ceb62ae06eb88344ccbf29d9,No,Tracked/Audited
+web_landing/app/main.dart.js,.js,Other Project File,5923922,197138,High (>500 lines),a9dccbfc96c6895478502d0e3e1b2089d90746e3b6ebbd08c670433f0a8e3d60,No,Tracked/Audited
+web_landing/app/manifest.json,.json,Configuration / Rules,973,35,Low,78ca60e6cf98180fcf8838cf521ed69221521c8b9706af4eb26e35a7a0f4a727,No,Tracked/Audited
+web_landing/app/version.json,.json,Configuration / Rules,112,1,Low,5372a3d28fb97f928a38d8aa5a29c75b92e54db4f76300d18966cb86a16270d3,No,Tracked/Audited
+web_landing/app/_headers,,Other Project File,63,2,Low,96bace5276a96c55a64444602504efbf9aac920182672c1668365e6b7459a5fe,No,Tracked/Audited
+web_landing/auth/tiktok/callback/index.html,.html,Other Project File,3551,116,Low,9180c5eaa1e17d527c4bb3453a32905cafba58de1102f87f718535831a600517,No,Tracked/Audited
+web_landing/assets/images/logoapp.jpg,.jpg,Other Project File,19200,146,Low,0996017e91edacf1a384b62ca742c8719ef6105e316cd482585b46913012c61d,No,Tracked/Audited
+web_landing/app/assets/account-DHP3D4lC.js,.js,Other Project File,2360,1,Low,faf3fbfd9c1a7283e85f59c29c742820f9a796b336bb01bd59680d29fe12e793,No,Tracked/Audited
+web_landing/app/assets/admin-DYIRucf5.js,.js,Other Project File,8401,1,Low,db07181efbe1dac9920d59e1ac003a65bec5bfe6d95fa2652f527ed20ec33f0e,No,Tracked/Audited
+web_landing/app/assets/admin-store-ChI9flUx.js,.js,Other Project File,482,1,Low,91f285900040f216c23d4e41c32e381962c4521b3a04242a727ff26b6f93c7ea,No,Tracked/Audited
+web_landing/app/assets/admin.actions-Dx8sonoD.js,.js,Other Project File,2025,1,Low,d056faa8202b454b9e085cf9fec3cc78beddcaa1fd536c6abb6e146595376472,No,Tracked/Audited
+web_landing/app/assets/admin.categories-D7NE1l0b.js,.js,Other Project File,9149,1,Low,95e04cfc7ac88b6fb479c879a52db6c6a545f9281175ebece07331dbdff5ee6d,No,Tracked/Audited
+web_landing/app/assets/admin.index-BV2MvBf9.js,.js,Other Project File,8325,1,Low,6ad30fdb8b584b1c7944a7b09f298f5a98f0081938b99eb55dac61a491e77238,No,Tracked/Audited
+web_landing/app/assets/admin.inventory-D53MQfO2.js,.js,Other Project File,7469,1,Low,a21446c046c9782c67270ccf650b6bdb601df0e47a43019251dc8e39f9fb2afa,No,Tracked/Audited
+web_landing/app/assets/admin.platform-DTPKdaZu.js,.js,Other Project File,6393,1,Low,f9d956f322fa22a6e2736ac36cf63054829d1b1257813299795bc3dac52bcd1e,No,Tracked/Audited
+web_landing/app/assets/admin.product._id-BcAhfGp4.js,.js,Other Project File,37353,3,Low,ff7585f30dfc01736d1f875a542e35e54e8715385492daaa7bd2e0e906bfbf9a,No,Tracked/Audited
+web_landing/app/assets/admin.products-BAX2YGrV.js,.js,Other Project File,8536,1,Low,cf4435b02fa9a0e198b8931d22a407deb091fecf5c9d53b1f4c4b4ee24823f75,No,Tracked/Audited
+web_landing/app/assets/admin.sessions-B_SG5jcv.js,.js,Other Project File,2367,1,Low,d0f63830b2527aae8f89d2297db8959f94f88869e648ac5ae42ab40244e47796,No,Tracked/Audited
+web_landing/app/assets/admin.settings-b62yehEE.js,.js,Other Project File,2942,1,Low,ddaec698c041ef326f9529038ffd401c4f01239c514bc68c18a1102a8689b7c1,No,Tracked/Audited
+web_landing/app/assets/admin.studio-BQpdOOd_.js,.js,Other Project File,8090,1,Low,3556ff40fc63e609dc7a93910f77b3f45ea0c65d3aceaf4941efe3c7e0df01cb,No,Tracked/Audited
+web_landing/app/assets/ai-3d-generator-CBgPXCnP.js,.js,Other Project File,63182,2,Low,af94125171a36e4dd0b2c92f3009447996a428c25a6d0a2ce49846218e228be4,No,Tracked/Audited
+web_landing/app/assets/AnimatePresence-DNkpRaW4.js,.js,Other Project File,4211,9,Low,54fafc19091e2a7e21eedc870b42db259bf6655b9a50d7a6caca386957120767,No,Tracked/Audited
+web_landing/app/assets/AssetManifest.bin,.bin,Other Project File,2229,27,Low,1c4092cb1d27850664af001a54a176040e442bdde82d83405e03f1a52e390862,No,Tracked/Audited
+web_landing/app/assets/AssetManifest.bin.json,.json,Configuration / Rules,2974,1,Low,d134c5f4428333f32ba9d6da11ecf88ee9a65da40730c53a2afc60780e38bf0b,No,Tracked/Audited
+web_landing/app/assets/auth-BMfqhB06.js,.js,Other Project File,9009,1,Low,e39dee7cac15558a482e5fe48d9a4424aa8552916d79b4ba85ac7f18ef534c71,No,Tracked/Audited
+web_landing/app/assets/auth-middleware-paf7n6yA.js,.js,Other Project File,36737,3,Low,899126ac09bc543805a6e961fb15c35806f58ffa177d1c10d86675edd61a56d5,No,Tracked/Audited
+web_landing/app/assets/cart-LxQy9bxN.js,.js,Other Project File,5179,1,Low,cf0ee6ac706aa013b46fcf3ed29ba63bbaf03bceef4828d5ee6b06a06f27df17,No,Tracked/Audited
+web_landing/app/assets/catalog.functions-AE9_tLEx.js,.js,Other Project File,1950,1,Low,d6b50d4ce72256be13a209b4e283347d6eb6cb454bfe876f1d98ab8d1cd492f0,No,Tracked/Audited
+web_landing/app/assets/category._id-CtnTiHEg.js,.js,Other Project File,322,1,Low,fa301b10d1cb3ca6add9e722df0a186ac2a0d8df39c0d3c1f69eaad98eaf06d2,No,Tracked/Audited
+web_landing/app/assets/category._id-C_9oQqpO.js,.js,Other Project File,203,1,Low,1ec03705fb900770bb9f62e204591baf6a5a6b4d36fb4549bb80bde45d107a69,No,Tracked/Audited
+web_landing/app/assets/category._id-DQWz8GpW.js,.js,Other Project File,686,1,Low,dbe82f91c6abbd7b673a2df7fa413f67f19b5bbfd453e57f342c54b855a7e718,No,Tracked/Audited
+web_landing/app/assets/checkout-hlhF3LcP.js,.js,Other Project File,3792,1,Low,aa8726066ba80417fd9a6e5b3ec1dff935609faa571ac5dc3fa1155c0ccb64a4,No,Tracked/Audited
+web_landing/app/assets/demo.3d-viewer-DDj2oTyI.js,.js,Other Project File,777,1,Low,536c02571f2d06ac2b927c019b82a45c5c3533504e9e97b9759726b0fae2b645,No,Tracked/Audited
+web_landing/app/assets/FontManifest.json,.json,Configuration / Rules,898,1,Low,b9d96f84897c9710a0b19df75f51e9dd2b063be603cdeb7134eb14af92176874,No,Tracked/Audited
+web_landing/app/assets/i18n-DHgAXKaP.js,.js,Other Project File,4211,1,Low,97cf9885aaf71486b08c048a83a0833c39d7e105ad3d4c42b1d5ae9ae70d9139,No,Tracked/Audited
+web_landing/app/assets/immersive-store-D5hkw65i.js,.js,Other Project File,11680,1,Low,dfc4b0d55bdc63705afbc036cae8c2654ef4d0a21eab415c77752a251f8d1460,No,Tracked/Audited
+web_landing/app/assets/index-HhHRm5hm.js,.js,Other Project File,1151421,21,Low,2bdd414759200515eacd4dca9702c3aa4b137014fff683c8ab6dc218366ea4a3,No,Tracked/Audited
+web_landing/app/assets/invariant-DEEwAagU.js,.js,Other Project File,60,1,Low,bfeee97e8c0be780a58fa765219e6942512127af9e9a8e4bd6abf57f0dd6251f,No,Tracked/Audited
+web_landing/app/assets/jsx-runtime-CZcjcDnw.js,.js,Other Project File,1251,1,Low,2ed17067de2d5b105a59247e01c8232712cb4b420918b21cbc6519865181342e,No,Tracked/Audited
+web_landing/app/assets/link-CgZewjgc.js,.js,Other Project File,22895,1,Low,00fd28d32cb3aeebd1f9c51f9da21e6bc34b0ed286802b87149a3ba4313b1fbe,No,Tracked/Audited
+web_landing/app/assets/model-viewer-Ca8DjIfX.js,.js,Other Project File,2278,1,Low,c3420f0fa11b818246bb2397dee8a7aed90eb575466b0d126f1274b9704c2e75,No,Tracked/Audited
+web_landing/app/assets/noqta-logo-kd6fyWSj.png,.png,Other Project File,697390,5632,High (>500 lines),70e4dd272291736c05f3fcd25a6b1e19d1c6a235d0035f0472a6aeb28b87f989,No,Tracked/Audited
+web_landing/app/assets/NOTICES,,Other Project File,1585492,35951,High (>500 lines),6e074fcc1acc2440c20a05252364cf88406dd031256a4b760f91180d284360d0,No,Tracked/Audited
+web_landing/app/assets/offers-C_9oQqpO.js,.js,Other Project File,203,1,Low,1ec03705fb900770bb9f62e204591baf6a5a6b4d36fb4549bb80bde45d107a69,No,Tracked/Audited
+web_landing/app/assets/offers-wAk5FH07.js,.js,Other Project File,991,1,Low,bd53083d89c17550c5d06e2a3467fc4cf68d5d2a77f2abeeded11d0260c1e7ff,No,Tracked/Audited
+web_landing/app/assets/onboarding-BiDsELaY.js,.js,Other Project File,6116,1,Low,0e282b8b84e67d332c6098cb8819fe67e60c566dd76fecd6eec53099edb2e8bb,No,Tracked/Audited
+web_landing/app/assets/product-card-CqEtRVUp.js,.js,Other Project File,3502,1,Low,19a5a0b184c0305ac60a36cd2e5049b0345ebb1ef4444e074b55e71937d5e891,No,Tracked/Audited
+web_landing/app/assets/product.actions-Dqqx2Gwa.js,.js,Other Project File,2379,1,Low,fa84db46653ffa6e51162aea9dfe8c9eb288e936617375ff696d0670796c017a,No,Tracked/Audited
+web_landing/app/assets/product._slug-5Cfgdnyc.js,.js,Other Project File,391,1,Low,f9fd6f98bfd473a285144626cfc792adbad6f1a86d36c050e53b799dcdbf728d,No,Tracked/Audited
+web_landing/app/assets/product._slug-C_9oQqpO.js,.js,Other Project File,203,1,Low,1ec03705fb900770bb9f62e204591baf6a5a6b4d36fb4549bb80bde45d107a69,No,Tracked/Audited
+web_landing/app/assets/product._slug-i6N4U0n7.js,.js,Other Project File,11653,1,Low,8eefdf3c297bc26a5613a1ee7c6ae31302a88d9060bc75d83b601e623e47c331,No,Tracked/Audited
+web_landing/app/assets/proxy-DX4fs31U.js,.js,Other Project File,121146,1,Low,2d48c3c14549caefa7fcc1d6e8a1a106e9bee9051c06952f44c20474aa4379e9,No,Tracked/Audited
+web_landing/app/assets/react-dom-UJG8Qsxk.js,.js,Other Project File,3574,1,Low,c0df9ddec1897727af3bd26c031ef2fe8d3c382551d367658c94661a2d87ed62,No,Tracked/Audited
+web_landing/app/assets/react-DQyofxZ5.js,.js,Other Project File,7527,1,Low,fae2235effa00435a1fd85a12dc5078c5aa98c82aab625e71997418813d22893,No,Tracked/Audited
+web_landing/app/assets/root-DLTE-HSj.js,.js,Other Project File,32,1,Low,2eb1d17f334d79f5c2b7c68aa45a2b50b46a7b2416a9a0f5e7de6ff7f2430322,No,Tracked/Audited
+web_landing/app/assets/routes-C_9oQqpO.js,.js,Other Project File,203,1,Low,1ec03705fb900770bb9f62e204591baf6a5a6b4d36fb4549bb80bde45d107a69,No,Tracked/Audited
+web_landing/app/assets/routes-XDPKEZAz.js,.js,Other Project File,910460,4119,High (>500 lines),e8bd7994e6a4c58832183e75c26be6ee0189d9c60aa11a0e8337e209ae7b5a0f,No,Tracked/Audited
+web_landing/app/assets/search-BnRxgOmL.js,.js,Other Project File,1468,1,Low,796a3ecfd440e4fc004be1b698006cfabae4d1186e421d71c2d7ca33da3ae055,No,Tracked/Audited
+web_landing/app/assets/shorebird.yaml,.yaml,Configuration / Rules,786,14,Low,fd1ffd12dc59720e3aa576e354eff6204beb5160cfaba756a7b29d77cc62d2f3,No,Tracked/Audited
+web_landing/app/assets/store-data-lcQPPFg4.js,.js,Other Project File,3348,1,Low,f9d64a143a7d07e073072975a3a35adc8a50f042555de0bbb3c5b232c1704cf8,No,Tracked/Audited
+web_landing/app/assets/styles-Cq4Vjqr_.css,.css,Other Project File,280698,2,Low,7ac952ed97c0202fb83e2f58571175050c97bf6e5fad7ff401509f23a7135366,No,Tracked/Audited
+web_landing/app/assets/tajawal-arabic-400-normal-CyCXRvzh.woff2,.woff2,Other Project File,8932,74,Low,6c9081fd00db08800850fa7d214593aa94992be5159e97557aa60197252cb95a,No,Tracked/Audited
+web_landing/app/assets/tajawal-arabic-400-normal-DCQxawbB.woff,.woff,Other Project File,12012,83,Low,011a34e9bce80078231d12f8603721d0f99963b7104df560970fb754306ac359,No,Tracked/Audited
+web_landing/app/assets/tajawal-arabic-500-normal-BZ8ojJNu.woff2,.woff2,Other Project File,8940,63,Low,4255019c1cd986f7cda7869df69baf72730d61304ae14baba4acfeb13085da54,No,Tracked/Audited
+web_landing/app/assets/tajawal-arabic-500-normal-CbVEaYEW.woff,.woff,Other Project File,11880,80,Low,9f0beece3bd5a2bda53edfdb5f8c27f80bd9e2d65fb53eb2c7f8ca4b481d6f18,No,Tracked/Audited
+web_landing/app/assets/tajawal-arabic-700-normal-9L7Zusdl.woff,.woff,Other Project File,12160,98,Low,cd644505aa492ff2d5664dfa384ab52e0df757b7b927a7ab59b836c1713c077f,No,Tracked/Audited
+web_landing/app/assets/tajawal-arabic-700-normal-D2-eand5.woff2,.woff2,Other Project File,9024,75,Low,fa5e72326681abee3a4952be582e1c2c2abb27932ef262610c078ce89541f919,No,Tracked/Audited
+web_landing/app/assets/tajawal-arabic-800-normal-Bp_4IW2m.woff,.woff,Other Project File,12588,104,Low,b077ac24c82afef389f3ae03f319a657303d8c28014b92a1d4426b2004a67bc8,No,Tracked/Audited
+web_landing/app/assets/tajawal-arabic-800-normal-TQp-UTiE.woff2,.woff2,Other Project File,9448,70,Low,5fa525682b4805d95c59943bc4405b993dc9e028fd93cb96f4b50911f3b428b7,No,Tracked/Audited
+web_landing/app/assets/tajawal-arabic-900-normal-CHO_pm7-.woff,.woff,Other Project File,11840,89,Low,716c66c42854274b432b40fd0acec2bc29d34a17985e98a9c44f4cc623a0cf48,No,Tracked/Audited
+web_landing/app/assets/tajawal-arabic-900-normal-MgmkhdPX.woff2,.woff2,Other Project File,8700,79,Low,4d7f3fca4a75b2bd4291bf1b8c2fddfd86170993938a8a9b436fc0d7ec9ae3ae,No,Tracked/Audited
+web_landing/app/assets/tajawal-latin-400-normal-BdYcZznU.woff,.woff,Other Project File,13464,107,Low,31a473958608f90fdb257e924b554f67359c8f5f797f1b9cd0b69518b965d25c,No,Tracked/Audited
+web_landing/app/assets/tajawal-latin-400-normal-BVNSOH3d.woff2,.woff2,Other Project File,10256,85,Low,b081f7bf790678b56a2c0502651d6873cbabc09e78fe40655df15f918b1e369b,No,Tracked/Audited
+web_landing/app/assets/tajawal-latin-500-normal-CoYeBiSI.woff2,.woff2,Other Project File,9900,82,Low,9986de5db80ec050300f1cea25d651a5779ae62b91a39b5667ac23d0c7668cbb,No,Tracked/Audited
+web_landing/app/assets/tajawal-latin-500-normal-DU9v6xgj.woff,.woff,Other Project File,13020,104,Low,ceb34bab749130499c650585f0189b4322c59b70c30938e93fe5603b68724dcd,No,Tracked/Audited
+web_landing/app/assets/tajawal-latin-700-normal-BypgxfGb.woff2,.woff2,Other Project File,9996,87,Low,de8f431c146ab1feb612cb7ced0842ae5c4e2f12067d13db0badeca73977200b,No,Tracked/Audited
+web_landing/app/assets/tajawal-latin-700-normal-CV3bxpHe.woff,.woff,Other Project File,13160,90,Low,19a07fcda06178e441b7a71064a86cd7dc63e76c3059dcef342c2902e147cf34,No,Tracked/Audited
+web_landing/app/assets/tajawal-latin-800-normal-CmI34b-g.woff2,.woff2,Other Project File,10584,83,Low,00241262004f96088a827ad4c5d423dbbc0648224e1cd990e5e5ff8e912157c9,No,Tracked/Audited
+web_landing/app/assets/tajawal-latin-800-normal-Dm5jVIIh.woff,.woff,Other Project File,13708,114,Low,62e8170cb51a9303871db5f29737892892cc2f87bc532a35f75b87014d1e1a54,No,Tracked/Audited
+web_landing/app/assets/tajawal-latin-900-normal-BsVXXeFR.woff,.woff,Other Project File,13272,107,Low,e3457fabf58ea6a1db2dfff20e4ff2988035a80b1965ccd49cf70cde3ac39513,No,Tracked/Audited
+web_landing/app/assets/tajawal-latin-900-normal-DURQZvFY.woff2,.woff2,Other Project File,10224,72,Low,518d9efed800bdd33e0b5b09b2fe59debfff6656e5ea6e3b7169b26cbad269bc,No,Tracked/Audited
+web_landing/app/assets/Tooltip-4h5TOeA2.js,.js,Other Project File,1893,1,Low,d03bf5be53b40aa69207535054407e8c5bb181d7b87ef1c27771baa01832d266,No,Tracked/Audited
+web_landing/app/assets/types-C9ViVWBJ.js,.js,Other Project File,56441,1,Low,83eeec72eaebaf278210e31d78ad29de848545839e063b7be71652b9b2d91961,No,Tracked/Audited
+web_landing/app/assets/use-transform-LFE0AlJR.js,.js,Other Project File,8477,1,Low,390c8f858bcd1a1c1046fa2f9c806206adb35ef543ac7c2ea59078164de95ad4,No,Tracked/Audited
+web_landing/app/assets/useMatch-DryTNfL5.js,.js,Other Project File,724,1,Low,7c4af951dce32927ff8592cb766f9bb103b960942fa8fe1c71f18510e405bbae,No,Tracked/Audited
+web_landing/app/assets/useMutation-DTi31wLQ.js,.js,Other Project File,2286,1,Low,19c4ac76e8b5a17da8c186704d56ca7564e3a8aecca2de58bb410be324b634c6,No,Tracked/Audited
+web_landing/app/assets/useRouter-B7YGYrEu.js,.js,Other Project File,179,1,Low,a802e5075ec9cfb9ead43a73ef81afd139dd764a539ecc743acd40203a827005,No,Tracked/Audited
+web_landing/app/assets/useServerFn-ChXxe4ZK.js,.js,Other Project File,443,1,Low,115c61276a5db8d81bbdd133d57557aa9aca6bd96a74212f0fe2231dcf4b6134,No,Tracked/Audited
+web_landing/app/assets/utils-Dk5T6iHk.js,.js,Other Project File,634,1,Low,fbeafdc570a8e1f6d2cbd2f2e3c84b175e1cf35c50be1a516c887946543e8e31,No,Tracked/Audited
+web_landing/app/assets/vanilla-DZJGj1NY.js,.js,Other Project File,320,1,Low,27fe4bf88c1eda39e55e225f999296f67cba26a6bb66a1bc4b8e331fad5d3204,No,Tracked/Audited
+web_landing/app/canvaskit/canvaskit.js,.js,Other Project File,86859,193,Low,931ae3f02e76e8ac58a1c1435d754a8740c87958b52edb9037d66e32be53eb40,No,Tracked/Audited
+web_landing/app/canvaskit/canvaskit.js.symbols,.symbols,Other Project File,1344944,12141,High (>500 lines),1eaa264186e78d3c465ee617572b7416a022ba293b7b5f7451ad1e8bc9482b40,No,Tracked/Audited
+web_landing/app/canvaskit/canvaskit.wasm,.wasm,Other Project File,7155824,135152,High (>500 lines),42e392d69fd05a8540cb1b2cd9b88ab2115659c9378c136d1377b3595e703839,No,Tracked/Audited
+web_landing/app/canvaskit/skwasm.js,.js,Other Project File,63437,146,Low,d52e58007af740833faa088c1f68672e410dc385bbeb3e50a5e5bc285fc3fc9a,No,Tracked/Audited
+web_landing/app/canvaskit/skwasm.js.symbols,.symbols,Other Project File,1519481,12832,High (>500 lines),8e97d47e659208f92ff2a3b3fb1d3f9591f03e6e9d7055a607e80a54c07e280a,No,Tracked/Audited
+web_landing/app/canvaskit/skwasm.wasm,.wasm,Other Project File,3549782,59138,High (>500 lines),f8bab54ad143745fb699ff1b534b1295b31a67f1a9e98d72db5b0a5c9200d3a8,No,Tracked/Audited
+web_landing/app/canvaskit/skwasm_heavy.js,.js,Other Project File,63550,146,Low,7a1aa20e765441b28f4be0cd397f95573a3ecd72adc80ba32dd2cb959a09a41d,No,Tracked/Audited
+web_landing/app/canvaskit/skwasm_heavy.js.symbols,.symbols,Other Project File,1644309,14454,High (>500 lines),a0ff1ec5048a82e29db8f0342bc5605da59c1f23688735229efd08978ca95e1b,No,Tracked/Audited
+web_landing/app/canvaskit/skwasm_heavy.wasm,.wasm,Other Project File,5140187,83207,High (>500 lines),33f5c52d1612df0af41d12204fd54ec276e436f7e3319c2871a689dee18f82d1,No,Tracked/Audited
+web_landing/app/canvaskit/wimp.js,.js,Other Project File,57623,136,Low,fa58b2c534ef9c66dff68df1ea28c1739bb02ce34cc8eca459f716527d9b5cae,No,Tracked/Audited
+web_landing/app/canvaskit/wimp.js.symbols,.symbols,Other Project File,1757927,11313,High (>500 lines),6f302386272ed4a80e49675eb74773f577ac165a04be69e475b31901aeb9fecb,No,Tracked/Audited
+web_landing/app/canvaskit/wimp.wasm,.wasm,Other Project File,3461893,57697,High (>500 lines),8d2bf4ac60320c1d7b14cc408cd16a10e78fdc70d4c92b46dd75e828058a99f5,No,Tracked/Audited
+web_landing/app/icons/Icon-192.png,.png,Other Project File,5292,34,Low,3dce99077602f70421c1c6b2a240bc9b83d64d86681d45f2154143310c980be3,No,Tracked/Audited
+web_landing/app/icons/Icon-512.png,.png,Other Project File,8252,61,Low,baccb205ae45f0b421be1657259b4943ac40c95094ab877f3bcbe12cd544dcbe,No,Tracked/Audited
+web_landing/app/icons/Icon-maskable-192.png,.png,Other Project File,5594,41,Low,d2c842e22a9f4ec9d996b23373a905c88d9a203b220c5c151885ad621f974b5c,No,Tracked/Audited
+web_landing/app/icons/Icon-maskable-512.png,.png,Other Project File,20998,96,Low,6aee06cdcab6b2aef74b1734c4778f4421d2da100b0ff9e52b21b55240202929,No,Tracked/Audited
+web_landing/app/canvaskit/chromium/canvaskit.js,.js,Other Project File,86496,193,Low,ff8dcd85cee325699499ee23ffd7567bc8086e9592c24d4d8d411f951c16bda4,No,Tracked/Audited
+web_landing/app/canvaskit/chromium/canvaskit.js.symbols,.symbols,Other Project File,1262928,11093,High (>500 lines),d567cb3073b9f5499495b98ba6d9583cfe0daf0605fd557c6cb8abe89a4d140a,No,Tracked/Audited
+web_landing/app/canvaskit/chromium/canvaskit.wasm,.wasm,Other Project File,5686880,110848,High (>500 lines),2bf5ea09d70b8eadb22bb0471c9edfd7b2bee909dbf84456c32480d944660418,No,Tracked/Audited
+web_landing/app/assets/fonts/MaterialIcons-Regular.otf,.otf,Other Project File,46196,410,Medium (>200 lines),fec3e76930d4676b87f54bc1838cb905d4b4bef21139dcdfd12d8d65bcdca591,No,Tracked/Audited
+web_landing/app/assets/shaders/ink_sparkle.frag,.frag,Other Project File,8890,127,Low,5aee0e4ff369c0559eaa7af6d64dce812bab67afd9888d1d7d27046293b39ab5,No,Tracked/Audited
+web_landing/app/assets/shaders/stretch_effect.frag,.frag,Other Project File,6737,64,Low,c723fbb5b9a3456b101073825ab5d34de312a39f32bf5de42aae0cda605d0a1a,No,Tracked/Audited
+web_landing/app/assets/packages/wakelock_plus/assets/no_sleep.js,.js,Other Project File,13669,246,Medium (>200 lines),726c644cda17bf271d996fb629806a59409607e9b00e0dfbf75adfd3986bbb7e,No,Tracked/Audited
+web_landing/app/assets/packages/media_kit/assets/web/hls1.4.10.js,.js,Other Project File,374690,2,Low,30b278794fd3f269a47e6dc7b76ae9a04f08acffdd72f9b8cc26d49d3ba09c38,No,Tracked/Audited
+web_landing/app/assets/packages/lucide_icons/assets/lucide.ttf,.ttf,Other Project File,413764,12809,High (>500 lines),e21a594c69719165def809613bc595e526660d99deab628e04ea52c0b44e2127,No,Tracked/Audited
+web_landing/app/assets/packages/cupertino_icons/assets/CupertinoIcons.ttf,.ttf,Other Project File,1472,23,Low,3d90c370aa4cf00dc57ee2b902f6652147c0f81e03e483df584a9c08b1687c9d,No,Tracked/Audited
+web_landing/app/assets/lib/services/data/mock_tiktok_trends.json,.json,Configuration / Rules,5504,156,Low,263808580c4e8b9117144fd144a2e63ab775eb0a66ce3285c3a7fe76841650a2,No,Tracked/Audited
+web_landing/app/assets/assets/fonts/IBMPlexSansArabic-Bold.ttf,.ttf,Other Project File,236740,1982,High (>500 lines),664e3dc2424024aa10cd9cee07be46601cba2aa30d29ffa1ae3f7e0d79b5b49b,Yes (Potential Orphan/Temp),Tracked/Audited
+web_landing/app/assets/assets/fonts/IBMPlexSansArabic-ExtraLight.ttf,.ttf,Other Project File,232696,1928,High (>500 lines),c1e417e69127a2d202205658b05fd49fa6c07f20c6312374dd716d39c7861f4a,No,Tracked/Audited
+web_landing/app/assets/assets/fonts/IBMPlexSansArabic-Light.ttf,.ttf,Other Project File,229640,1955,High (>500 lines),e7e4d767fc2694e0d0d548bd1c2c4c92a6beed06fe645fe628ff19a8443ecbdd,No,Tracked/Audited
+web_landing/app/assets/assets/fonts/IBMPlexSansArabic-Medium.ttf,.ttf,Other Project File,232280,2222,High (>500 lines),9de4e0fa5a0b8574e6fe2f291efee21703e184bcb56dd5bfeb5dd06cacb808f2,No,Tracked/Audited
+web_landing/app/assets/assets/fonts/IBMPlexSansArabic-Regular.ttf,.ttf,Other Project File,227044,2107,High (>500 lines),acfedf95e912ff35eefe6e38ea74a9381b788499d1e8b608b0d5bb9d41445a60,No,Tracked/Audited
+web_landing/app/assets/assets/fonts/IBMPlexSansArabic-SemiBold.ttf,.ttf,Other Project File,234716,2003,High (>500 lines),62c93685cff98e965d584fb3438f20af6edd6714b823c0a8c63b47fd586d99a6,Yes (Potential Orphan/Temp),Tracked/Audited
+web_landing/app/assets/assets/fonts/IBMPlexSansArabic-Thin.ttf,.ttf,Other Project File,232892,2514,High (>500 lines),0c81b1a08fc5d44563b92c40925122894bf686e15f34cf3a41a9358c674fe830,No,Tracked/Audited
+web_landing/app/assets/assets/fonts/NotoSansArabic-Bold.ttf,.ttf,Other Project File,248468,3649,High (>500 lines),ed2711b387750ae991b6a980b8dd16fdd65e6702b97e9f52adf3a8edf09ef4df,Yes (Potential Orphan/Temp),Tracked/Audited
+web_landing/app/assets/assets/fonts/NotoSansArabic-Regular.ttf,.ttf,Other Project File,240456,3806,High (>500 lines),ceea25b464a656dc3b26849bab9356740401af62aedf1bfa8b7f0d9b75925b1b,No,Tracked/Audited
+web_landing/app/assets/assets/fonts/OFL.txt,.txt,Other Project File,4456,93,Low,0fc74640fdcd67c036e1fced58d7e4478897a333cd92b981115a3e324337577f,No,Tracked/Audited
+web_landing/app/assets/assets/images/background.jpg,.jpg,Other Project File,0,0,Low,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,No,Tracked/Audited
+web_landing/app/assets/assets/images/styles/cinematic.png,.png,Other Project File,39121,300,Medium (>200 lines),a8717ecaa12cf6e66818347a6ff44298efa66ed02e79563f62454d92d172f3ef,No,Tracked/Audited
+web_landing/app/assets/assets/images/styles/kitchen.png,.png,Other Project File,54287,388,Medium (>200 lines),815823be9c645355e868bdd653e27a2d4b05361c9e7da47f1d9cbfb1d3366c99,No,Tracked/Audited
+web_landing/app/assets/assets/images/styles/logoapp.jpeg,.jpeg,Other Project File,39466,137,Low,680c88ed2b0a1c72404553ce77b7bbdea7e58a599b07d296dd7e21d5fef8d37e,No,Tracked/Audited
+web_landing/app/assets/assets/images/styles/luxury.png,.png,Other Project File,67656,470,Medium (>200 lines),551b26d299f3d32f279ef54035f136f5a8f68a84f3a5e0d0a664f26e70a8e942,No,Tracked/Audited
+web_landing/app/assets/assets/images/styles/minimal.png,.png,Other Project File,15918,202,Medium (>200 lines),3a3e2bf9b94b6da1276af2a7aa05b22058296ce61ca76142dcdadcd06897c069,No,Tracked/Audited
+web_landing/app/assets/assets/images/styles/nature.png,.png,Other Project File,113144,734,High (>500 lines),bcd2949a3104e0edc68c38e4f7e86b97220fa6fc0518efe918e7a3c7dccc5ba9,No,Tracked/Audited
+web_landing/app/assets/assets/images/styles/neon.png,.png,Other Project File,97613,634,High (>500 lines),847eefe7ca1edb114b3342d439c8de2466c8e55b172b5c7f658c724e2548b305,No,Tracked/Audited
+web_landing/app/assets/assets/images/styles/WhatsApp%20Image%202026-03-28%20at%209.14.03%20PM.jpeg,.jpeg,Other Project File,73918,678,High (>500 lines),90db1933fe6c5457b00ba86d197bb4ede4d155a750202dab89a1cf3ed7f76338,No,Tracked/Audited
+web/icons/Icon-192.png,.png,Platform Native Code/Config,5292,34,Low,3dce99077602f70421c1c6b2a240bc9b83d64d86681d45f2154143310c980be3,No,Tracked/Audited
+web/icons/Icon-512.png,.png,Platform Native Code/Config,8252,61,Low,baccb205ae45f0b421be1657259b4943ac40c95094ab877f3bcbe12cd544dcbe,No,Tracked/Audited
+web/icons/Icon-maskable-192.png,.png,Platform Native Code/Config,5594,41,Low,d2c842e22a9f4ec9d996b23373a905c88d9a203b220c5c151885ad621f974b5c,No,Tracked/Audited
+web/icons/Icon-maskable-512.png,.png,Platform Native Code/Config,20998,96,Low,6aee06cdcab6b2aef74b1734c4778f4421d2da100b0ff9e52b21b55240202929,No,Tracked/Audited
+test/core/utils/result_test.dart,.dart,Test Code,5046,157,Low,007172f9511d7ed755c9b02ff32969f5d19f7142beb48bf08cf40ae3e1a53e3f,No,Tracked/Audited
+macos/Flutter/Flutter-Debug.xcconfig,.xcconfig,Other Project File,49,1,Low,7e9b3ee3961b7d7718b418ceaed812a5f06a4e4cec894aae712a78e159c32ab0,No,Tracked/Audited
+macos/Flutter/Flutter-Release.xcconfig,.xcconfig,Other Project File,49,1,Low,7e9b3ee3961b7d7718b418ceaed812a5f06a4e4cec894aae712a78e159c32ab0,No,Tracked/Audited
+macos/Flutter/GeneratedPluginRegistrant.swift,.swift,Other Project File,3149,60,Low,a7bde95cd342f3711fc3128a39eb1f73bae500b318680017ca92337822d46a31,No,Tracked/Audited
+macos/Runner/AppDelegate.swift,.swift,Other Project File,324,13,Low,5b9cbdcb563ad8578a99b7c283958490e4af537322e9092fe1efbb3c29ab3e1b,No,Tracked/Audited
+macos/Runner/DebugProfile.entitlements,.entitlements,Other Project File,360,12,Low,b2aa41d03e18907d360b721b7bb3edb302897c8a3de98ec47b6665033fea0b0e,No,Tracked/Audited
+macos/Runner/Info.plist,.plist,Other Project File,1092,32,Low,047f9cb0f1122c04589483beaedbbe23492fdc8946b94e09bb13080736af4f93,No,Tracked/Audited
+macos/Runner/MainFlutterWindow.swift,.swift,Other Project File,403,15,Low,8178ad756f958f986f794a8bb06e321a6630ceaaf8f235b3b4ae3936e415dc7c,No,Tracked/Audited
+macos/Runner/Release.entitlements,.entitlements,Other Project File,383,12,Low,fd21d6b5789fc177235baf4e6ab9a37a1c7bdd2723e38a7ee00ba0988a091a78,No,Tracked/Audited
+macos/Runner.xcodeproj/project.pbxproj,.pbxproj,Other Project File,27227,705,High (>500 lines),97e420211e35c65c778e6bd573982a127f1c398771824bc91dd2a68b4e9f60bd,No,Tracked/Audited
+macos/Runner.xcworkspace/contents.xcworkspacedata,.xcworkspacedata,Other Project File,159,7,Low,706a4c812f2a1e220e6785c27580020d58048e2ae4d30d1280f3c43344ce6b38,No,Tracked/Audited
+macos/RunnerTests/RunnerTests.swift,.swift,Other Project File,302,12,Low,8a0ff977c64ceac0750fffa48087988b7b4125d1b1c49019221e7fffb574423e,No,Tracked/Audited
+macos/Runner.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist,.plist,Other Project File,246,8,Low,d557c2c32fc6258ec28981fa45dc847b76c9968beb90a2e26d13ef9c4ea45c30,No,Tracked/Audited
+macos/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme,.xcscheme,Other Project File,3842,99,Low,1be3f3d3d101d5cdd3ea0f7a81ac951c0855e508edd72e3db4390256708a2153,No,Tracked/Audited
+macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist,.plist,Other Project File,246,8,Low,d557c2c32fc6258ec28981fa45dc847b76c9968beb90a2e26d13ef9c4ea45c30,No,Tracked/Audited
+macos/Runner/Base.lproj/MainMenu.xib,.xib,Other Project File,24072,343,Medium (>200 lines),776c35481f6581f14148b90071558b25f6ce6262e771988985e9fe8d3e70a472,No,Tracked/Audited
+macos/Runner/Configs/AppInfo.xcconfig,.xcconfig,Other Project File,641,14,Low,184d3150fedeffb7454c5b906f4677f3045de8363036ae631107573b7ec66a56,No,Tracked/Audited
+macos/Runner/Configs/Debug.xcconfig,.xcconfig,Other Project File,79,2,Low,86be603022e2a385dd7884fce4cc29255676c3dda579d3d4a56c958bf1e57de0,No,Tracked/Audited
+macos/Runner/Configs/Release.xcconfig,.xcconfig,Other Project File,81,2,Low,d1bf3f0349aadd5c58ee9d46c0ce4ce45467127c438936e9bb481d861d296565,No,Tracked/Audited
+macos/Runner/Configs/Warnings.xcconfig,.xcconfig,Other Project File,593,13,Low,aa8ded4c14068cb05f51f5446509fe56805cf1e29961ad6d5a97233bb0632bc1,No,Tracked/Audited
+macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_1024.png,.png,Other Project File,102994,562,High (>500 lines),6232e5815af17e25e0268b2fec7aea9e068cc92ec709e9605c2b31df4ff2a313,No,Tracked/Audited
+macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_128.png,.png,Other Project File,5680,50,Low,15591f03f31313af6fd644ed0512106cc04365130b8b73244f1cfa6dddfb4400,No,Tracked/Audited
+macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_16.png,.png,Other Project File,520,8,Low,cc6928b5adfc00dbf526192e2705dd9af641cdf20ab4c6c7ca7cd4936dca59f0,No,Tracked/Audited
+macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_256.png,.png,Other Project File,14142,86,Low,416efd77cde932d42ef34168da24dd428a495b1f4f34bbbd125a18d2add186a2,No,Tracked/Audited
+macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_32.png,.png,Other Project File,1066,10,Low,ae8c4458e41f1e28b1e851ed87d3268d4a0351ceea427fa2a84cc94ddfb6d4c5,No,Tracked/Audited
+macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png,.png,Other Project File,36406,242,Medium (>200 lines),0a91c6c1bf242e54ee179e34629e9ef3e8a6d286c0fce01e302280a8be9277e6,No,Tracked/Audited
+macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_64.png,.png,Other Project File,2218,16,Low,6ad229623498e5f1277800db3ab7cb11faf85eb2569e1213f7d8e55003c07b42,No,Tracked/Audited
+macos/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json,.json,Configuration / Rules,1359,68,Low,992ba63d183dfb8f8e3af38ac203d834d23c004da1417c438b4c5a3d7d1d7103,No,Tracked/Audited
+macos/Flutter/ephemeral/Flutter-Generated.xcconfig,.xcconfig,Other Project File,390,11,Low,441bf66a950908c4a92c29d769435dc67c3b1aeec3a695ed5bd110e3af464c38,No,Tracked/Audited
+macos/Flutter/ephemeral/flutter_export_environment.sh,.sh,Other Project File,489,12,Low,0b01bd640ec55572f96e97d3b9a2714b5bc3258033d8787dcaf421a41205fc4a,No,Tracked/Audited
+linux/flutter/CMakeLists.txt,.txt,Other Project File,2903,88,Low,4eb17836308c1cd53f6b2bb8edb3b7b30610bff3b1d9df7fecc9317f9109700c,No,Tracked/Audited
+linux/flutter/generated_plugins.cmake,.cmake,Other Project File,846,29,Low,a7c94e1499ce9bfc4ed5f86179a30553d6ea698410d6427a0bf2adca9677f0ce,No,Tracked/Audited
+linux/flutter/generated_plugin_registrant.cc,.cc,Other Project File,1555,31,Low,34f12e85aea517d6cb86aa0adb6b05f111ad482f52e6fef537b3e2d4ec83ad76,No,Tracked/Audited
+linux/flutter/generated_plugin_registrant.h,.h,Other Project File,303,15,Low,00f93bb5b1faefdede8f6065df327522900fb0b8efee86bacf424fd947ed14bb,No,Tracked/Audited
+linux/runner/CMakeLists.txt,.txt,Other Project File,1000,26,Low,81ecf2604c50f480c23d460b2ddf653ecd39df29cc5b2fe4913f1a59f008a5a7,No,Tracked/Audited
+linux/runner/main.cc,.cc,Other Project File,186,6,Low,905b4dfa4eab584c1eb6244899b7d5ef56d0bceaf3bffb5ea335ed7e0ba3c549,No,Tracked/Audited
+linux/runner/my_application.cc,.cc,Other Project File,5518,144,Low,e896c8a11ef8b4c7abf3281fe34619eca80e24541d1d6a9512e2625d0fbf76ec,No,Tracked/Audited
+linux/runner/my_application.h,.h,Other Project File,406,18,Low,b9be2b58ead9fa2fa3422636120e85ea8ee2a600aa0b42e268cb8ff0ae4b9b5d,No,Tracked/Audited
+lib/ai/ai_decision_engine.dart,.dart,Source Code (Flutter/Dart),9623,271,Medium (>200 lines),1fa757d6f801d375ba8e57e25514b416e8a6581f5067366f062e4be5c9f7f0f3,No,Tracked/Audited
+lib/ai/ai_orchestrator.dart,.dart,Source Code (Flutter/Dart),36850,957,High (>500 lines),9c6e2e881fc48dbcfc77f2eeabb02b251f976b819f61d177e4ab70ebb636c560,No,Tracked/Audited
+lib/ai/chat_smart_agent.dart,.dart,Source Code (Flutter/Dart),31488,803,High (>500 lines),4d9f25a81a94c954babff3880b3edec8f6e9ad03e7f5b3905a4ac72bbc9648b1,No,Tracked/Audited
+lib/ai/chat_task_distributor.dart,.dart,Source Code (Flutter/Dart),8164,208,Medium (>200 lines),8f475a6b39a180bd566b67dc6415319b81930e82fd73242ea9323c09d7125064,No,Tracked/Audited
+lib/controllers/admin_controller.dart,.dart,Source Code (Flutter/Dart),45641,1194,High (>500 lines),569a57a09846be738a644019c5ef7f9136734e8e780b20eb2f7c7889afd7337d,No,Tracked/Audited
+lib/controllers/api_controller.dart,.dart,Source Code (Flutter/Dart),9952,305,Medium (>200 lines),0886e79f932e47a48d2b405adea61850342be8142c691604a0a6f003f10824ee,No,Tracked/Audited
+lib/controllers/auth_controller.dart,.dart,Source Code (Flutter/Dart),51880,1379,High (>500 lines),122d1da9788cfa9813880e675d4e83487e23f85c39fbdf51b49a4b8ac0df2ce7,No,Tracked/Audited
+lib/controllers/catalog_controller.dart,.dart,Source Code (Flutter/Dart),82354,2059,High (>500 lines),2d32ca30abd6d197aeaf17b94be3c2a903dd83e24898be45ad6d3251a863ee7a,No,Tracked/Audited
+lib/controllers/chat_history_controller.dart,.dart,Source Code (Flutter/Dart),7201,221,Medium (>200 lines),652e0d59ecedaab5c1f10da64252c1e901fcbec1ad190a8e0e5657e340f2766c,No,Tracked/Audited
+lib/controllers/home_controller.dart,.dart,Source Code (Flutter/Dart),4267,132,Low,e3a70cf0843680c8a411a05b12c98e85e8f81f952cbca3aa10ef624ed99b7b10,No,Tracked/Audited
+lib/controllers/home_dashboard_controller.dart,.dart,Source Code (Flutter/Dart),3215,101,Low,7eeebfaf346cb06c1e134d9429f1ef92f58b41bd39a28774f77f7d9f12464ba0,No,Tracked/Audited
+lib/controllers/marketing_share_controller.dart,.dart,Source Code (Flutter/Dart),3864,109,Low,dc2417791a7ca60cd2d2735b62cfa72703d03f2a26a4fc1d07ea14f2fb38103f,No,Tracked/Audited
+lib/controllers/navigation_controller.dart,.dart,Source Code (Flutter/Dart),2060,69,Low,5bf96aecc57d4c33692bac98ee109da10c981cbc7301e3d2716a98e7844ac650,No,Tracked/Audited
+lib/controllers/permissions_controller.dart,.dart,Source Code (Flutter/Dart),7572,215,Medium (>200 lines),630fac6f08a565560b30e400ca5475a0a87bce7d4c127b7789707951356e2dbb,No,Tracked/Audited
+lib/controllers/settings_controller.dart,.dart,Source Code (Flutter/Dart),38510,937,High (>500 lines),65b697367826d0b0b3c24e8eefcc5ce704dd92fce2c127b3638243216c5b7aea,No,Tracked/Audited
+lib/controllers/social_profile_controller.dart,.dart,Source Code (Flutter/Dart),2023,45,Low,ac5e75d920d302c18e262e9f1b6b11850c37ce07264bf061269f7c0667cb98a3,No,Tracked/Audited
+lib/controllers/theme_controller.dart,.dart,Source Code (Flutter/Dart),926,31,Low,777344c41ac2d2f9b24dae6463a2675209dffeacdc935859e03bdea534f5af89,No,Tracked/Audited
+lib/controllers/trend_controller.dart,.dart,Source Code (Flutter/Dart),3056,99,Low,9bbfb7c25e02376b54d31516b1062df295d9c3fc2a14a4ed5e7b27fcf272e3ec,No,Tracked/Audited
+lib/controllers/whatsapp_sync_controller.dart,.dart,Source Code (Flutter/Dart),4964,156,Low,5ebbf90f75821edc547a54dae3532b6bbb9d466f33a13240f3118ac8aa9b6e2b,No,Tracked/Audited
+lib/database/database_helper.dart,.dart,Source Code (Flutter/Dart),22204,836,High (>500 lines),bf6de5eb38fa1db11fe378f51ebd67b77faac25e090298e3f14d640c99233ccf,No,Tracked/Audited
+lib/database/DATABASE_USAGE_GUIDE.md,.md,Source Code (Flutter/Dart),11732,469,Medium (>200 lines),ea2b8ecf23c58af763b9d0703bab43b49e69d2c00ffcdbde0d6e1c04c9f5cbd5,No,Tracked/Audited
+lib/database/QUICK_REFERENCE.md,.md,Source Code (Flutter/Dart),7002,321,Medium (>200 lines),3d3e1555968b2da46e837a0dc1e88db72dc300cd5250763bc289c679672299e1,No,Tracked/Audited
+lib/database/SETUP_GUIDE.md,.md,Source Code (Flutter/Dart),9555,376,Medium (>200 lines),816f0430c299bd107c55f07361de0b09f6bbab8f14aa5e7389deae8614df2607,No,Tracked/Audited
+lib/models/api_key_model.dart,.dart,Source Code (Flutter/Dart),1950,74,Low,36823762fde21eb19dfd1e0197a33ccc5665211fb72249e4d55043d4daf284c8,No,Tracked/Audited
+lib/models/brand_identity_model.dart,.dart,Source Code (Flutter/Dart),2388,81,Low,4adc885693a4023f1bb5964997c91da5731fc7a3c3139acd5eac519c5e77802d,No,Tracked/Audited
+lib/models/brand_info.dart,.dart,Source Code (Flutter/Dart),537,22,Low,f938e5872c4efdfc03ec151902ebd5511bcdb015fd22d8140860bde970ad2d90,No,Tracked/Audited
+lib/models/catalog_category_model.dart,.dart,Source Code (Flutter/Dart),1976,63,Low,aebab4bd68371135719cda99c74029fbd17eb485603a8210d208af8953995819,No,Tracked/Audited
+lib/models/catalog_media_model.dart,.dart,Source Code (Flutter/Dart),4595,136,Low,d0f13103afcbd7596f490eeb8dfcef615400c2c3c63619b77775e3507cafd8ed,No,Tracked/Audited
+lib/models/catalog_product_model.dart,.dart,Source Code (Flutter/Dart),31976,753,High (>500 lines),e7046f8d95162c9d7f9865bd83e23961f20e3ed39b3115a5eb5fd6dcf2160ec3,No,Tracked/Audited
+lib/models/content_model.dart,.dart,Source Code (Flutter/Dart),2355,90,Low,e41e8396b73850b7b38739019feab287b13e06ad3d47b4a6689b15c591a60cc4,No,Tracked/Audited
+lib/models/log_model.dart,.dart,Source Code (Flutter/Dart),1549,63,Low,1f578916eef3eca5ddbd8468edcd774230739232162cdbb46b2452a71f84a9a6,No,Tracked/Audited
+lib/models/media_model.dart,.dart,Source Code (Flutter/Dart),1495,63,Low,663ec31b3539da5ff1a6d4f28a64f78c6edd0a52d26ea6803598b0823e3e81da,No,Tracked/Audited
+lib/models/product_memory_model.dart,.dart,Source Code (Flutter/Dart),3212,103,Low,af29186f9fe9317af614c8c1e45a2e631ff8e7f858d5e2ac49133da7066ff04e,No,Tracked/Audited
+lib/models/product_photo_models.dart,.dart,Source Code (Flutter/Dart),8845,243,Medium (>200 lines),5a056df76c8324cc01965299e869182ad61ec38f3f80b47b4898717927dd1589,No,Tracked/Audited
+lib/models/setting_model.dart,.dart,Source Code (Flutter/Dart),1539,63,Low,28a90b458c2257af6c72ed78412e9257c4056b292ddec1d60d0907d1a85a0154,No,Tracked/Audited
+lib/models/user_activity.dart,.dart,Source Code (Flutter/Dart),1223,43,Low,5b145080e42255b73379e48bc66fffa1c417cfb0a11c33bbb878b9de6a2cc409,No,Tracked/Audited
+lib/models/user_model.dart,.dart,Source Code (Flutter/Dart),2906,97,Low,d72bcbd7063e5169380ca91f22437f4de7d61f6de84b51640c176ccb721e91b0,No,Tracked/Audited
+lib/models/video_composition.dart,.dart,Source Code (Flutter/Dart),3064,95,Low,d248922e378104fcb7401fc394d16459cabd090749257c3f08b035a5747d9e19,No,Tracked/Audited
+lib/models/whatsapp_sync_models.dart,.dart,Source Code (Flutter/Dart),8091,267,Medium (>200 lines),509f07519dfe49b9ede10189646ccc2d4c5217109d0483329308dfbe7851bf87,No,Tracked/Audited
+lib/screens/admin_dashboard_screen.dart,.dart,Source Code (Flutter/Dart),137640,3323,High (>500 lines),97dad71d15792a7195e0168b2c7cc521f34f78deee6da77425d4b56f86435547,No,Tracked/Audited
+lib/screens/ai_chat_screen.dart,.dart,Source Code (Flutter/Dart),21008,457,Medium (>200 lines),6da5a2d747702c0db70409426fb3113dad0eab4580a77787555c739c28314f50,No,Tracked/Audited
+lib/screens/ai_chat_screen.dart.tmp,.tmp,Source Code (Flutter/Dart),37575,812,High (>500 lines),ee23ed1c5315e42d2b990a154c931106bdc89db414060f2502cc58ff72fd5973,Yes (Potential Orphan/Temp),Tracked/Audited
+lib/screens/brand_settings_screen.dart,.dart,Source Code (Flutter/Dart),10179,242,Medium (>200 lines),c4278d7cf2248ce895f087d13ccb01baf2387c5d9c0986a9410397eba23f3ca6,No,Tracked/Audited
+lib/screens/creator_profile_screen.dart,.dart,Source Code (Flutter/Dart),19917,552,High (>500 lines),39d53caaa5c8e5fe0c74cb93aa8d0c4c816f3b274971aa9924bc9c79d7181c24,No,Tracked/Audited
+lib/screens/general_settings_screen.dart,.dart,Source Code (Flutter/Dart),23022,522,High (>500 lines),ef9aab5638ccc2a7f3edf1d1839134d9fac5ac37cdc3be60a2495a7e6fc814f1,No,Tracked/Audited
+lib/screens/main_wrapper.dart,.dart,Source Code (Flutter/Dart),1067,36,Low,a17fcb853da2fbbf6e1c4d8c04d8470bc67e1003b12664b0f583763ea053bb5b,No,Tracked/Audited
+lib/screens/privacy_policy_screen.dart,.dart,Source Code (Flutter/Dart),5039,119,Low,a77c307620b721c2b002bfa7407942965aac8d7aef43c34d63abb5bc5640b4ec,No,Tracked/Audited
+lib/screens/product_photography_screen.dart,.dart,Source Code (Flutter/Dart),41286,997,High (>500 lines),614a244c29ad5356e3e6a4a6fa912ad4328a04fd72c39915b0a83d7354c9b7cb,No,Tracked/Audited
+lib/screens/settings_screen.dart,.dart,Source Code (Flutter/Dart),109788,2677,High (>500 lines),948566be1d21c8b75d17a230492f1a1ddfd93158b2f4488f301edf2eef268fb8,No,Tracked/Audited
+lib/screens/splash_screen.dart,.dart,Source Code (Flutter/Dart),7099,244,Medium (>200 lines),df9b70326d157f76de557f852c30acc9a7d85ade2b357351744dbf96afa4e0e3,No,Tracked/Audited
+lib/screens/subscription_screen.dart,.dart,Source Code (Flutter/Dart),18473,522,High (>500 lines),647ebe07eab5b0a3782cc4f69b2017881850334ce1fdd3e3229e0dcd1e94401b,No,Tracked/Audited
+lib/screens/terms_of_service_screen.dart,.dart,Source Code (Flutter/Dart),4841,115,Low,050ca7069c765fd1f344d008f0a63c6c8c82b98b5be296fdf67c8dc08cdefe3b,No,Tracked/Audited
+lib/screens/Untitled-1.txt,.txt,Source Code (Flutter/Dart),335449,25,Low,59d2ad553cbd9e653dfd8056c3ac719c4062ed13d5dcd118d8305647d855e66f,Yes (Potential Orphan/Temp),Tracked/Audited
+lib/services/activity_log_service.dart,.dart,Source Code (Flutter/Dart),1145,40,Low,c99c85af1a75df4ab997bddf1dd9d64b0f08c83b3d4d68f033ed2f2beea93b14,No,Tracked/Audited
+lib/services/activity_tracking_service.dart,.dart,Source Code (Flutter/Dart),7135,166,Low,2260029cb669b1fdd6b417acbd6b890cc1ed31bf30ac3f9d1299ffbf064edb60,No,Tracked/Audited
+lib/services/ai_backend_router.dart,.dart,Source Code (Flutter/Dart),33730,912,High (>500 lines),9dc46786924ed9143111f6c913cf6cc4b56bee9df2a77a797789c86cc63c410e,No,Tracked/Audited
+lib/services/ai_image_generation_service.dart,.dart,Source Code (Flutter/Dart),42814,1114,High (>500 lines),2e9fb037aaba46599e3924839203a4bc787cb85944f81d08fe07531a631a4f6f,No,Tracked/Audited
+lib/services/ai_provider.dart,.dart,Source Code (Flutter/Dart),26283,729,High (>500 lines),419ae81d8002a0f3418f57af4e924e20ac7bb7acea186222a386fe8820c8ecbc,No,Tracked/Audited
+lib/services/anthropic_service.dart,.dart,Source Code (Flutter/Dart),5770,179,Low,7b2ec338ac8d279eb4eb6a3f087cbe99576228cb80102e5709941c23fe4bf9ea,No,Tracked/Audited
+lib/services/app_detection_service.dart,.dart,Source Code (Flutter/Dart),8767,219,Medium (>200 lines),f1e83c5ec04f31f61107e8a35e4aba7e6ee2030e02dfa8853400d67a2a674c7e,No,Tracked/Audited
+lib/services/auth_service.dart,.dart,Source Code (Flutter/Dart),18331,496,Medium (>200 lines),15ed521485dca750ecf52735bd9c812da87761c9371bbef4be893680a2db80ef,No,Tracked/Audited
+lib/services/azure_openai_service.dart,.dart,Source Code (Flutter/Dart),3085,84,Low,e1445a0e5ba0c70ee9f8c915122b6326a47408cb6870a3a530e9db0c4e261709,No,Tracked/Audited
+lib/services/back4app_catalog_media_service.dart,.dart,Source Code (Flutter/Dart),4340,117,Low,2630ef77aa17db1c720aafb12aa671bd73484c92b33ff46142a29a5188898f14,No,Tracked/Audited
+lib/services/back4app_gateway_service.dart,.dart,Source Code (Flutter/Dart),23046,634,High (>500 lines),b493c4fd4de10d2a0e8cd6d4ef96efcb0bc47bdbacbb9c3dd288312d088f165e,No,Tracked/Audited
+lib/services/catalog_xlsx_import_service.dart,.dart,Source Code (Flutter/Dart),19265,457,Medium (>200 lines),971aae8fcdce83eb93906f413ba58b4f4d176f9bb233daaaba550595cd8eb59d,No,Tracked/Audited
+lib/services/db_service.dart,.dart,Source Code (Flutter/Dart),28165,704,High (>500 lines),3b66c768ded2afc9149ce17433d5989a0af0718987db3a962337e1299eb8dbf0,No,Tracked/Audited
+lib/services/deepseek_service.dart,.dart,Source Code (Flutter/Dart),3175,104,Low,4968e46641665f2b4cd2784e8ed7512247de1c1ae3000e0ae4af15ff86dbbf6c,No,Tracked/Audited
+lib/services/facebook_page_service.dart,.dart,Source Code (Flutter/Dart),13638,296,Medium (>200 lines),0e279f9e20fdfdbc0137668a82c322b31e7edd2a9ae9f58dfe7d28f1de8f8602,No,Tracked/Audited
+lib/services/ffmpeg_service.dart,.dart,Source Code (Flutter/Dart),3456,104,Low,873ee5475a2b83614def9229349771e1883b1cb011b9c8a4ebc597865bd15202,No,Tracked/Audited
+lib/services/firebase_ai_logic_service.dart,.dart,Source Code (Flutter/Dart),9519,287,Medium (>200 lines),6b64ab4aa2234ebbe725b0d23e41d8e86a635024e2639e3e7903b9d2a082a313,No,Tracked/Audited
+lib/services/firebase_storage_service.dart,.dart,Source Code (Flutter/Dart),3191,92,Low,cf0e0a84252a734010457263068709b53aaf50be7ba2008a025a756458031396,No,Tracked/Audited
+lib/services/firestore_user_service.dart,.dart,Source Code (Flutter/Dart),12058,337,Medium (>200 lines),e9b779d07c131e2974a0d5cf443a8e2ca7c184bc1fb8087eb19a09b2cf5f78a6,No,Tracked/Audited
+lib/services/gatekeeper_service.dart,.dart,Source Code (Flutter/Dart),2677,68,Low,cef20480360bf7cc41c431a61277b1563132eec8854354ffe4072df59b2a73c7,No,Tracked/Audited
+lib/services/gemini_service.dart,.dart,Source Code (Flutter/Dart),26505,695,High (>500 lines),cb35be245b2f94690a3a93360d8e13622d04075475d3c6087279e9b71cf0c0e2,No,Tracked/Audited
+lib/services/global_config_service.dart,.dart,Source Code (Flutter/Dart),1474,41,Low,a94e2744573273abb9a618c9b9937b4d67f87be270ebaba40361923333ee4f59,No,Tracked/Audited
+lib/services/google_veo_service.dart,.dart,Source Code (Flutter/Dart),5130,148,Low,1952bb63dccf031fa8b1d51d8f1fdd6a1ccbb7ec4ff98c9425c0de03ae2117d3,No,Tracked/Audited
+lib/services/groq_service.dart,.dart,Source Code (Flutter/Dart),3163,104,Low,4f6c75fe60617277ceadb5e8f482d0b672aefbb7882ce1d46908b3bae5733306,No,Tracked/Audited
+lib/services/higgsfield_service.dart,.dart,Source Code (Flutter/Dart),7586,232,Medium (>200 lines),4e886143b03c81b8850b24ca48bf5f5b72580343b3fdc6c062721e6b16607812,No,Tracked/Audited
+lib/services/instagram_service.dart,.dart,Source Code (Flutter/Dart),15850,429,Medium (>200 lines),d65b90e8e0a1f325553e24ada32f158f437e5eeabe0cc36bfef1473d2e672f24,No,Tracked/Audited
+lib/services/kling_service.dart,.dart,Source Code (Flutter/Dart),11390,316,Medium (>200 lines),b7d75245903f5fe4264ab7ec6a4c190321c1a33a3c75a8a82d8791a20c390107,No,Tracked/Audited
+lib/services/manus_ai_service.dart,.dart,Source Code (Flutter/Dart),16566,429,Medium (>200 lines),44a90cf173e325f887653a40ab04ee13699d4cb0024fd4c0e4188a6881d78238,No,Tracked/Audited
+lib/services/marketing_share_service.dart,.dart,Source Code (Flutter/Dart),4965,127,Low,e7acf75d56f376ba8ffa11fc4dd4169dc5d3a664842733684e0a555eddc3fa32,No,Tracked/Audited
+lib/services/media_merge_service.dart,.dart,Source Code (Flutter/Dart),12883,321,Medium (>200 lines),0b2918f29f8d6050b852aed791916a237d1e45245932d9e8d416dcfb0208eb5f,No,Tracked/Audited
+lib/services/media_processing_service.dart,.dart,Source Code (Flutter/Dart),15713,459,Medium (>200 lines),1115e0a283bd8093cd7e9c916bce7b67b998dcd8a672c144bf4fe01c67757ab8,No,Tracked/Audited
+lib/services/openai_service.dart,.dart,Source Code (Flutter/Dart),3458,113,Low,5f2ce8c5e0de0cbb8b466d983925207500329919e295a4244628a8a2e83cc049,No,Tracked/Audited
+lib/services/permissions_sync_service.dart,.dart,Source Code (Flutter/Dart),13999,376,Medium (>200 lines),931fb6298de5a0ce932e6a3b918eadf4292faacf1744479f7269f2f6dd3a886a,No,Tracked/Audited
+lib/services/product_matching_service.dart,.dart,Source Code (Flutter/Dart),9530,230,Medium (>200 lines),6722c235fb58d2a16eaf774914f2448f0a0bb9e064350cf55537aab86eaac455,No,Tracked/Audited
+lib/services/product_memory_service.dart,.dart,Source Code (Flutter/Dart),7789,214,Medium (>200 lines),8d96abced5da5fae19c3857d68f2c3faa0e62fd4e318e92b51a7d406e9e0aa55,No,Tracked/Audited
+lib/services/product_photography_service.dart,.dart,Source Code (Flutter/Dart),27573,641,High (>500 lines),fe9d4d189995db2036815224a106d5a0b0b9542f9a1c58ffbbb808f269dd45b6,No,Tracked/Audited
+lib/services/profile_sync_service.dart,.dart,Source Code (Flutter/Dart),3746,102,Low,c1c02b28248f4e3441218ac0154e1e46d17f9b231b2abfe1e34ad19600ccce2e,No,Tracked/Audited
+lib/services/referral_service.dart,.dart,Source Code (Flutter/Dart),3018,89,Low,07973589ed3c9313fba7a99f9e451005f1191b64c45b6383c442c90506f3c5c1,No,Tracked/Audited
+lib/services/remotion_service.dart,.dart,Source Code (Flutter/Dart),7149,172,Low,77fe79087b8a0f5bfd65584ada0d099d1be6e80832b5661eee5a5261556b85c9,No,Tracked/Audited
+lib/services/secure_storage_service.dart,.dart,Source Code (Flutter/Dart),4712,141,Low,d1c30a786105703ea5896fe3e2f167e3e7f85ce7e4302ff38cf8885031038b15,No,Tracked/Audited
+lib/services/serpapi_master_service.dart,.dart,Source Code (Flutter/Dart),6539,171,Low,b631e428eb03679dd0c2f6c975134ef66a11a1abac6fe785b4bc80992119c8e6,No,Tracked/Audited
+lib/services/serpapi_services.dart,.dart,Source Code (Flutter/Dart),20815,563,High (>500 lines),a3b1566a2e1a33847e45487b2525166ef4d28b237ad2dafb55410a6567e5b798,No,Tracked/Audited
+lib/services/subscription_service.dart,.dart,Source Code (Flutter/Dart),4388,127,Low,c654d15eedcf6547fe90a99a32c9a35449ef1e3576c7cebbec91c33909018dc9,No,Tracked/Audited
+lib/services/telegram_service.dart,.dart,Source Code (Flutter/Dart),4329,125,Low,a74b21503872ec804cb3572e98f8acefcb2ffa3813671b2b27e56f23bab79a09,No,Tracked/Audited
+lib/services/tiktok_account_service.dart,.dart,Source Code (Flutter/Dart),18238,528,High (>500 lines),05e38dab5368b15463a2d3072454a47d3239f5192fa2c253cba687790456d920,No,Tracked/Audited
+lib/services/tiktok_service.dart,.dart,Source Code (Flutter/Dart),26407,749,High (>500 lines),4af779e44f5de53b0c94380d4aba9361490e2aa447e029524d1e96888a0da8c9,No,Tracked/Audited
+lib/services/unified_ai_service.dart,.dart,Source Code (Flutter/Dart),36217,831,High (>500 lines),a6597c7565fbc237f2ebee9e3551f04d82599b78be33c42e65ccaa349c61d25e,No,Tracked/Audited
+lib/services/unified_backend_service.dart,.dart,Source Code (Flutter/Dart),2106,52,Low,569e6de5e42a814d742902201ca246c7a64ffc6caaee12586b0bbbcf515299c1,No,Tracked/Audited
+lib/services/vertex_ai_service.dart,.dart,Source Code (Flutter/Dart),9767,269,Medium (>200 lines),8343d1ba302ebc0e63e8af4e4b780fe07f594f7a38b26e1b9c8f701dfd909902,No,Tracked/Audited
+lib/services/video_pipeline_service.dart,.dart,Source Code (Flutter/Dart),10925,285,Medium (>200 lines),56fab900412d000dbddd70444ae98f8e3bc19af2a4d04954e1bdf52e50f232b1,No,Tracked/Audited
+lib/services/whatsapp_sync_service.dart,.dart,Source Code (Flutter/Dart),7066,218,Medium (>200 lines),d448a354461f0d6fd07d5ea156e97afc25e9af3b7ce9a1690f82ba3951827d28,No,Tracked/Audited
+lib/theme/app_theme.dart,.dart,Source Code (Flutter/Dart),11565,350,Medium (>200 lines),94e5e7888bcd40be30b37ed2de6d8cd241c7f6e5906f645bad91a8eb836e4412,No,Tracked/Audited
+lib/theme/README.txt,.txt,Source Code (Flutter/Dart),99,1,Low,84da32b7937d110dfb172d72f91e6996bc8a10c5c63ad0c733d3db9faec95bc0,No,Tracked/Audited
+lib/utils/logger.dart,.dart,Source Code (Flutter/Dart),399,12,Low,fb797b1f1fe31ccb8c3252c38c9328907fb6a67878a9f8c632ee46f7b90895d5,No,Tracked/Audited
+lib/widgets/account_picker_sheet.dart,.dart,Source Code (Flutter/Dart),6955,195,Low,22ced7a27dc53b16a847ca8175f2595e89adbd57216ce1313f0076a50031df21,No,Tracked/Audited
+lib/widgets/api_key_status_indicator.dart,.dart,Source Code (Flutter/Dart),1528,52,Low,b70a3e6030390b9640ef9fbb2cb9135aa368bf9eae37a4acb11470ad053ab970,No,Tracked/Audited
+lib/widgets/chat_bubble.dart,.dart,Source Code (Flutter/Dart),51998,1411,High (>500 lines),990d70d839643ea2387383a5b37a106f76e02937ee1c90ef1bde2430b275bed4,No,Tracked/Audited
+lib/widgets/chat_drawer.dart,.dart,Source Code (Flutter/Dart),26588,685,High (>500 lines),2eec81f6592381f39729eb7f3944514eccce372023cd4fb417e2877e9d8c9aee,No,Tracked/Audited
+lib/widgets/chat_loading_shimmer.dart,.dart,Source Code (Flutter/Dart),2499,72,Low,6e2e6b8a0e35111241f6975f54a895a0d4d28dea7d6dc86708964f459f9be179,No,Tracked/Audited
+lib/widgets/facebook_settings_form.dart,.dart,Source Code (Flutter/Dart),12993,288,Medium (>200 lines),6549925cb2bb42177edd4f0a67a7679412d047adc253a638b7e6f43c09386d5d,No,Tracked/Audited
+lib/widgets/media_action_bar.dart,.dart,Source Code (Flutter/Dart),8277,256,Medium (>200 lines),dd1931d142c2d84f083c1e05faf5dfe9a036f0db2707ee1259d7e81f704001b9,No,Tracked/Audited
+lib/widgets/modern_video_bubble.dart,.dart,Source Code (Flutter/Dart),32328,935,High (>500 lines),a517accfef909c227ef48cc2c8b1504e817f02caabca175334fff6136d02eefe,No,Tracked/Audited
+lib/widgets/permission_controlled_widget.dart,.dart,Source Code (Flutter/Dart),2350,91,Low,ffa9a5ef5a41de78e7b3b6576962ec9000439f0929005bb5d1671d81eceeaebb,No,Tracked/Audited
+lib/widgets/provider_selection_list.dart,.dart,Source Code (Flutter/Dart),11216,322,Medium (>200 lines),e6e63a3a8ee98f88051f287d6a60ea13b02df123ae8259f4ec2051fec0a398aa,No,Tracked/Audited
+lib/widgets/recommendation_panel.dart,.dart,Source Code (Flutter/Dart),3201,91,Low,cfbe71412a9362bb3f8a340f560e5180ebdd1a6fbf7f5960e085dc6ad29b7a07,No,Tracked/Audited
+lib/widgets/scanning_overlay_painter.dart,.dart,Source Code (Flutter/Dart),4548,127,Low,dcb36207ef4b29bebe93c220f5ee883a96e6319ff2934d983c21aa611174ad9f,No,Tracked/Audited
+lib/widgets/scenario_display_widget.dart,.dart,Source Code (Flutter/Dart),14790,349,Medium (>200 lines),90c517a03cd5eaefbd0542e1ea2e3a176d680f31bfb3b6349bc304da5976792d,No,Tracked/Audited
+lib/widgets/smart_ad_bubble.dart,.dart,Source Code (Flutter/Dart),6531,195,Low,acd5f734e37e49ff04110fe2f9c3131abc1f0cc7efe0b7fda1e58218784a1793,No,Tracked/Audited
+lib/widgets/standard_provider_form.dart,.dart,Source Code (Flutter/Dart),27564,660,High (>500 lines),e9a2c01bb1b5c452c3d91845b8330a388b645b101fcbbcc08ff8ac42cacccfff,No,Tracked/Audited
+lib/widgets/tiktok_logo_icon.dart,.dart,Source Code (Flutter/Dart),1425,52,Low,56b9147a660ee1bb2d9893888cfff224e05778072da8ef4ed7cbf3815de9dcde,No,Tracked/Audited
+lib/widgets/tiktok_settings_form.dart,.dart,Source Code (Flutter/Dart),15254,394,Medium (>200 lines),84c8d15850a52bfc0d9847c9f2c21c6549b4ce044a74f59889007d2f5e2cbd5b,No,Tracked/Audited
+lib/widgets/tiktok_video_widget.dart,.dart,Source Code (Flutter/Dart),11864,331,Medium (>200 lines),4317dbaf1cb6f254a44fc28e1038fccc89815f83037a9705ff994bed00f7b165,No,Tracked/Audited
+lib/widgets/video_full_screen_viewer.dart,.dart,Source Code (Flutter/Dart),4679,163,Low,6bd125183a8e6076f8c3d096c3135e53a899aba29fef18ce2b94c01103edbc5a,No,Tracked/Audited
+lib/widgets/youtube_settings_form.dart,.dart,Source Code (Flutter/Dart),6455,159,Low,da0e385d0c9c5991eda3b84b3dc33fa84a972cc1d12b30ec481f3cc8031a55fa,No,Tracked/Audited
+lib/widgets/animations/vip_message_entry.dart,.dart,Source Code (Flutter/Dart),1135,36,Low,40095e88deccc37e51fabe7f3f9257f6ff5bed90c37cbe9852bdbba22c802395,No,Tracked/Audited
+lib/widgets/chat/chat_action_button.dart,.dart,Source Code (Flutter/Dart),2399,83,Low,7854918b1c2ee5c9d6289a93fac2fede789dfa5a95ed160e1fa60fb6ad04a68b,No,Tracked/Audited
+lib/widgets/chat/chat_input_area.dart,.dart,Source Code (Flutter/Dart),30415,811,High (>500 lines),d1ee646a6fd0d7a07ec37d59ce583ca7d3c486cac1e6ae006d50a73f57510189,No,Tracked/Audited
+lib/widgets/chat/context_preview_bar.dart,.dart,Source Code (Flutter/Dart),2322,74,Low,2fa285873d506761740b43feb95529aafc973d7035dd482a8c94fc827e4cebbc,No,Tracked/Audited
+lib/widgets/chat/full_screen_viewer.dart,.dart,Source Code (Flutter/Dart),4863,151,Low,4b83fd64dcf62bbf8a7037cd484354afcaef082ab96961cd1a0cc359f9306cab,No,Tracked/Audited
+lib/widgets/chat/swipe_to_reply.dart,.dart,Source Code (Flutter/Dart),2727,99,Low,2d98f80378bffa1280964bfa0a4c08fdaf3e3cc4e57b0f665579aca406ab5fdc,No,Tracked/Audited
+lib/widgets/social/social_profile_dashboard.dart,.dart,Source Code (Flutter/Dart),9406,269,Medium (>200 lines),cb82d777a21444330e0e9e7087898b51898c65de9177190d7e0e32b68b82ad7c,No,Tracked/Audited
+lib/widgets/ui_kit/custom_widgets.dart,.dart,Source Code (Flutter/Dart),5983,198,Low,48713a32f480c5c993df26e2ab46f5e5f94d57ce63bed4dc8bc0e526f19d3cf6,No,Tracked/Audited
+lib/widgets/ui_kit/smart_badge.dart,.dart,Source Code (Flutter/Dart),862,35,Low,319a60d3fe2893a012e0296f9717fad396b832b872bec93bf218df157369d984,No,Tracked/Audited
+lib/widgets/ui_kit/smart_card.dart,.dart,Source Code (Flutter/Dart),2711,93,Low,03397d59f127915a48e61eb0badc506db8550b0a04dfc6544d9147f7b4da1082,No,Tracked/Audited
+lib/widgets/ui_kit/smart_loading_overlay.dart,.dart,Source Code (Flutter/Dart),2262,73,Low,80e378c6ee468e0278514bee50a1fd47fb85d183cfb62be4dd456bb48c86149a,No,Tracked/Audited
+lib/services/ai/background_removal_service.dart,.dart,Source Code (Flutter/Dart),991,24,Low,f0ae74cafcaffddba533e21d56ef18560ac111ba037e0403c5718db97d012bcc,No,Tracked/Audited
+lib/services/ai/gemini_audio_service.dart,.dart,Source Code (Flutter/Dart),7033,142,Low,5e13d08b07e23189974c142929083e1cd6b6e37ed381ab4e77b5a3c38dd35ac0,No,Tracked/Audited
+lib/services/ai/gemini_director_service.dart,.dart,Source Code (Flutter/Dart),3175,91,Low,938f1a79bbf58a21eb22527477dcdb0751cece214b8d64bda73da4ce2a99308c,No,Tracked/Audited
+lib/services/ai/gemini_vision_service.dart,.dart,Source Code (Flutter/Dart),8326,172,Low,a0272bbbf2fe5ad8ef7ddb30e839cd1baaf836e8ef59e17790ea8733970cfc61,No,Tracked/Audited
+lib/services/ai/google_ai_mode_service.dart,.dart,Source Code (Flutter/Dart),5137,153,Low,19d1fed9c78e6663cd16c661e67a4b05427f4ac3de13367a48acccdf5a180998,No,Tracked/Audited
+lib/services/ai/intent_classifier_service.dart,.dart,Source Code (Flutter/Dart),18929,583,High (>500 lines),79a31382d1af5ea37778a23288f31f3b2708d2d0ad2633a6f18b71acae0eed10,No,Tracked/Audited
+lib/services/ai/model_capability_service.dart,.dart,Source Code (Flutter/Dart),2975,77,Low,f393dc957970addc8f0d870cfe94a1c5423c2cfb980710c8fac16863a9a0fbe9,No,Tracked/Audited
+lib/services/ai/naive_bayes_classifier.dart,.dart,Source Code (Flutter/Dart),2874,87,Low,3a83cbbe24c62b85ac575c084328b35d2ac44825b668710035a608969158037a,No,Tracked/Audited
+lib/services/ai/openrouter_video_service.dart,.dart,Source Code (Flutter/Dart),3466,94,Low,d91cf8c3a80af5a66f57ea16b06e087762b386c5c4b48e5dd7de4d14e0dc3fe5,No,Tracked/Audited
+lib/services/ai/remote_segmentation_service.dart,.dart,Source Code (Flutter/Dart),3759,97,Low,c0994f18a8d250332372005e92594ce29ce96c85762a36170c5093a787f33d1f,No,Tracked/Audited
+lib/services/ai/scene_director_service.dart,.dart,Source Code (Flutter/Dart),3031,63,Low,7724c9a2a87b820bfea24e9fb2066bc6e8dd8e5a5a04f6094918531cc9c260dd,No,Tracked/Audited
+lib/services/ai/vision_product_service.dart,.dart,Source Code (Flutter/Dart),9653,250,Medium (>200 lines),db352fad3de65b25308b758b9a2e9d148931dd8660bae482cab16ceddb09cc29,No,Tracked/Audited
+lib/services/api/jina_service.dart,.dart,Source Code (Flutter/Dart),2606,62,Low,33fdd5ffa96070e8c05b29b48422c1af83627bbef5585de384b1dd35cb767bd1,No,Tracked/Audited
+lib/services/api/social_media_api_client.dart,.dart,Source Code (Flutter/Dart),2612,59,Low,22955c713bdeda91e16e204b34756a48e7a72198ceca77a3bbb2aea5b9d91eb6,No,Tracked/Audited
+lib/services/api/tiktok_api_client.dart,.dart,Source Code (Flutter/Dart),16007,450,Medium (>200 lines),e4e04aec869723203aa69345965f4c1aa428ff7d49b6088b61832a6c148fdeef,No,Tracked/Audited
+lib/services/data/mock_tiktok_trends.json,.json,Source Code (Flutter/Dart),5504,156,Low,263808580c4e8b9117144fd144a2e63ab775eb0a66ce3285c3a7fe76841650a2,No,Tracked/Audited
+lib/services/media/youtube_stream_service.dart,.dart,Source Code (Flutter/Dart),3005,87,Low,c226104df0d592b529e9d7da9ac1744f8a470c5b6c8767ea0cb76ddb1275e12e,No,Tracked/Audited
+lib/services/search/platform_query_builder.dart,.dart,Source Code (Flutter/Dart),14125,285,Medium (>200 lines),c7fcec4c499cb8b0599f2bd5eebc70d2e9bb2448765072303e76e1ea86e793b4,No,Tracked/Audited
+lib/services/search/product_search_context.dart,.dart,Source Code (Flutter/Dart),10779,267,Medium (>200 lines),ff57df4b87db29a362e313001ca4a5f2dc5e82a307893448d65f675c0e67de6b,No,Tracked/Audited
+lib/services/ai/data/bing_image_models.dart,.dart,Source Code (Flutter/Dart),1840,68,Low,0f4e7cf9cdab7d1dd9328e9f613da52939941ec46347266e470735bc231c3167,No,Tracked/Audited
+lib/services/ai/data/google_ai_mode_models.dart,.dart,Source Code (Flutter/Dart),8675,308,Medium (>200 lines),c53b79478c12333b6c1fd4cab89be8298f6a2295445e006878ddf81e3d0bc070,No,Tracked/Audited
+lib/services/ai/data/google_reverse_image_models.dart,.dart,Source Code (Flutter/Dart),1915,75,Low,5207541a1cfd2a6904a5b57c18a254254ed5b8eb9cf33df576c1d91cd679b9bb,No,Tracked/Audited
+lib/services/ai/data/google_shopping_models.dart,.dart,Source Code (Flutter/Dart),1608,63,Low,024afe03555ae7cdf4fa11b0f69c9b9b2723683397c7f190c0eaa8d51365937d,No,Tracked/Audited
+lib/services/ai/data/google_short_videos_models.dart,.dart,Source Code (Flutter/Dart),1281,47,Low,6c8a192627e09016b150078d3fdb6ec49b664738a55c97a67646b036b95e89c9,No,Tracked/Audited
+lib/services/ai/data/naive_bayes_data.dart,.dart,Source Code (Flutter/Dart),1317,39,Low,a15f0e51d673a07feb0344c99e6c6c16611d238c5adfe7d6ef4161b2783a7d98,No,Tracked/Audited
+lib/screens/admin/users_list_screen.dart,.dart,Source Code (Flutter/Dart),32583,723,High (>500 lines),891421a609ca2ded7887d85c2efabf503fd8d1b2106e79581d1fb31428a96afe,No,Tracked/Audited
+lib/screens/auth/account_confirmation_screen.dart,.dart,Source Code (Flutter/Dart),5666,156,Low,566337d217e07505356a7332676b41dd8006842d32a5363754b9ebfee808addb,No,Tracked/Audited
+lib/screens/auth/edit_profile_screen.dart,.dart,Source Code (Flutter/Dart),16955,485,Medium (>200 lines),2e3aa6c8e4f91f91185b7bc4e725fda5ab65bddb3fb455ffdccdead87ad7cb50,No,Tracked/Audited
+lib/screens/auth/login_screen.dart,.dart,Source Code (Flutter/Dart),11099,348,Medium (>200 lines),d3d51a85ba83358a2aebf7e3747ceaebb6127632c149ef5d067a41e9fb301784,No,Tracked/Audited
+lib/screens/auth/password_reset_otp_screen.dart,.dart,Source Code (Flutter/Dart),7600,190,Low,698eddb41f81dcde23a09eab341f85f0ebbb5b7f5b8899e5803cdf4ee560cb59,No,Tracked/Audited
+lib/screens/auth/signup_screen.dart,.dart,Source Code (Flutter/Dart),7766,235,Medium (>200 lines),7e93639db6f7ccf35a1a121fa770d9427131e0a58dcc3bc36baf05d3ebf47ecf,No,Tracked/Audited
+lib/screens/catalog/product_catalog_screen.dart,.dart,Source Code (Flutter/Dart),151630,3263,High (>500 lines),24aadfd0db27364943add0226d4cb855fa8f27d04d9ecda7062c4e1e8dbfe3c2,No,Tracked/Audited
+lib/screens/catalog/product_form_screen.dart,.dart,Source Code (Flutter/Dart),98961,2363,High (>500 lines),507165538d43c152cfbbbf54f6ab7a0f7c3ee09bbfcd9e1f59da43bf4abf4108,No,Tracked/Audited
+lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,.dart,Source Code (Flutter/Dart),28976,686,High (>500 lines),5f80ccb91488e3fe4cb922e3a32fdda9f2c839f15e6bf4019faf9ddf7e789e76,No,Tracked/Audited
+lib/screens/catalog/widgets/catalog_product_image.dart,.dart,Source Code (Flutter/Dart),4973,162,Low,9e7fcb4eb83856a523445070d659b8fa8508634b1394238de6686ad6132d1fc9,No,Tracked/Audited
+lib/screens/catalog/widgets/product_card.dart,.dart,Source Code (Flutter/Dart),20721,461,Medium (>200 lines),505e027a6a96e512662e2ebc4e7ce4604c15cb77390de9153c33a55e9aefd35f,No,Tracked/Audited
+lib/screens/ai_chat/mixins/chat_action_mixin.dart,.dart,Source Code (Flutter/Dart),3984,119,Low,408108b4c32bc64716c4c72d53dc757cbf2ed386dc613cbb4eb99bcb5d80b987,No,Tracked/Audited
+lib/screens/ai_chat/mixins/chat_enhancement_mixin.dart,.dart,Source Code (Flutter/Dart),5856,150,Low,cceeaec494944c3484bfa473ba58776301950d429f74f84460ed3dd7e3aed8d6,No,Tracked/Audited
+lib/screens/ai_chat/mixins/chat_media_mixin.dart,.dart,Source Code (Flutter/Dart),5311,182,Low,07070d671cdadc29fc4fe5795fc2eaeae5138b33308373a0458031232a77985b,No,Tracked/Audited
+lib/core/api/enterprise_api_client.dart,.dart,Source Code (Flutter/Dart),12113,315,Medium (>200 lines),458846ad8ed62b10d069306e60afb9d5d9f004e5f7f6c154cf5f2a0d2142b3d0,No,Tracked/Audited
+lib/core/bindings/initial_binding.dart,.dart,Source Code (Flutter/Dart),10502,195,Low,60e54f998092c0db92339c4451bd627633e2a5f2729db4dee3558f2cbdc0d34d,No,Tracked/Audited
+lib/core/config/supabase_config.dart,.dart,Source Code (Flutter/Dart),1905,45,Low,fb9dea00933c7131db72c44b72a6cb53cfd6f9d2b55ec09ec6b984919bad65c7,No,Tracked/Audited
+lib/core/constants/firebase_prompt_template_ids.dart,.dart,Source Code (Flutter/Dart),935,20,Low,372561140a087a7fef5e4c7f802811559c172951e4d2e7f1e587792786dbeedc,No,Tracked/Audited
+lib/core/data/chat_repository.dart,.dart,Source Code (Flutter/Dart),14014,345,Medium (>200 lines),e65e5bd6d6ca0df9f701e1e64c1b113bc5fcdc0675d7892983a28a81b694602c,No,Tracked/Audited
+lib/core/models/api_provider.dart,.dart,Source Code (Flutter/Dart),12064,394,Medium (>200 lines),5160872b0546917b0d3362462227f04d9fada50c98202b38341e457395801001,No,Tracked/Audited
+lib/core/models/canonical_ai_request.dart,.dart,Source Code (Flutter/Dart),3822,113,Low,8ee79512fed40c6ebf0fe651f0abb0e20572f7e22d54739cbebd2cbe55adc2f5,No,Tracked/Audited
+lib/core/models/chat_attachment.dart,.dart,Source Code (Flutter/Dart),9911,319,Medium (>200 lines),f4f6b0ecd1497479d0672b5648265072596a522461b63090aa383cf3510f64a1,No,Tracked/Audited
+lib/core/models/chat_message.dart,.dart,Source Code (Flutter/Dart),17684,471,Medium (>200 lines),679469a7ec3d05f760b9b8e3767c277b91f4975d22d3f4423d33e4b84616e334,No,Tracked/Audited
+lib/core/models/manus_media_models.dart,.dart,Source Code (Flutter/Dart),5602,167,Low,c49bcb3b1a27716894959e8b78e98f519071fb5a64a63ec040c9a918fb906527,No,Tracked/Audited
+lib/core/models/tiktok_video.dart,.dart,Source Code (Flutter/Dart),5808,161,Low,96c5552965185d9aa313936d7ae436a31a5ba660fda4aeed6db33d01747702ff,No,Tracked/Audited
+lib/core/repositories/back4app_catalog_repository.dart,.dart,Source Code (Flutter/Dart),27357,750,High (>500 lines),433e24c367529166968ff7ca7c514cc4eafbed9f73af799dd8a826707ca18af1,No,Tracked/Audited
+lib/core/repositories/catalog_repository.dart,.dart,Source Code (Flutter/Dart),1856,50,Low,dbd7613f5294e4fcf4aaec95caba694236e0540e1b230f639ab94704042c4030,No,Tracked/Audited
+lib/core/services/chat_brain_service.dart,.dart,Source Code (Flutter/Dart),452,10,Low,d9457ea8f58536c4179d12c6859cd383747fdc4cd120442a4dea9775a19ecfc7,No,Tracked/Audited
+lib/core/services/chat_state_service.dart,.dart,Source Code (Flutter/Dart),2609,71,Low,50fab5458d91cb4737f05e8f1d9fb5111bb7ebc320a96f4ce7e0b04ee53c3825,No,Tracked/Audited
+lib/core/services/log_service.dart,.dart,Source Code (Flutter/Dart),1132,35,Low,12cde9f2622ebfb821a9711141bdb440b56194aaa44b22778b16ebfe4d4dfa90,No,Tracked/Audited
+lib/core/services/share_receiver_service.dart,.dart,Source Code (Flutter/Dart),5281,130,Low,ba0dbabfc0ef10a9785bb4b2ae073a609d110c3cc39b7456b58545f23b775f4b,No,Tracked/Audited
+lib/core/storage/app_storage_service.dart,.dart,Source Code (Flutter/Dart),4528,120,Low,676bcdd2777e626031a239b0efc348a8ef44a64ba56a3e701fd85b0bb4510fad,No,Tracked/Audited
+lib/core/storage/storage_keys.dart,.dart,Source Code (Flutter/Dart),2139,46,Low,87a347617d01ed7c238876451873b7e27d13cd986df372346c30370dad6bac1e,No,Tracked/Audited
+lib/core/strings/app_strings.dart,.dart,Source Code (Flutter/Dart),2740,49,Low,91f1ac8c49ff0c9fc50dcf1d7b8ae3b2c9e66688dfc88057ea47dc4fed1a9b99,No,Tracked/Audited
+lib/core/utils/auth_validation.dart,.dart,Source Code (Flutter/Dart),940,21,Low,47aa92ff9ff2affc5ceaf6d840e6e03f47a01b8985951385cf21f893393ae515,No,Tracked/Audited
+lib/core/utils/error_handler.dart,.dart,Source Code (Flutter/Dart),4897,150,Low,e3b2775d05d67cd75ec10f047ccee6b87f9502cd1e80aa1c80d3b2157b1fd2d3,No,Tracked/Audited
+lib/core/utils/image_utils.dart,.dart,Source Code (Flutter/Dart),13563,337,Medium (>200 lines),5913eae55ceb0752bf95ff4c8eb00d2a6fb7e5109c9649ab17139d21f2d0fcd0,No,Tracked/Audited
+lib/core/utils/json_utils.dart,.dart,Source Code (Flutter/Dart),4529,130,Low,3275de95cf0271b3bbc33b7013724c682bb055a88c76f304bce4aa710918ca22,No,Tracked/Audited
+lib/core/utils/key_routing_helper.dart,.dart,Source Code (Flutter/Dart),1332,41,Low,0b8a2a1582e2da8010b65013f50821dcb8e49de1f04af85b00c7667e8cd4cf4e,No,Tracked/Audited
+lib/core/utils/log_service.dart,.dart,Source Code (Flutter/Dart),1299,40,Low,cf59d1cc689bb6983fb2fb20deecaa203ab9275a2a2cc3f84fdd96e1084b307a,No,Tracked/Audited
+lib/core/utils/responsive_helper.dart,.dart,Source Code (Flutter/Dart),2602,80,Low,cf882e5d6fd314adbcfe6f3ead6a0466d998765bb9628cb31de3f96b47d02739,No,Tracked/Audited
+lib/core/utils/result.dart,.dart,Source Code (Flutter/Dart),6746,235,Medium (>200 lines),2eec145febb9eae1af5f86113a883911c3f793ccbfe2cf84f27f7abe5c9e9d3f,No,Tracked/Audited
+lib/core/utils/RESULT_PATTERN_README.md,.md,Source Code (Flutter/Dart),6205,215,Medium (>200 lines),0a0066bb1e98e7a5968ff7ca72e8bd01c5cb9745bc98beaafc296289c5f345ee,No,Tracked/Audited
+lib/core/utils/smart_exception.dart,.dart,Source Code (Flutter/Dart),350,14,Low,7f1bbed0565cc805e63627b658ed0cf276fd7659fd3a574ddc4c593c3b8c1767,No,Tracked/Audited
+lib/core/utils/snackbar_utils.dart,.dart,Source Code (Flutter/Dart),5581,151,Low,1954b5b3fec4046236a13b81af15ca878bca04dcb613a6e6e19754639616eca8,No,Tracked/Audited
+lib/core/widgets/glass_container.dart,.dart,Source Code (Flutter/Dart),1355,52,Low,fabbe111034b09fe52b307928e2da6aa0e437f6a1814869f97e532b5faed638f,No,Tracked/Audited
+lib/core/theme/animations/galactic_background_unified.dart,.dart,Source Code (Flutter/Dart),2842,99,Low,a056a72e031f272991aa5d4d7b89a7a726556bfce2ff2c890dde540260928171,No,Tracked/Audited
+lib/core/theme/ui_kit/smart_bouncy_wrapper.dart,.dart,Source Code (Flutter/Dart),2729,105,Low,e446c98de0a73c7d821eb7086f0149d8a689d659c514b8cfb2dd75db857d91aa,No,Tracked/Audited
+lib/core/theme/ui_kit/smart_fluid_panel.dart,.dart,Source Code (Flutter/Dart),2094,69,Low,3c76848822c9b83fe55bd0df992ea4d5a3a8b900ebf045aa5c39b2d6b69d2aac,No,Tracked/Audited
+lib/core/theme/ui_kit/smart_glass_card.dart,.dart,Source Code (Flutter/Dart),1708,56,Low,18f7a12c3eeb4a381402c6511ecf67f2dcf7c1bc613d6baecfdd7df4af89c285,No,Tracked/Audited
+lib/core/theme/ui_kit/smart_neon_button.dart,.dart,Source Code (Flutter/Dart),2874,90,Low,0e597e981aceae80f627e7c19afbf882a638574566db268efe67be38b3b3dbbb,No,Tracked/Audited
+lib/core/theme/ui_kit/smart_neon_text_field.dart,.dart,Source Code (Flutter/Dart),2413,72,Low,c60fe8b4717c666b01c9271707fe323eb5a1ab05049d4dfcde44f7266157d497,No,Tracked/Audited
+lib/core/theme/ui_kit/smart_soft_icon.dart,.dart,Source Code (Flutter/Dart),943,37,Low,e226e90c0d003a3dcf1497372ceedafb122dbbf42c8585d4d4b1183d249c92e7,No,Tracked/Audited
+lib/core/theme/ui_kit/smart_stat_box.dart,.dart,Source Code (Flutter/Dart),3148,112,Low,1f3a357480588a9a4091e0905efd8f0b105dcb0c82da4520d02784198d12597e,No,Tracked/Audited
+lib/ai/agents/mock_product_research_agent.dart,.dart,Source Code (Flutter/Dart),1629,50,Low,fab3c400209e8c9c01f71379d75e5c0de7ea2e1cc573bd8ada642ec992eee9ee,No,Tracked/Audited
+lib/ai/core/agent_feature_flags.dart,.dart,Source Code (Flutter/Dart),745,25,Low,5b273f926f7b2422bcb900dee8bc41c94bc09bd29124002297f47534a349b3db,No,Tracked/Audited
+lib/ai/core/agent_models.dart,.dart,Source Code (Flutter/Dart),16257,586,High (>500 lines),bbaf7f4fee033f334857fab1964a849af1486563898348d8b241d7e8d657355d,No,Tracked/Audited
+lib/ai/core/agent_router.dart,.dart,Source Code (Flutter/Dart),1659,49,Low,f129b0ea47ba72ebf838e0eb87dc5ecd5f662324c38ef8d28e3c3f3a1ed503b6,No,Tracked/Audited
+lib/ai/core/ai_constants.dart,.dart,Source Code (Flutter/Dart),6446,200,Low,4c9f9c42b331ea279100db42cba8c5945c2aac114450344539a942fb92a097eb,No,Tracked/Audited
+lib/ai/core/ai_helpers_mixin.dart,.dart,Source Code (Flutter/Dart),5694,135,Low,9342b48cfc2b55b276dc4b390e7e6a5fe24a27c3f20fc29bd490f615eb49c439,No,Tracked/Audited
+lib/ai/core/base_agent.dart,.dart,Source Code (Flutter/Dart),629,21,Low,598bfc5de67adb8f8a2996c1879d5650369e1485c8d4cb962fbb3c3a162cea35,No,Tracked/Audited
+lib/ai/memory/agent_memory.dart,.dart,Source Code (Flutter/Dart),626,22,Low,bd7a6de0b843c15acb16425800e85fb43c630a20a30f7eeff3b8225dd7287fc1,No,Tracked/Audited
+lib/ai/mixins/agent_core_mixin.dart,.dart,Source Code (Flutter/Dart),39414,869,High (>500 lines),b0f79ee807a824002c415600413b98a6dafdef73120b844155f6bc20d5f44d59,No,Tracked/Audited
+lib/ai/mixins/agent_media_mixin.dart,.dart,Source Code (Flutter/Dart),25932,618,High (>500 lines),5cc6b745665ab0e38f3d09679203c77fb3adedd70e011f429d7a4a0885a79d92,No,Tracked/Audited
+lib/ai/mixins/agent_search_mixin.dart,.dart,Source Code (Flutter/Dart),21167,459,Medium (>200 lines),a9e8315e37009ab1332b3c0ec1c5b6512ba38789aed97a547721c2a6c36dbc23,No,Tracked/Audited
+lib/ai/models/app_context.dart,.dart,Source Code (Flutter/Dart),2854,74,Low,d017273bb35f70581cb175781c3597a8b916782fe780c4251b7d3a841d04c83c,No,Tracked/Audited
+lib/ai/ui/agent_result_renderer.dart,.dart,Source Code (Flutter/Dart),4977,144,Low,26dd70bcd0a0938cf3836fb331db1c7dbac8b5ffe1dac545a71bdc88e3806882,No,Tracked/Audited
+lib/ai/ui/content_plan_widget.dart,.dart,Source Code (Flutter/Dart),6939,210,Medium (>200 lines),93f134d6fd233c28be7408ec0c091217694952f61ce5dd56e92d7e3859b2eb6b,No,Tracked/Audited
+lib/ai/ui/expert_research_widget.dart,.dart,Source Code (Flutter/Dart),14042,402,Medium (>200 lines),12c50cf5632b0a8b4f6f24e580407d2b488586af2f3690bdf3676a5c2239b5df,No,Tracked/Audited
+lib/ai/ui/image_gallery_widget.dart,.dart,Source Code (Flutter/Dart),30076,752,High (>500 lines),52496d0e856d309dfdede3fd5469ab6769c3b330584d9f0fde49514977ac83ae,No,Tracked/Audited
+lib/ai/ui/product_gallery_widget.dart,.dart,Source Code (Flutter/Dart),4450,129,Low,4bac70d41e7e79b0c6727c9375e2e88f8d8eb6abe8e4b6d12b2af42813463762,No,Tracked/Audited
+lib/ai/ui/video_discovery_widget.dart,.dart,Source Code (Flutter/Dart),7578,219,Medium (>200 lines),5cfec81b8a856aa4660e3e87a03683687d5abdd6827247365defde09d67fcf08,No,Tracked/Audited
+ios/Flutter/AppFrameworkInfo.plist,.plist,Platform Native Code/Config,800,26,Low,88e403d33087654522431733ad261741f836f92c94a50ee792820b4f1ed89716,No,Tracked/Audited
+ios/Flutter/Debug.xcconfig,.xcconfig,Platform Native Code/Config,31,1,Low,c0d1da54718e75f2028962b689258ecc741abf7cdaed50483aa5225264d0a7d7,No,Tracked/Audited
+ios/Flutter/flutter_export_environment.sh,.sh,Platform Native Code/Config,527,13,Low,630f95224f243b754b74a40e18835dee0406c8f2346de48a3f0ee721e24c9f77,No,Tracked/Audited
+ios/Flutter/Generated.xcconfig,.xcconfig,Platform Native Code/Config,497,14,Low,d072f8ff2e660876c9eaa7a75ad46ed255dc71c9e8b044dd5eae8c3393fc1a71,No,Tracked/Audited
+ios/Flutter/Release.xcconfig,.xcconfig,Platform Native Code/Config,31,1,Low,c0d1da54718e75f2028962b689258ecc741abf7cdaed50483aa5225264d0a7d7,No,Tracked/Audited
+ios/Runner/AppDelegate.swift,.swift,Platform Native Code/Config,404,13,Low,13e99dab5435148efc15d9177ba505da3d24859a6ba663767510622fdf7a97fa,No,Tracked/Audited
+ios/Runner/GeneratedPluginRegistrant.h,.h,Platform Native Code/Config,378,19,Low,a5f88cc6415d2e639d2cb549348b84e02a7fdd0261603b0063abef6fa11f075a,No,Tracked/Audited
+ios/Runner/GeneratedPluginRegistrant.m,.m,Platform Native Code/Config,7938,224,Medium (>200 lines),359907dd7a1ff1c771e30ee764247c1618f1d7f5a6d64f5bd4956744550ad837,No,Tracked/Audited
+ios/Runner/GoogleService-Info.plist,.plist,Platform Native Code/Config,1296,36,Low,dd97f8f3c0821b0fc4ece515dad1a0660ccdf82313130a425b3919c80d748ae5,No,Tracked/Audited
+ios/Runner/Info.plist,.plist,Platform Native Code/Config,1850,53,Low,87b3882420aa80ff785980d5ffb068bd4d750bcb85fb0e77baaf8a67876898a6,No,Tracked/Audited
+ios/Runner/Runner-Bridging-Header.h,.h,Platform Native Code/Config,39,1,Low,efe657d8b27f7f8595a0d416bffb33fe7d93bd2869d81f7353b556c439d7a1a7,No,Tracked/Audited
+ios/Runner.xcodeproj/project.pbxproj,.pbxproj,Platform Native Code/Config,23728,616,High (>500 lines),c6ed781efb2c2a9de2b0bc1e235d6c9e673691a7be87a9765f0e63c449fec6bd,No,Tracked/Audited
+ios/Runner.xcworkspace/contents.xcworkspacedata,.xcworkspacedata,Platform Native Code/Config,159,7,Low,706a4c812f2a1e220e6785c27580020d58048e2ae4d30d1280f3c43344ce6b38,No,Tracked/Audited
+ios/RunnerTests/RunnerTests.swift,.swift,Platform Native Code/Config,297,12,Low,c0e04141287eb7f9c9f3d31cf5be8cb626a9ea71351206c9121578e8b8f480c3,No,Tracked/Audited
+ios/Runner.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist,.plist,Platform Native Code/Config,246,8,Low,d557c2c32fc6258ec28981fa45dc847b76c9968beb90a2e26d13ef9c4ea45c30,No,Tracked/Audited
+ios/Runner.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings,.xcsettings,Platform Native Code/Config,234,8,Low,dd64c0308ab2971c456871b990b24a008bdc3ece09833e8dbe9675e33a496e74,No,Tracked/Audited
+ios/Runner.xcodeproj/project.xcworkspace/contents.xcworkspacedata,.xcworkspacedata,Platform Native Code/Config,142,7,Low,ac28b35c2b940210bec0fff8e424b07fd0efe9112ab178a10533583f251a386c,No,Tracked/Audited
+ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme,.xcscheme,Platform Native Code/Config,3934,101,Low,570c49fd61c67330efb75097018d1b0df0c68d03667631105a5acf5621112b1b,No,Tracked/Audited
+ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist,.plist,Platform Native Code/Config,246,8,Low,d557c2c32fc6258ec28981fa45dc847b76c9968beb90a2e26d13ef9c4ea45c30,No,Tracked/Audited
+ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings,.xcsettings,Platform Native Code/Config,234,8,Low,dd64c0308ab2971c456871b990b24a008bdc3ece09833e8dbe9675e33a496e74,No,Tracked/Audited
+ios/Runner/Base.lproj/LaunchScreen.storyboard,.storyboard,Platform Native Code/Config,2414,37,Low,bc3644fbb251ff1e18de25a4932c927850ae1a025be3dd1447940429633fe4b2,No,Tracked/Audited
+ios/Runner/Base.lproj/Main.storyboard,.storyboard,Platform Native Code/Config,1631,26,Low,dcea4686c02065e56217fd19fcfb73d7509b41872e7486126149d47a18559363,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Contents.json,.json,Platform Native Code/Config,2641,122,Low,5f8b941b774bde4496d73347c1f79cbdd786bb76fbdab9ed1f3f0cb78a0fb0d3,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png,.png,Platform Native Code/Config,226391,1662,High (>500 lines),3d496cea03546b6cdcbdc98ed97be33aee983bc4b2eff5fe2f0005b969e82a9b,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@1x.png,.png,Platform Native Code/Config,628,5,Low,7dbf019733863e5d606b0be0fc697c3efe6972c83a339fcbfe87d0cb36c5e6e0,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@2x.png,.png,Platform Native Code/Config,1580,17,Low,daf36f1db2baaa10df99b26afb625bae7a4fb0d841a0737b6e45c2e0af5fa336,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-20x20@3x.png,.png,Platform Native Code/Config,2942,24,Low,badb4f47f4573d667b7f6d22e0ddc122a93401fe966c0b9676ce2d830a2088f2,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@1x.png,.png,Platform Native Code/Config,1021,9,Low,a44692869708bfb0553d1ac656e5ef01d4476036aeb08e3c7b58ef96995e559b,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@2x.png,.png,Platform Native Code/Config,2819,29,Low,c39273fe660f029fd4c28808bd6604b964bacb939f5be0ab0740882b27b18651,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-29x29@3x.png,.png,Platform Native Code/Config,5139,39,Low,5cc334cf2f2d15891365f6df9bcf5231db75580fde508365c83698c105b60f59,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@1x.png,.png,Platform Native Code/Config,1580,17,Low,daf36f1db2baaa10df99b26afb625bae7a4fb0d841a0737b6e45c2e0af5fa336,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@2x.png,.png,Platform Native Code/Config,4449,36,Low,c89f80864f4286f5b6f5fdd1820d9970c70b8e7a9a62cb97042341cacd81ad6e,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-40x40@3x.png,.png,Platform Native Code/Config,8314,58,Low,1713f50602f283be11f241acdfaa8a30e78f7659c42a17b09861db91f03147c5,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-50x50@1x.png,.png,Platform Native Code/Config,2257,24,Low,a42ee86e167ee59b8caed478d26633c141bb0cd671929d11352649c5e383794c,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-50x50@2x.png,.png,Platform Native Code/Config,6305,53,Low,09ada972af2aa129e6547f19df8c3de5f96b66eb629b0ccc73e4ff5f4730d7f8,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-57x57@1x.png,.png,Platform Native Code/Config,2743,24,Low,3e046e02920943b2d148174a007d394f2e5772b3f248d26679341d43f9737038,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-57x57@2x.png,.png,Platform Native Code/Config,7733,61,Low,1bc9888002d1edc9d2297da01f1273de7ccb04e36c06b6fd7604e6734481be73,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@2x.png,.png,Platform Native Code/Config,8314,58,Low,1713f50602f283be11f241acdfaa8a30e78f7659c42a17b09861db91f03147c5,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-60x60@3x.png,.png,Platform Native Code/Config,15925,124,Low,ac934057e1445b6044823f41f6c9f576b4ff3d262f29faa84f5764cf555167f0,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-72x72@1x.png,.png,Platform Native Code/Config,3818,26,Low,aacb01bdeb7d6cd8966cb6697b10ef56303ceb441b71954d20ba5b6dfc15b29a,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-72x72@2x.png,.png,Platform Native Code/Config,11049,94,Low,ca63dad3da078536988410fc5fdb384c5f9fef4c2f6e0da6895e21bc951e4511,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@1x.png,.png,Platform Native Code/Config,4153,37,Low,e593cb5cc5348ceaaea992add1a079a154473837675581ff18dd8a779b86f5f8,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-76x76@2x.png,.png,Platform Native Code/Config,12147,106,Low,995bc29e05ec7e767148831a5cd957b31fda4f861f7502b07f2f316c3763c597,No,Tracked/Audited
+ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-83.5x83.5@2x.png,.png,Platform Native Code/Config,14047,113,Low,7d7b30acba372455c49490248beb304f244919ba4a898ecfbbc57e0a6c009930,No,Tracked/Audited
+ios/Runner/Assets.xcassets/LaunchImage.imageset/Contents.json,.json,Platform Native Code/Config,414,23,Low,fbd112a9f3b541a1d811f71ac8e4fe68b6176687d973a5f4d99b7aa4a722e94e,No,Tracked/Audited
+ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage.png,.png,Platform Native Code/Config,68,4,Low,93ae7d494fad0fb30cbf3ae746a39c4bc7a0f8bbf87fbb587a3f3c01f3c5ce20,No,Tracked/Audited
+ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@2x.png,.png,Platform Native Code/Config,68,4,Low,93ae7d494fad0fb30cbf3ae746a39c4bc7a0f8bbf87fbb587a3f3c01f3c5ce20,No,Tracked/Audited
+ios/Runner/Assets.xcassets/LaunchImage.imageset/LaunchImage@3x.png,.png,Platform Native Code/Config,68,4,Low,93ae7d494fad0fb30cbf3ae746a39c4bc7a0f8bbf87fbb587a3f3c01f3c5ce20,No,Tracked/Audited
+ios/Runner/Assets.xcassets/LaunchImage.imageset/README.md,.md,Platform Native Code/Config,340,5,Low,853ac958e2416fe2540f6f61165283a3618b71a7ba5f85f65ac41c2158dfcd21,No,Tracked/Audited
+ios/Flutter/ephemeral/flutter_lldbinit,,Platform Native Code/Config,108,5,Low,eaec5f5268e3a5024d9703046f4097701107d574d0de7a2d8d81f0bf4644a333,No,Tracked/Audited
+ios/Flutter/ephemeral/flutter_lldb_helper.py,.py,Platform Native Code/Config,1276,32,Low,05cfe3977fdee593efad2049a4f62d374e55c69cedc8aabeee5566b37acb8384,No,Tracked/Audited
+assets/fonts/IBMPlexSansArabic-Bold.ttf,.ttf,Static Asset / Font / Image,236740,1982,High (>500 lines),664e3dc2424024aa10cd9cee07be46601cba2aa30d29ffa1ae3f7e0d79b5b49b,Yes (Potential Orphan/Temp),Tracked/Audited
+assets/fonts/IBMPlexSansArabic-ExtraLight.ttf,.ttf,Static Asset / Font / Image,232696,1928,High (>500 lines),c1e417e69127a2d202205658b05fd49fa6c07f20c6312374dd716d39c7861f4a,No,Tracked/Audited
+assets/fonts/IBMPlexSansArabic-Light.ttf,.ttf,Static Asset / Font / Image,229640,1955,High (>500 lines),e7e4d767fc2694e0d0d548bd1c2c4c92a6beed06fe645fe628ff19a8443ecbdd,No,Tracked/Audited
+assets/fonts/IBMPlexSansArabic-Medium.ttf,.ttf,Static Asset / Font / Image,232280,2222,High (>500 lines),9de4e0fa5a0b8574e6fe2f291efee21703e184bcb56dd5bfeb5dd06cacb808f2,No,Tracked/Audited
+assets/fonts/IBMPlexSansArabic-Regular.ttf,.ttf,Static Asset / Font / Image,227044,2107,High (>500 lines),acfedf95e912ff35eefe6e38ea74a9381b788499d1e8b608b0d5bb9d41445a60,No,Tracked/Audited
+assets/fonts/IBMPlexSansArabic-SemiBold.ttf,.ttf,Static Asset / Font / Image,234716,2003,High (>500 lines),62c93685cff98e965d584fb3438f20af6edd6714b823c0a8c63b47fd586d99a6,Yes (Potential Orphan/Temp),Tracked/Audited
+assets/fonts/IBMPlexSansArabic-Thin.ttf,.ttf,Static Asset / Font / Image,232892,2514,High (>500 lines),0c81b1a08fc5d44563b92c40925122894bf686e15f34cf3a41a9358c674fe830,No,Tracked/Audited
+assets/fonts/NotoSansArabic-Bold.ttf,.ttf,Static Asset / Font / Image,248468,3649,High (>500 lines),ed2711b387750ae991b6a980b8dd16fdd65e6702b97e9f52adf3a8edf09ef4df,Yes (Potential Orphan/Temp),Tracked/Audited
+assets/fonts/NotoSansArabic-Regular.ttf,.ttf,Static Asset / Font / Image,240456,3806,High (>500 lines),ceea25b464a656dc3b26849bab9356740401af62aedf1bfa8b7f0d9b75925b1b,No,Tracked/Audited
+assets/fonts/OFL.txt,.txt,Static Asset / Font / Image,4456,93,Low,0fc74640fdcd67c036e1fced58d7e4478897a333cd92b981115a3e324337577f,No,Tracked/Audited
+assets/images/background.jpg,.jpg,Static Asset / Font / Image,0,0,Low,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,No,Tracked/Audited
+assets/images/logoappp.jpg,.jpg,Static Asset / Font / Image,19200,146,Low,0996017e91edacf1a384b62ca742c8719ef6105e316cd482585b46913012c61d,No,Tracked/Audited
+assets/images/styles/cinematic.png,.png,Static Asset / Font / Image,39121,300,Medium (>200 lines),a8717ecaa12cf6e66818347a6ff44298efa66ed02e79563f62454d92d172f3ef,No,Tracked/Audited
+assets/images/styles/kitchen.png,.png,Static Asset / Font / Image,54287,388,Medium (>200 lines),815823be9c645355e868bdd653e27a2d4b05361c9e7da47f1d9cbfb1d3366c99,No,Tracked/Audited
+assets/images/styles/logoapp.jpeg,.jpeg,Static Asset / Font / Image,39466,137,Low,680c88ed2b0a1c72404553ce77b7bbdea7e58a599b07d296dd7e21d5fef8d37e,No,Tracked/Audited
+assets/images/styles/luxury.png,.png,Static Asset / Font / Image,67656,470,Medium (>200 lines),551b26d299f3d32f279ef54035f136f5a8f68a84f3a5e0d0a664f26e70a8e942,No,Tracked/Audited
+assets/images/styles/minimal.png,.png,Static Asset / Font / Image,15918,202,Medium (>200 lines),3a3e2bf9b94b6da1276af2a7aa05b22058296ce61ca76142dcdadcd06897c069,No,Tracked/Audited
+assets/images/styles/nature.png,.png,Static Asset / Font / Image,113144,734,High (>500 lines),bcd2949a3104e0edc68c38e4f7e86b97220fa6fc0518efe918e7a3c7dccc5ba9,No,Tracked/Audited
+assets/images/styles/neon.png,.png,Static Asset / Font / Image,97613,634,High (>500 lines),847eefe7ca1edb114b3342d439c8de2466c8e55b172b5c7f658c724e2548b305,No,Tracked/Audited
+assets/images/styles/WhatsApp Image 2026-03-28 at 9.14.03 PM.jpeg,.jpeg,Static Asset / Font / Image,73918,678,High (>500 lines),90db1933fe6c5457b00ba86d197bb4ede4d155a750202dab89a1cf3ed7f76338,No,Tracked/Audited
+android/.gradle/file-system.probe,.probe,Platform Native Code/Config,8,1,Low,08090c772a2d27ab9009daa5d1548b3451d7ca71f74492dda0b99a56cba0ac66,No,Tracked/Audited
+android/app/build.gradle.kts,.kts,Platform Native Code/Config,4186,135,Low,ef6e70fd62a85ffc0940b42c2eb1fba0bbdd29451cdd7bd35101995997803c3e,No,Tracked/Audited
+android/app/google-services.json,.json,Platform Native Code/Config,2232,77,Low,8fb746fb24fc37f76bfc8fb73446a41ebd20f20907b6b8960447c8c227edaae9,No,Tracked/Audited
+android/app/proguard-rules.pro,.pro,Platform Native Code/Config,1567,43,Low,9c19009fe32ffb701d6dde06f3614c17593363cf494668ff18062db653ae28af,No,Tracked/Audited
+android/app/upload-keystore.jks,.jks,Platform Native Code/Config,2792,45,Low,bc601685b63808e1bc3b3821fd1fa421fc9531e3a63ee650591a170f9a7cbeca,No,Tracked/Audited
+android/gradle/wrapper/gradle-wrapper.jar,.jar,Platform Native Code/Config,53636,550,High (>500 lines),16caeaf66d57a0d1d2087fef6a97efa62de8da69afa5b908f40db35afc4342da,No,Tracked/Audited
+android/gradle/wrapper/gradle-wrapper.properties,.properties,Platform Native Code/Config,208,5,Low,12f919de2602840f8f13a50c806f5e9d35ff74904b8e66e51a261268aca34feb,No,Tracked/Audited
+android/build/reports/problems/problems-report.html,.html,Platform Native Code/Config,132601,663,High (>500 lines),2227fce4e098851bd686ea1badeac6c285b925130a81680222344fc405914870,No,Tracked/Audited
+android/app/src/debug/AndroidManifest.xml,.xml,Platform Native Code/Config,385,7,Low,b01a4541a8144c15bc617bab7eb267c99fa1476368fbbda5a12cdbf4e316a34c,No,Tracked/Audited
+android/app/src/main/AndroidManifest.xml,.xml,Platform Native Code/Config,9073,206,Medium (>200 lines),c461bc0c77994810bbdfccef7dcf3544f1ef5fba6efbde054da7cef69d07b3c4,No,Tracked/Audited
+android/app/src/profile/AndroidManifest.xml,.xml,Platform Native Code/Config,385,7,Low,b01a4541a8144c15bc617bab7eb267c99fa1476368fbbda5a12cdbf4e316a34c,No,Tracked/Audited
+android/app/src/main/res/drawable/launch_background.xml,.xml,Platform Native Code/Config,446,12,Low,2df60e2cfbee873ce2858088cf003e6b93498f2f568476da437610467ea1a9d7,No,Tracked/Audited
+android/app/src/main/res/drawable-hdpi/ic_launcher_foreground.png,.png,Platform Native Code/Config,13443,98,Low,ffa1e99952f9cfc2241737a57283969c652ea7173b27b00b2a03ff6e484bef15,No,Tracked/Audited
+android/app/src/main/res/drawable-mdpi/ic_launcher_foreground.png,.png,Platform Native Code/Config,7048,52,Low,68e74526bfcfefb5e15246c423858cf9dcf86e604f04c57c2076b28fc375d878,No,Tracked/Audited
+android/app/src/main/res/drawable-v21/launch_background.xml,.xml,Platform Native Code/Config,450,12,Low,dca312ec77de83e43ef70a825c299b51451247286c29167d62f19165750b8793,No,Tracked/Audited
+android/app/src/main/res/drawable-xhdpi/ic_launcher_foreground.png,.png,Platform Native Code/Config,21393,158,Low,811179207795a3f4e1aac23a7a7ecebfbfb60aa8c03b112504776e5d26cb14e5,No,Tracked/Audited
+android/app/src/main/res/drawable-xxhdpi/ic_launcher_foreground.png,.png,Platform Native Code/Config,39857,312,Medium (>200 lines),62601817464c081ee1c2e421047870c8e6a5a4fd24108ace91d8bbf20858d95a,No,Tracked/Audited
+android/app/src/main/res/drawable-xxxhdpi/ic_launcher_foreground.png,.png,Platform Native Code/Config,62674,492,Medium (>200 lines),5e5fb7a42f2e305839259306cb9a8796180feeb952f6651e31c981fdbddbb663,No,Tracked/Audited
+android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml,.xml,Platform Native Code/Config,269,5,Low,7bf5500f5a0e314e163bf9c0f80cb513d67fea173078dcdd1236545e58d5556b,No,Tracked/Audited
+android/app/src/main/res/mipmap-hdpi/ic_launcher.png,.png,Platform Native Code/Config,3818,26,Low,aacb01bdeb7d6cd8966cb6697b10ef56303ceb441b71954d20ba5b6dfc15b29a,No,Tracked/Audited
+android/app/src/main/res/mipmap-mdpi/ic_launcher.png,.png,Platform Native Code/Config,2086,20,Low,c00e5a0e199e3e2ec795a3b32bcb75d150c64d5a92cc486a3e30c1cdf84e43db,No,Tracked/Audited
+android/app/src/main/res/mipmap-xhdpi/ic_launcher.png,.png,Platform Native Code/Config,5910,45,Low,c551ad36021d7972aa202de20acd424a66307e08b6551383bb5a94f75e7d4e47,No,Tracked/Audited
+android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png,.png,Platform Native Code/Config,11049,94,Low,ca63dad3da078536988410fc5fdb384c5f9fef4c2f6e0da6895e21bc951e4511,No,Tracked/Audited
+android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png,.png,Platform Native Code/Config,17018,126,Low,26f53752bf05d5f0ee2db9b5e33de154542848286e3264c1dfb8452f088691c3,No,Tracked/Audited
+android/app/src/main/res/values/colors.xml,.xml,Platform Native Code/Config,123,4,Low,1cab1aa686b81505433a474a3408f56d39a3dff8f1ff66c16d866a8fa4b806be,No,Tracked/Audited
+android/app/src/main/res/values/styles.xml,.xml,Platform Native Code/Config,1014,18,Low,cca15a99b59380a548bf6a890f7ca5380ee509b1f9bbb2f5f9ec3589fa25c2f7,No,Tracked/Audited
+android/app/src/main/res/values-night/styles.xml,.xml,Platform Native Code/Config,1013,18,Low,ea763597dc1a84c8034251caee98d7753e0fbf57340ffc94677427de4b537516,No,Tracked/Audited
+android/app/src/main/kotlin/com/smartcontentcreator/app/MainActivity.kt,.kt,Platform Native Code/Config,574,15,Low,b7021fb26ef711c9782fe4bbe4c98a1f3ec8bdc7041cc7362a5ea0fe68e44b47,No,Tracked/Audited
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java,.java,Platform Native Code/Config,9247,184,Low,b2ce172bd5eaa9d8c2be75d35b6b158ea94801ccb6d6098ce6ef6cec7b716600,No,Tracked/Audited
+android/.kotlin/errors/errors-1776865881955.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776865882132.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776865882204.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776865882448.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776865882537.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776865882597.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776865882645.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776865882775.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776865882814.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776865882876.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776865882967.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776866694965.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776866695191.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776953522824.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776953855041.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776956589240.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776956593060.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776956593522.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776956593567.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776956593604.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776956593784.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776956593840.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1776956593911.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1777052907718.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1777390459862.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1777496101976.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.kotlin/errors/errors-1777496105937.log,.log,Platform Native Code/Config,4267,45,Low,1629c3cad7b2c904fbb6860ca607b6df7081f5fa0274b468bf7c8dd873b5644b,No,Tracked/Audited
+android/.gradle/8.14.5/gc.properties,.properties,Platform Native Code/Config,0,0,Low,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,No,Tracked/Audited
+android/.gradle/buildOutputCleanup/buildOutputCleanup.lock,.lock,Platform Native Code/Config,17,1,Low,47309469f03d7a1155726e87286b8edc9c921e140e8f7045924973c591b67963,No,Tracked/Audited
+android/.gradle/buildOutputCleanup/cache.properties,.properties,Platform Native Code/Config,54,2,Low,192509b4737fa451a231dbe348538ebfd46158356d55631a94140c81283ee23d,No,Tracked/Audited
+android/.gradle/buildOutputCleanup/outputFiles.bin,.bin,Platform Native Code/Config,654161,1191,High (>500 lines),75cdba3c83ffd6603e6090336e2bec9ce383edc0a3b0dc9ffcb85a534612ea5d,No,Tracked/Audited
+android/.gradle/noVersion/buildLogic.lock,.lock,Platform Native Code/Config,17,1,Low,1bb4be3df5351e90a7c06e722aa6e211ef47d677daad1c8fcf24831bd7859647,No,Tracked/Audited
+android/.gradle/vcs-1/gc.properties,.properties,Platform Native Code/Config,0,0,Low,e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,No,Tracked/Audited
+android/.gradle/8.14.5/checksums/checksums.lock,.lock,Platform Native Code/Config,17,1,Low,beecd4a13a4576c93ddc052827e96bbec8f9b50b016d735656e63410741e5111,No,Tracked/Audited
+android/.gradle/8.14.5/checksums/md5-checksums.bin,.bin,Platform Native Code/Config,28547,56,Low,086974772cc264f3b49c766c675df7e8362c9b1b789289eaa727a62917e3e20b,No,Tracked/Audited
+android/.gradle/8.14.5/checksums/sha1-checksums.bin,.bin,Platform Native Code/Config,90311,289,Medium (>200 lines),d81a258ddca07d4b3a50ee0c72dee2d5a08334c103d938f0336022468b85fa80,No,Tracked/Audited
+android/.gradle/8.14.5/executionHistory/executionHistory.bin,.bin,Platform Native Code/Config,55118222,42339,High (>500 lines),ad9a673ebea8af7970da310e0b9df80cf1af42e8443fe37498f897f92b9d8876,No,Tracked/Audited
+android/.gradle/8.14.5/executionHistory/executionHistory.lock,.lock,Platform Native Code/Config,17,1,Low,07908a9c7e7b0ae5cb2d842600c2ac85804bbc5f2f0db3a33af2d6d2cd94397a,No,Tracked/Audited
+android/.gradle/8.14.5/fileChanges/last-build.bin,.bin,Platform Native Code/Config,1,1,Low,6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d,No,Tracked/Audited
+android/.gradle/8.14.5/fileHashes/fileHashes.bin,.bin,Platform Native Code/Config,4207099,15479,High (>500 lines),d2b6cceb97741363cd4e09fc724a86761ddac22936a330a5f7f971b33dca25f1,No,Tracked/Audited
+android/.gradle/8.14.5/fileHashes/fileHashes.lock,.lock,Platform Native Code/Config,17,1,Low,ebfa8c606906d88c2b9e18827c623d07563ea9d712a0563348042363140533d6,No,Tracked/Audited
+android/.gradle/8.14.5/fileHashes/resourceHashesCache.bin,.bin,Platform Native Code/Config,117611,278,Medium (>200 lines),fa74e7a634511bb42a96cb3692fc8cd0ae49f6601c8fc6ccc83c2bf02dd0f841,No,Tracked/Audited
+.github/workflows/build_release.yml,.yml,Other Project File,4010,97,Low,613effc1993d67b10b488da3b81460a6751ba5911ed83b66426069878f20b38b,No,Tracked/Audited

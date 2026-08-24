@@ -1,0 +1,346 @@
+﻿control_id,file_path,line_number,widget_type,label_or_icon,callback,has_loading_state,prevents_multi_click,is_idempotent,status,notes
+UI_1,lib/controllers/admin_controller.dart,278,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminController
+UI_2,lib/controllers/auth_controller.dart,315,TextField,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AuthController
+UI_3,lib/controllers/auth_controller.dart,324,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AuthController
+UI_4,lib/controllers/catalog_controller.dart,1468,InkWell,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in CatalogController
+UI_5,lib/controllers/catalog_controller.dart,1530,InkWell,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in CatalogController
+UI_6,lib/controllers/settings_controller.dart,546,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SettingsController
+UI_7,lib/controllers/settings_controller.dart,550,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SettingsController
+UI_8,lib/screens/admin_dashboard_screen.dart,231,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_9,lib/screens/admin_dashboard_screen.dart,244,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_10,lib/screens/admin_dashboard_screen.dart,251,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_11,lib/screens/admin_dashboard_screen.dart,257,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_12,lib/screens/admin_dashboard_screen.dart,269,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_13,lib/screens/admin_dashboard_screen.dart,275,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_14,lib/screens/admin_dashboard_screen.dart,544,TextField,Inferred from context,(v,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_15,lib/screens/admin_dashboard_screen.dart,554,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_16,lib/screens/admin_dashboard_screen.dart,578,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_17,lib/screens/admin_dashboard_screen.dart,747,ListTile,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_18,lib/screens/admin_dashboard_screen.dart,959,IconButton,Inferred from context,(user['email'] ?? '',No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_19,lib/screens/admin_dashboard_screen.dart,1917,PopupMenuButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_20,lib/screens/admin_dashboard_screen.dart,2041,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_21,lib/screens/admin_dashboard_screen.dart,2046,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_22,lib/screens/admin_dashboard_screen.dart,2320,Switch,Inferred from context,onChanged,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_23,lib/screens/admin_dashboard_screen.dart,2415,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_24,lib/screens/admin_dashboard_screen.dart,2430,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_25,lib/screens/admin_dashboard_screen.dart,2529,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_26,lib/screens/admin_dashboard_screen.dart,2566,Slider,Inferred from context,(v,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_27,lib/screens/admin_dashboard_screen.dart,2600,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_28,lib/screens/admin_dashboard_screen.dart,2661,TextField,Inferred from context,(v,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_29,lib/screens/admin_dashboard_screen.dart,2837,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_30,lib/screens/admin_dashboard_screen.dart,2856,InkWell,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_31,lib/screens/admin_dashboard_screen.dart,2975,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_32,lib/screens/admin_dashboard_screen.dart,2980,IconButton,Inferred from context,(,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AdminDashboardScreen
+UI_33,lib/screens/ai_chat_screen.dart,260,GestureDetector,Inferred from context,(,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AiChatScreenState
+UI_34,lib/screens/ai_chat_screen.dart,430,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AiChatScreenState
+UI_35,lib/screens/ai_chat_screen.dart,444,IconButton,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AiChatScreenState
+UI_36,lib/screens/ai_chat_screen.dart,450,IconButton,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AiChatScreenState
+UI_37,lib/screens/brand_settings_screen.dart,112,IconButton,Inferred from context,(,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in BrandSettingsScreen
+UI_38,lib/screens/brand_settings_screen.dart,129,GestureDetector,Inferred from context,controller.pickLogo,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in BrandSettingsScreen
+UI_39,lib/screens/brand_settings_screen.dart,180,TextField,Inferred from context,controller.saveSettings,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in BrandSettingsScreen
+UI_40,lib/screens/brand_settings_screen.dart,181,TextField,Inferred from context,controller.saveSettings,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in BrandSettingsScreen
+UI_41,lib/screens/brand_settings_screen.dart,182,TextField,Inferred from context,controller.saveSettings,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in BrandSettingsScreen
+UI_42,lib/screens/brand_settings_screen.dart,183,TextField,Inferred from context,controller.saveSettings,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in BrandSettingsScreen
+UI_43,lib/screens/brand_settings_screen.dart,187,TextField,Inferred from context,controller.saveSettings,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in BrandSettingsScreen
+UI_44,lib/screens/brand_settings_screen.dart,188,TextField,Inferred from context,controller.saveSettings,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in BrandSettingsScreen
+UI_45,lib/screens/brand_settings_screen.dart,193,ElevatedButton,Inferred from context,controller.saveSettings,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in BrandSettingsScreen
+UI_46,lib/screens/brand_settings_screen.dart,222,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in BrandSettingsScreen
+UI_47,lib/screens/brand_settings_screen.dart,228,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in BrandSettingsScreen
+UI_48,lib/screens/creator_profile_screen.dart,143,IconButton,Inferred from context,(,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _CreatorProfileScreenState
+UI_49,lib/screens/creator_profile_screen.dart,251,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _CreatorProfileScreenState
+UI_50,lib/screens/creator_profile_screen.dart,292,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _CreatorProfileScreenState
+UI_51,lib/screens/creator_profile_screen.dart,474,InkWell,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _CreatorProfileScreenState
+UI_52,lib/screens/general_settings_screen.dart,79,ListTile,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _GeneralSettingsScreenState
+UI_53,lib/screens/general_settings_screen.dart,105,ListTile,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _GeneralSettingsScreenState
+UI_54,lib/screens/general_settings_screen.dart,131,ListTile,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _GeneralSettingsScreenState
+UI_55,lib/screens/general_settings_screen.dart,146,ListTile,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _GeneralSettingsScreenState
+UI_56,lib/screens/general_settings_screen.dart,154,ListTile,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _GeneralSettingsScreenState
+UI_57,lib/screens/general_settings_screen.dart,162,ListTile,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _GeneralSettingsScreenState
+UI_58,lib/screens/general_settings_screen.dart,188,ListTile,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _GeneralSettingsScreenState
+UI_59,lib/screens/general_settings_screen.dart,197,ListTile,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _GeneralSettingsScreenState
+UI_60,lib/screens/general_settings_screen.dart,206,ListTile,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _GeneralSettingsScreenState
+UI_61,lib/screens/general_settings_screen.dart,261,ListTile,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _GeneralSettingsScreenState
+UI_62,lib/screens/general_settings_screen.dart,269,ListTile,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _GeneralSettingsScreenState
+UI_63,lib/screens/general_settings_screen.dart,413,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _GeneralSettingsScreenState
+UI_64,lib/screens/general_settings_screen.dart,426,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _GeneralSettingsScreenState
+UI_65,lib/screens/general_settings_screen.dart,487,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _GeneralSettingsScreenState
+UI_66,lib/screens/main_wrapper.dart,24,GestureDetector,Inferred from context,(,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in MainWrapper
+UI_67,lib/screens/product_photography_screen.dart,399,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductPhotographyScreen
+UI_68,lib/screens/product_photography_screen.dart,434,Switch,Inferred from context,(v,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductPhotographyScreen
+UI_69,lib/screens/product_photography_screen.dart,559,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductPhotographyScreen
+UI_70,lib/screens/product_photography_screen.dart,573,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductPhotographyScreen
+UI_71,lib/screens/product_photography_screen.dart,651,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductPhotographyScreen
+UI_72,lib/screens/product_photography_screen.dart,736,ElevatedButton,Inferred from context,controller.isLoading.value,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductPhotographyScreen
+UI_73,lib/screens/product_photography_screen.dart,808,InkWell,Inferred from context,controller.pickImage,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductPhotographyScreen
+UI_74,lib/screens/product_photography_screen.dart,872,IconButton,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductPhotographyScreen
+UI_75,lib/screens/product_photography_screen.dart,878,IconButton,Inferred from context,null/inline,Yes,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductPhotographyScreen
+UI_76,lib/screens/product_photography_screen.dart,935,IconButton,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductPhotographyScreen
+UI_77,lib/screens/product_photography_screen.dart,941,IconButton,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductPhotographyScreen
+UI_78,lib/screens/product_photography_screen.dart,951,ElevatedButton,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductPhotographyScreen
+UI_79,lib/screens/product_photography_screen.dart,969,GestureDetector,Inferred from context,onTap,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductPhotographyScreen
+UI_80,lib/screens/settings_screen.dart,301,InkWell,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SettingsScreen
+UI_81,lib/screens/settings_screen.dart,409,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SettingsScreen
+UI_82,lib/screens/settings_screen.dart,432,InkWell,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SettingsScreen
+UI_83,lib/screens/settings_screen.dart,461,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SettingsScreen
+UI_84,lib/screens/settings_screen.dart,517,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SettingsScreen
+UI_85,lib/screens/settings_screen.dart,569,OutlinedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SettingsScreen
+UI_86,lib/screens/settings_screen.dart,756,IconButton,Inferred from context,isChecking,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SerpApiQuotaWidget
+UI_87,lib/screens/settings_screen.dart,845,Switch,Inferred from context,(val,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _JinaSettingsWidget
+UI_88,lib/screens/settings_screen.dart,1041,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AiGatewayControlCenterCard
+UI_89,lib/screens/settings_screen.dart,1081,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AiGatewayControlCenterCard
+UI_90,lib/screens/settings_screen.dart,1177,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AiGatewayControlCenterCard
+UI_91,lib/screens/settings_screen.dart,1703,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AiGatewayControlCenterCard
+UI_92,lib/screens/settings_screen.dart,1808,ListTile,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AiGatewayControlCenterCard
+UI_93,lib/screens/settings_screen.dart,1943,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AiGatewayControlCenterCard
+UI_94,lib/screens/settings_screen.dart,2073,GestureDetector,Inferred from context,(,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AiGatewayControlCenterCard
+UI_95,lib/screens/settings_screen.dart,2137,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AiGatewayControlCenterCard
+UI_96,lib/screens/settings_screen.dart,2345,GestureDetector,Inferred from context,isRunning ? null : (,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AiGatewayControlCenterCard
+UI_97,lib/screens/subscription_screen.dart,136,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SubscriptionScreenState
+UI_98,lib/screens/subscription_screen.dart,241,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SubscriptionScreenState
+UI_99,lib/screens/subscription_screen.dart,423,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SubscriptionScreenState
+UI_100,lib/screens/subscription_screen.dart,460,ElevatedButton,Inferred from context,loading ? null : (,Yes,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SubscriptionScreenState
+UI_101,lib/screens/subscription_screen.dart,503,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SubscriptionScreenState
+UI_102,lib/widgets/account_picker_sheet.dart,32,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AccountPickerSheet
+UI_103,lib/widgets/account_picker_sheet.dart,164,ListTile,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AccountPickerSheet
+UI_104,lib/widgets/account_picker_sheet.dart,188,ListTile,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in AccountPickerSheet
+UI_105,lib/widgets/chat_bubble.dart,612,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ChatBubbleState
+UI_106,lib/widgets/chat_bubble.dart,661,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ChatBubbleState
+UI_107,lib/widgets/chat_bubble.dart,796,TextButton,Inferred from context,_initializeContent,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ChatBubbleState
+UI_108,lib/widgets/chat_bubble.dart,1103,InkWell,Inferred from context,isInteractionDisabled,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ChatBubbleState
+UI_109,lib/widgets/chat_bubble.dart,1317,InkWell,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ChatBubbleState
+UI_110,lib/widgets/chat_drawer.dart,94,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ChatDrawer
+UI_111,lib/widgets/chat_drawer.dart,199,InkWell,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ChatDrawer
+UI_112,lib/widgets/chat_drawer.dart,285,InkWell,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ChatDrawer
+UI_113,lib/widgets/chat_drawer.dart,329,InkWell,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ChatDrawer
+UI_114,lib/widgets/chat_drawer.dart,541,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ChatDrawer
+UI_115,lib/widgets/chat_drawer.dart,626,ListTile,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ChatDrawer
+UI_116,lib/widgets/chat_drawer.dart,665,ListTile,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ChatDrawer
+UI_117,lib/widgets/facebook_settings_form.dart,107,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in FacebookSettingsForm
+UI_118,lib/widgets/facebook_settings_form.dart,135,ElevatedButton,Inferred from context,controller.isFetchingFbPages.value,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in FacebookSettingsForm
+UI_119,lib/widgets/facebook_settings_form.dart,200,ListTile,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in FacebookSettingsForm
+UI_120,lib/widgets/facebook_settings_form.dart,237,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in FacebookSettingsForm
+UI_121,lib/widgets/facebook_settings_form.dart,266,OutlinedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in FacebookSettingsForm
+UI_122,lib/widgets/media_action_bar.dart,53,InkWell,Inferred from context,action.isEnabled ? (,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in MediaActionBar
+UI_123,lib/widgets/modern_video_bubble.dart,330,GestureDetector,Inferred from context,_onVideoTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ModernVideoBubbleState
+UI_124,lib/widgets/modern_video_bubble.dart,430,ElevatedButton,Inferred from context,(,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ModernVideoBubbleState
+UI_125,lib/widgets/modern_video_bubble.dart,573,TextButton,Inferred from context,widget.onRefresh,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ModernVideoBubbleState
+UI_126,lib/widgets/modern_video_bubble.dart,728,Slider,Inferred from context,(value,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ModernVideoBubbleState
+UI_127,lib/widgets/modern_video_bubble.dart,759,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ModernVideoBubbleState
+UI_128,lib/widgets/modern_video_bubble.dart,797,GestureDetector,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ModernVideoBubbleState
+UI_129,lib/widgets/provider_selection_list.dart,251,ListTile,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProviderSelectionList
+UI_130,lib/widgets/recommendation_panel.dart,56,InkWell,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in RecommendationPanel
+UI_131,lib/widgets/scenario_display_widget.dart,48,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ScenarioDisplayWidget
+UI_132,lib/widgets/scenario_display_widget.dart,149,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ScenarioDisplayWidget
+UI_133,lib/widgets/standard_provider_form.dart,51,InkWell,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _StandardProviderFormState
+UI_134,lib/widgets/standard_provider_form.dart,121,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _StandardProviderFormState
+UI_135,lib/widgets/standard_provider_form.dart,154,InkWell,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _StandardProviderFormState
+UI_136,lib/widgets/standard_provider_form.dart,236,ElevatedButton,Inferred from context,isActive ? null : (,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _StandardProviderFormState
+UI_137,lib/widgets/standard_provider_form.dart,270,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _StandardProviderFormState
+UI_138,lib/widgets/standard_provider_form.dart,285,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _StandardProviderFormState
+UI_139,lib/widgets/standard_provider_form.dart,344,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _StandardProviderFormState
+UI_140,lib/widgets/standard_provider_form.dart,371,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _StandardProviderFormState
+UI_141,lib/widgets/standard_provider_form.dart,393,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _StandardProviderFormState
+UI_142,lib/widgets/standard_provider_form.dart,435,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _StandardProviderFormState
+UI_143,lib/widgets/standard_provider_form.dart,468,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _StandardProviderFormState
+UI_144,lib/widgets/standard_provider_form.dart,498,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _StandardProviderFormState
+UI_145,lib/widgets/tiktok_settings_form.dart,109,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokSettingsForm
+UI_146,lib/widgets/tiktok_settings_form.dart,119,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokSettingsForm
+UI_147,lib/widgets/tiktok_settings_form.dart,125,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokSettingsForm
+UI_148,lib/widgets/tiktok_settings_form.dart,141,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokSettingsForm
+UI_149,lib/widgets/tiktok_settings_form.dart,151,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokSettingsForm
+UI_150,lib/widgets/tiktok_settings_form.dart,163,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokSettingsForm
+UI_151,lib/widgets/tiktok_settings_form.dart,223,OutlinedButton,Inferred from context,service.isLoading.value ? null : (,Yes,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokSettingsForm
+UI_152,lib/widgets/tiktok_settings_form.dart,248,OutlinedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokSettingsForm
+UI_153,lib/widgets/tiktok_settings_form.dart,305,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokSettingsForm
+UI_154,lib/widgets/tiktok_settings_form.dart,317,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokSettingsForm
+UI_155,lib/widgets/tiktok_settings_form.dart,350,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokSettingsForm
+UI_156,lib/widgets/tiktok_settings_form.dart,377,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokSettingsForm
+UI_157,lib/widgets/tiktok_video_widget.dart,47,GestureDetector,Inferred from context,_openTikTok,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokVideoWidget
+UI_158,lib/widgets/tiktok_video_widget.dart,201,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokVideoWidget
+UI_159,lib/widgets/tiktok_video_widget.dart,206,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokVideoWidget
+UI_160,lib/widgets/tiktok_video_widget.dart,259,InkWell,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokVideoWidget
+UI_161,lib/widgets/tiktok_video_widget.dart,286,IconButton,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokVideoWidget
+UI_162,lib/widgets/tiktok_video_widget.dart,288,InkWell,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in TikTokVideoWidget
+UI_163,lib/widgets/video_full_screen_viewer.dart,101,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _VideoFullScreenViewerState
+UI_164,lib/widgets/video_full_screen_viewer.dart,125,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _VideoFullScreenViewerState
+UI_165,lib/widgets/video_full_screen_viewer.dart,135,IconButton,Inferred from context,_isSaving ? null : _saveVideo,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _VideoFullScreenViewerState
+UI_166,lib/widgets/youtube_settings_form.dart,88,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in YoutubeSettingsForm
+UI_167,lib/widgets/youtube_settings_form.dart,115,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in YoutubeSettingsForm
+UI_168,lib/widgets/youtube_settings_form.dart,137,OutlinedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in YoutubeSettingsForm
+UI_169,lib/widgets/chat/chat_input_area.dart,140,IconButton,Inferred from context,onShowAttachmentMenu,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ChatInputArea
+UI_170,lib/widgets/chat/chat_input_area.dart,150,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ChatInputArea
+UI_171,lib/widgets/chat/chat_input_area.dart,261,GestureDetector,Inferred from context,onClearReply,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ChatInputArea
+UI_172,lib/widgets/chat/chat_input_area.dart,364,GestureDetector,Inferred from context,onClear,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ChatInputArea
+UI_173,lib/widgets/chat/chat_input_area.dart,391,GestureDetector,Inferred from context,onAudioEnhance,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ChatInputArea
+UI_174,lib/widgets/chat/chat_input_area.dart,452,GestureDetector,Inferred from context,(,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ChatInputArea
+UI_175,lib/widgets/chat/chat_input_area.dart,545,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ChatInputArea
+UI_176,lib/widgets/chat/chat_input_area.dart,761,ListTile,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ChatInputArea
+UI_177,lib/widgets/chat/context_preview_bar.dart,64,InkWell,Inferred from context,onClose,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ContextPreviewBar
+UI_178,lib/widgets/chat/full_screen_viewer.dart,71,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in FullScreenImageViewer
+UI_179,lib/widgets/chat/full_screen_viewer.dart,76,IconButton,Inferred from context,_saveToGallery,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in FullScreenImageViewer
+UI_180,lib/widgets/chat/full_screen_viewer.dart,82,GestureDetector,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in FullScreenImageViewer
+UI_181,lib/widgets/chat/swipe_to_reply.dart,73,GestureDetector,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SwipeToReplyState
+UI_182,lib/widgets/social/social_profile_dashboard.dart,107,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SocialProfileDashboard
+UI_183,lib/widgets/ui_kit/custom_widgets.dart,45,ElevatedButton,Inferred from context,isLoading ? null : onPressed,Yes,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SmartButton
+UI_184,lib/widgets/ui_kit/custom_widgets.dart,102,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SmartTextField
+UI_185,lib/widgets/ui_kit/custom_widgets.dart,132,TextFormField,Inferred from context,onChanged,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SmartTextField
+UI_186,lib/widgets/ui_kit/smart_card.dart,53,GestureDetector,Inferred from context,widget.onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SmartCardState
+UI_187,lib/screens/admin/users_list_screen.dart,70,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _UsersListScreenState
+UI_188,lib/screens/admin/users_list_screen.dart,74,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _UsersListScreenState
+UI_189,lib/screens/admin/users_list_screen.dart,119,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _UsersListScreenState
+UI_190,lib/screens/admin/users_list_screen.dart,123,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _UsersListScreenState
+UI_191,lib/screens/admin/users_list_screen.dart,261,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _UsersListScreenState
+UI_192,lib/screens/admin/users_list_screen.dart,279,InkWell,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _UsersListScreenState
+UI_193,lib/screens/admin/users_list_screen.dart,396,ListTile,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _UsersListScreenState
+UI_194,lib/screens/admin/users_list_screen.dart,474,Switch,Inferred from context,onChanged,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _UsersListScreenState
+UI_195,lib/screens/admin/users_list_screen.dart,537,ListTile,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _UsersListScreenState
+UI_196,lib/screens/admin/users_list_screen.dart,672,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _UsersListScreenState
+UI_197,lib/screens/admin/users_list_screen.dart,689,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _UsersListScreenState
+UI_198,lib/screens/admin/users_list_screen.dart,697,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _UsersListScreenState
+UI_199,lib/screens/admin/users_list_screen.dart,704,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _UsersListScreenState
+UI_200,lib/screens/auth/account_confirmation_screen.dart,118,TextField,Inferred from context,_confirmAccount,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AccountConfirmationScreenState
+UI_201,lib/screens/auth/account_confirmation_screen.dart,132,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AccountConfirmationScreenState
+UI_202,lib/screens/auth/edit_profile_screen.dart,149,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _EditProfileScreenState
+UI_203,lib/screens/auth/edit_profile_screen.dart,156,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _EditProfileScreenState
+UI_204,lib/screens/auth/edit_profile_screen.dart,193,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _EditProfileScreenState
+UI_205,lib/screens/auth/edit_profile_screen.dart,207,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _EditProfileScreenState
+UI_206,lib/screens/auth/edit_profile_screen.dart,251,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _EditProfileScreenState
+UI_207,lib/screens/auth/edit_profile_screen.dart,349,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _EditProfileScreenState
+UI_208,lib/screens/auth/edit_profile_screen.dart,369,TextFormField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _EditProfileScreenState
+UI_209,lib/screens/auth/edit_profile_screen.dart,422,GestureDetector,Inferred from context,_auth.isLoading.value ? null : _handleSave,Yes,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _EditProfileScreenState
+UI_210,lib/screens/auth/login_screen.dart,133,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _LoginScreenState
+UI_211,lib/screens/auth/login_screen.dart,141,TextField,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _LoginScreenState
+UI_212,lib/screens/auth/login_screen.dart,147,IconButton,Inferred from context,(,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _LoginScreenState
+UI_213,lib/screens/auth/login_screen.dart,175,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _LoginScreenState
+UI_214,lib/screens/auth/login_screen.dart,221,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _LoginScreenState
+UI_215,lib/screens/auth/login_screen.dart,273,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _LoginScreenState
+UI_216,lib/screens/auth/login_screen.dart,318,TextField,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _LoginScreenState
+UI_217,lib/screens/auth/password_reset_otp_screen.dart,130,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _PasswordResetOtpScreenState
+UI_218,lib/screens/auth/password_reset_otp_screen.dart,138,TextField,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _PasswordResetOtpScreenState
+UI_219,lib/screens/auth/password_reset_otp_screen.dart,144,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _PasswordResetOtpScreenState
+UI_220,lib/screens/auth/password_reset_otp_screen.dart,154,TextField,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _PasswordResetOtpScreenState
+UI_221,lib/screens/auth/password_reset_otp_screen.dart,160,IconButton,Inferred from context,(,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _PasswordResetOtpScreenState
+UI_222,lib/screens/auth/signup_screen.dart,130,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SignupScreenState
+UI_223,lib/screens/auth/signup_screen.dart,138,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SignupScreenState
+UI_224,lib/screens/auth/signup_screen.dart,146,TextField,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SignupScreenState
+UI_225,lib/screens/auth/signup_screen.dart,152,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SignupScreenState
+UI_226,lib/screens/auth/signup_screen.dart,162,TextField,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SignupScreenState
+UI_227,lib/screens/auth/signup_screen.dart,168,IconButton,Inferred from context,(,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SignupScreenState
+UI_228,lib/screens/auth/signup_screen.dart,219,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SignupScreenState
+UI_229,lib/screens/catalog/product_catalog_screen.dart,65,IconButton,Inferred from context,ctrl.deselectAll,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_230,lib/screens/catalog/product_catalog_screen.dart,76,GestureDetector,Inferred from context,ctrl.toggleSelectAll,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_231,lib/screens/catalog/product_catalog_screen.dart,122,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_232,lib/screens/catalog/product_catalog_screen.dart,127,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_233,lib/screens/catalog/product_catalog_screen.dart,132,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_234,lib/screens/catalog/product_catalog_screen.dart,137,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_235,lib/screens/catalog/product_catalog_screen.dart,142,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_236,lib/screens/catalog/product_catalog_screen.dart,175,IconButton,Inferred from context,(,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_237,lib/screens/catalog/product_catalog_screen.dart,180,IconButton,Inferred from context,(,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_238,lib/screens/catalog/product_catalog_screen.dart,190,ElevatedButton,Inferred from context,ctrl.cancelCurrentOperation,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_239,lib/screens/catalog/product_catalog_screen.dart,211,IconButton,Inferred from context,ctrl.syncToMeta,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_240,lib/screens/catalog/product_catalog_screen.dart,262,ElevatedButton,Inferred from context,ctrl.cancelCurrentOperation,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_241,lib/screens/catalog/product_catalog_screen.dart,324,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_242,lib/screens/catalog/product_catalog_screen.dart,361,OutlinedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_243,lib/screens/catalog/product_catalog_screen.dart,375,OutlinedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_244,lib/screens/catalog/product_catalog_screen.dart,453,TextField,Inferred from context,(v,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_245,lib/screens/catalog/product_catalog_screen.dart,494,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_246,lib/screens/catalog/product_catalog_screen.dart,523,GestureDetector,Inferred from context,ctrl.resetAllFilters,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_247,lib/screens/catalog/product_catalog_screen.dart,553,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_248,lib/screens/catalog/product_catalog_screen.dart,611,ListTile,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_249,lib/screens/catalog/product_catalog_screen.dart,667,InkWell,Inferred from context,ctrl.toggleCategorySortMode,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_250,lib/screens/catalog/product_catalog_screen.dart,697,InkWell,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_251,lib/screens/catalog/product_catalog_screen.dart,745,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_252,lib/screens/catalog/product_catalog_screen.dart,823,IconButton,Inferred from context,(,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_253,lib/screens/catalog/product_catalog_screen.dart,873,InkWell,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_254,lib/screens/catalog/product_catalog_screen.dart,959,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_255,lib/screens/catalog/product_catalog_screen.dart,968,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_256,lib/screens/catalog/product_catalog_screen.dart,1001,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_257,lib/screens/catalog/product_catalog_screen.dart,1052,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_258,lib/screens/catalog/product_catalog_screen.dart,1120,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_259,lib/screens/catalog/product_catalog_screen.dart,1148,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_260,lib/screens/catalog/product_catalog_screen.dart,1169,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_261,lib/screens/catalog/product_catalog_screen.dart,1186,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_262,lib/screens/catalog/product_catalog_screen.dart,1204,ElevatedButton,Inferred from context,isBusy.value,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_263,lib/screens/catalog/product_catalog_screen.dart,1340,FloatingActionButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_264,lib/screens/catalog/product_catalog_screen.dart,1415,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_265,lib/screens/catalog/product_catalog_screen.dart,1522,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_266,lib/screens/catalog/product_catalog_screen.dart,1534,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_267,lib/screens/catalog/product_catalog_screen.dart,1555,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_268,lib/screens/catalog/product_catalog_screen.dart,1572,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_269,lib/screens/catalog/product_catalog_screen.dart,1590,ElevatedButton,Inferred from context,isBusy.value,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_270,lib/screens/catalog/product_catalog_screen.dart,1664,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_271,lib/screens/catalog/product_catalog_screen.dart,2010,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_272,lib/screens/catalog/product_catalog_screen.dart,2260,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_273,lib/screens/catalog/product_catalog_screen.dart,2275,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_274,lib/screens/catalog/product_catalog_screen.dart,2309,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_275,lib/screens/catalog/product_catalog_screen.dart,2351,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_276,lib/screens/catalog/product_catalog_screen.dart,2423,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_277,lib/screens/catalog/product_catalog_screen.dart,2428,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCatalogScreen
+UI_278,lib/screens/catalog/product_catalog_screen.dart,2587,GestureDetector,Inferred from context,isLoading.value ? null : onTap,Yes,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ActionChip
+UI_279,lib/screens/catalog/product_catalog_screen.dart,2692,InkWell,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SmartToolTile
+UI_280,lib/screens/catalog/product_catalog_screen.dart,2861,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SimilarProductsMergeSheetState
+UI_281,lib/screens/catalog/product_catalog_screen.dart,2865,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SimilarProductsMergeSheetState
+UI_282,lib/screens/catalog/product_catalog_screen.dart,2959,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SimilarProductsMergeSheetState
+UI_283,lib/screens/catalog/product_catalog_screen.dart,2999,Slider,Inferred from context,(val,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SimilarProductsMergeSheetState
+UI_284,lib/screens/catalog/product_catalog_screen.dart,3023,ElevatedButton,Inferred from context,_isProcessing ? null : _mergeAllGroups,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SimilarProductsMergeSheetState
+UI_285,lib/screens/catalog/product_catalog_screen.dart,3107,ElevatedButton,Inferred from context,_isProcessing ? null : (,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SimilarProductsMergeSheetState
+UI_286,lib/screens/catalog/product_catalog_screen.dart,3129,InkWell,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SimilarProductsMergeSheetState
+UI_287,lib/screens/catalog/product_form_screen.dart,116,TextButton,Inferred from context,_saveProduct,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_288,lib/screens/catalog/product_form_screen.dart,216,TextButton,Inferred from context,_showManageCategoriesDialog,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_289,lib/screens/catalog/product_form_screen.dart,259,TextButton,Inferred from context,_optimizeDescriptionWithAi,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_290,lib/screens/catalog/product_form_screen.dart,362,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_291,lib/screens/catalog/product_form_screen.dart,380,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_292,lib/screens/catalog/product_form_screen.dart,740,GestureDetector,Inferred from context,ctrl.pickImages,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_293,lib/screens/catalog/product_form_screen.dart,832,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_294,lib/screens/catalog/product_form_screen.dart,894,GestureDetector,Inferred from context,ctrl.pickVideo,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_295,lib/screens/catalog/product_form_screen.dart,1003,GestureDetector,Inferred from context,ctrl.pickVideo,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_296,lib/screens/catalog/product_form_screen.dart,1023,GestureDetector,Inferred from context,ctrl.removeVideo,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_297,lib/screens/catalog/product_form_screen.dart,1442,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_298,lib/screens/catalog/product_form_screen.dart,1456,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_299,lib/screens/catalog/product_form_screen.dart,1477,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_300,lib/screens/catalog/product_form_screen.dart,1493,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_301,lib/screens/catalog/product_form_screen.dart,1584,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_302,lib/screens/catalog/product_form_screen.dart,1877,TextFormField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_303,lib/screens/catalog/product_form_screen.dart,1972,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_304,lib/screens/catalog/product_form_screen.dart,1980,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_305,lib/screens/catalog/product_form_screen.dart,2014,ListTile,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_306,lib/screens/catalog/product_form_screen.dart,2041,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_307,lib/screens/catalog/product_form_screen.dart,2045,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_308,lib/screens/catalog/product_form_screen.dart,2104,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_309,lib/screens/catalog/product_form_screen.dart,2109,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_310,lib/screens/catalog/product_form_screen.dart,2176,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_311,lib/screens/catalog/product_form_screen.dart,2205,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_312,lib/screens/catalog/product_form_screen.dart,2209,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ProductFormScreenState
+UI_313,lib/screens/catalog/product_form_screen.dart,2285,GestureDetector,Inferred from context,isLoading ? null : onTap,Yes,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _AiButton
+UI_314,lib/screens/catalog/product_form_screen.dart,2335,GestureDetector,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _ShareButton
+UI_315,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,37,IconButton,Inferred from context,(,Yes,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in WhatsAppMediaSyncScreen
+UI_316,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,42,TextButton,Inferred from context,ctrl.isSaving.value ? null : (,Yes,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in WhatsAppMediaSyncScreen
+UI_317,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,387,TextFormField,Inferred from context,(v,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in WhatsAppMediaSyncScreen
+UI_318,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,404,TextFormField,Inferred from context,(v,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in WhatsAppMediaSyncScreen
+UI_319,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,420,TextFormField,Inferred from context,(v,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in WhatsAppMediaSyncScreen
+UI_320,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,438,ElevatedButton,Inferred from context,ctrl.isSimulating.value ? null : (,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in WhatsAppMediaSyncScreen
+UI_321,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,520,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in WhatsAppMediaSyncScreen
+UI_322,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,576,ElevatedButton,Inferred from context,ctrl.isApproving.value ? null : (,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in WhatsAppMediaSyncScreen
+UI_323,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,671,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in WhatsAppMediaSyncScreen
+UI_324,lib/screens/catalog/widgets/product_card.dart,35,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCard
+UI_325,lib/screens/catalog/widgets/product_card.dart,84,GestureDetector,Inferred from context,onToggleSelect,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCard
+UI_326,lib/screens/catalog/widgets/product_card.dart,399,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCard
+UI_327,lib/screens/catalog/widgets/product_card.dart,417,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCard
+UI_328,lib/screens/catalog/widgets/product_card.dart,421,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ProductCard
+UI_329,lib/core/utils/snackbar_utils.dart,124,InkWell,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SnackBarUtils
+UI_330,lib/core/theme/ui_kit/smart_bouncy_wrapper.dart,76,GestureDetector,Inferred from context,widget.onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SmartBouncyWrapperState
+UI_331,lib/core/theme/ui_kit/smart_bouncy_wrapper.dart,84,GestureDetector,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _SmartBouncyWrapperState
+UI_332,lib/core/theme/ui_kit/smart_neon_text_field.dart,18,TextField,Inferred from context,null/inline,No,Yes,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SmartNeonTextField
+UI_333,lib/core/theme/ui_kit/smart_neon_text_field.dart,41,TextField,Inferred from context,onSubmitted,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SmartNeonTextField
+UI_334,lib/core/theme/ui_kit/smart_neon_text_field.dart,54,IconButton,Inferred from context,onToggleVisibility,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in SmartNeonTextField
+UI_335,lib/ai/ui/content_plan_widget.dart,116,IconButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ContentPlanWidget
+UI_336,lib/ai/ui/content_plan_widget.dart,196,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ContentPlanWidget
+UI_337,lib/ai/ui/expert_research_widget.dart,336,InkWell,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ResearchResultWidget
+UI_338,lib/ai/ui/expert_research_widget.dart,382,OutlinedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ResearchResultWidget
+UI_339,lib/ai/ui/image_gallery_widget.dart,135,Switch,Inferred from context,shareController.toggleIncludeBrand,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ImageGalleryWidget
+UI_340,lib/ai/ui/image_gallery_widget.dart,143,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ImageGalleryWidget
+UI_341,lib/ai/ui/image_gallery_widget.dart,342,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ImageGalleryWidget
+UI_342,lib/ai/ui/image_gallery_widget.dart,453,ElevatedButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ImageGalleryWidget
+UI_343,lib/ai/ui/image_gallery_widget.dart,465,TextButton,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ImageGalleryWidget
+UI_344,lib/ai/ui/image_gallery_widget.dart,636,ListTile,Inferred from context,onTap,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in ImageGalleryWidget
+UI_345,lib/ai/ui/video_discovery_widget.dart,93,GestureDetector,Inferred from context,(,No,No / Unprotected,NEEDS_RUNTIME_TEST,STATICALLY_VALID,Found in _VideoCard

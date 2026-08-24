@@ -1,0 +1,845 @@
+﻿item_id,category,name,file,line,discovery_state
+NET_CALL_1,Network/Storage,Firebase Auth @ L30,integration_test/manus_live_verification_test.dart,30,AUDITED
+NET_CALL_2,Network/Storage,Firebase Auth @ L33,integration_test/manus_live_verification_test.dart,33,AUDITED
+NET_CALL_3,Network/Storage,HTTP @ L65,integration_test/manus_live_verification_test.dart,65,AUDITED
+NET_CALL_4,Network/Storage,App Check @ L33,integration_test/wave1a_live_verification_test.dart,33,AUDITED
+SYM_5,Class,Config,lib/config.dart,2,AUDITED
+NET_CALL_6,Network/Storage,Firestore @ L81,lib/main.dart,81,AUDITED
+NET_CALL_7,Network/Storage,App Check @ L92,lib/main.dart,92,AUDITED
+SYM_8,Class,SmartContentCreatorApp,lib/main.dart,128,AUDITED
+SYM_9,Class,CatalogXlsxImportResult,scratch/inspect_excel.dart,9,AUDITED
+SYM_10,Class,CatalogXlsxImportService,scratch/inspect_excel.dart,25,AUDITED
+SYM_11,Class,MockFirebaseAiLogicService,test/ai_backend_router_test.dart,9,AUDITED
+SYM_12,Class,MockBack4AppGatewayService,test/ai_backend_router_test.dart,52,AUDITED
+SYM_13,Class,TestableAIBackendRouter,test/ai_backend_router_test.dart,77,AUDITED
+SYM_14,Class,MockBack4AppCatalogRepository,test/catalog_dual_read_verification_test.dart,7,AUDITED
+SYM_15,Class,Back4AppExclusiveMockRepository,test/controlled_dual_write_test.dart,11,AUDITED
+SYM_16,Class,MockLocalCache,test/controlled_dual_write_test.dart,127,AUDITED
+NET_CALL_17,Network/Storage,HTTP @ L46,test/live_dual_read_runner_test.dart,46,AUDITED
+NET_CALL_18,Network/Storage,HTTP @ L68,test/live_dual_read_runner_test.dart,68,AUDITED
+SYM_19,Class,AiDecisionEngine,lib/ai/ai_decision_engine.dart,11,AUDITED
+SYM_20,Class,AIOrchestrator,lib/ai/ai_orchestrator.dart,33,AUDITED
+SYM_21,Class,ChatSmartAgent,lib/ai/chat_smart_agent.dart,44,AUDITED
+SYM_22,Class,ChatTaskDistributor,lib/ai/chat_task_distributor.dart,11,AUDITED
+SYM_23,Class,AdminController,lib/controllers/admin_controller.dart,15,AUDITED
+NET_CALL_24,Network/Storage,Firestore @ L192,lib/controllers/admin_controller.dart,192,AUDITED
+NET_CALL_25,Network/Storage,Firestore @ L224,lib/controllers/admin_controller.dart,224,AUDITED
+UI_CTL_26,UIControl,TextButton @ L278,lib/controllers/admin_controller.dart,278,AUDITED
+NET_CALL_27,Network/Storage,Firestore @ L336,lib/controllers/admin_controller.dart,336,AUDITED
+NET_CALL_28,Network/Storage,Firestore @ L499,lib/controllers/admin_controller.dart,499,AUDITED
+NET_CALL_29,Network/Storage,Firestore @ L702,lib/controllers/admin_controller.dart,702,AUDITED
+NET_CALL_30,Network/Storage,Firestore @ L907,lib/controllers/admin_controller.dart,907,AUDITED
+NET_CALL_31,Network/Storage,Firestore @ L936,lib/controllers/admin_controller.dart,936,AUDITED
+NET_CALL_32,Network/Storage,Firestore @ L984,lib/controllers/admin_controller.dart,984,AUDITED
+SYM_33,Class,ApiController,lib/controllers/api_controller.dart,16,AUDITED
+SYM_34,Class,AuthController,lib/controllers/auth_controller.dart,25,AUDITED
+NET_CALL_35,Network/Storage,Firebase Auth @ L106,lib/controllers/auth_controller.dart,106,AUDITED
+UI_CTL_36,UIControl,TextField @ L315,lib/controllers/auth_controller.dart,315,AUDITED
+UI_CTL_37,UIControl,ElevatedButton @ L324,lib/controllers/auth_controller.dart,324,AUDITED
+NET_CALL_38,Network/Storage,Firebase Auth @ L368,lib/controllers/auth_controller.dart,368,AUDITED
+NET_CALL_39,Network/Storage,Firebase Auth @ L683,lib/controllers/auth_controller.dart,683,AUDITED
+NET_CALL_40,Network/Storage,Firestore @ L1077,lib/controllers/auth_controller.dart,1077,AUDITED
+NET_CALL_41,Network/Storage,Firestore @ L1170,lib/controllers/auth_controller.dart,1170,AUDITED
+NET_CALL_42,Network/Storage,Firestore @ L1191,lib/controllers/auth_controller.dart,1191,AUDITED
+SYM_43,Class,CatalogController,lib/controllers/catalog_controller.dart,33,AUDITED
+NET_CALL_44,Network/Storage,Firebase Auth @ L561,lib/controllers/catalog_controller.dart,561,AUDITED
+UI_CTL_45,UIControl,InkWell @ L1468,lib/controllers/catalog_controller.dart,1468,AUDITED
+UI_CTL_46,UIControl,InkWell @ L1530,lib/controllers/catalog_controller.dart,1530,AUDITED
+SYM_47,Class,ChatHistoryController,lib/controllers/chat_history_controller.dart,8,AUDITED
+SYM_48,Class,HomeController,lib/controllers/home_controller.dart,12,AUDITED
+SYM_49,Class,HomeDashboardController,lib/controllers/home_dashboard_controller.dart,7,AUDITED
+SYM_50,Class,MarketingShareController,lib/controllers/marketing_share_controller.dart,10,AUDITED
+SYM_51,Class,VipNavItem,lib/controllers/navigation_controller.dart,6,AUDITED
+SYM_52,Class,NavigationController,lib/controllers/navigation_controller.dart,20,AUDITED
+SYM_53,Class,PermissionsController,lib/controllers/permissions_controller.dart,10,AUDITED
+NET_CALL_54,Network/Storage,Firestore @ L61,lib/controllers/permissions_controller.dart,61,AUDITED
+SYM_55,Class,SettingsController,lib/controllers/settings_controller.dart,28,AUDITED
+NET_CALL_56,Network/Storage,HTTP @ L328,lib/controllers/settings_controller.dart,328,AUDITED
+NET_CALL_57,Network/Storage,HTTP @ L502,lib/controllers/settings_controller.dart,502,AUDITED
+UI_CTL_58,UIControl,TextButton @ L546,lib/controllers/settings_controller.dart,546,AUDITED
+UI_CTL_59,UIControl,ElevatedButton @ L550,lib/controllers/settings_controller.dart,550,AUDITED
+NET_CALL_60,Network/Storage,HTTP @ L718,lib/controllers/settings_controller.dart,718,AUDITED
+NET_CALL_61,Network/Storage,Firestore @ L769,lib/controllers/settings_controller.dart,769,AUDITED
+NET_CALL_62,Network/Storage,Firestore @ L770,lib/controllers/settings_controller.dart,770,AUDITED
+NET_CALL_63,Network/Storage,Firestore @ L907,lib/controllers/settings_controller.dart,907,AUDITED
+SYM_64,Class,_SyncGate,lib/controllers/settings_controller.dart,922,AUDITED
+SYM_65,Class,SocialProfileController,lib/controllers/social_profile_controller.dart,5,AUDITED
+SYM_66,Class,ThemeController,lib/controllers/theme_controller.dart,3,AUDITED
+SYM_67,Class,TrendController,lib/controllers/trend_controller.dart,10,AUDITED
+SYM_68,Class,WhatsAppSyncController,lib/controllers/whatsapp_sync_controller.dart,9,AUDITED
+SYM_69,Class,DatabaseHelper,lib/database/database_helper.dart,12,AUDITED
+NET_CALL_70,Network/Storage,SQLite @ L33,lib/database/database_helper.dart,33,AUDITED
+SYM_71,Class,ApiKeyModel,lib/models/api_key_model.dart,1,AUDITED
+SYM_72,Class,BrandIdentity,lib/models/brand_identity_model.dart,5,AUDITED
+SYM_73,Class,BrandInfo,lib/models/brand_info.dart,2,AUDITED
+SYM_74,Class,CatalogCategory,lib/models/catalog_category_model.dart,3,AUDITED
+SYM_75,Class,CatalogProductMedia,lib/models/catalog_media_model.dart,3,AUDITED
+SYM_76,Class,CatalogProduct,lib/models/catalog_product_model.dart,6,AUDITED
+SYM_77,Class,ProductCategoryInfo,lib/models/catalog_product_model.dart,622,AUDITED
+SYM_78,Class,ContentModel,lib/models/content_model.dart,1,AUDITED
+SYM_79,Class,LogModel,lib/models/log_model.dart,1,AUDITED
+SYM_80,Class,MediaModel,lib/models/media_model.dart,1,AUDITED
+SYM_81,Class,ProductMemoryModel,lib/models/product_memory_model.dart,3,AUDITED
+SYM_82,Class,ProductAnalysis,lib/models/product_photo_models.dart,7,AUDITED
+SYM_83,Class,ScenePrompt,lib/models/product_photo_models.dart,63,AUDITED
+SYM_84,Class,ProductPhotoResult,lib/models/product_photo_models.dart,115,AUDITED
+SYM_85,Class,SettingModel,lib/models/setting_model.dart,1,AUDITED
+SYM_86,Class,UserActivity,lib/models/user_activity.dart,1,AUDITED
+SYM_87,Class,UserModel,lib/models/user_model.dart,1,AUDITED
+SYM_88,Class,SceneModel,lib/models/video_composition.dart,12,AUDITED
+SYM_89,Class,VideoProject,lib/models/video_composition.dart,59,AUDITED
+SYM_90,Class,WhatsAppWabaAccount,lib/models/whatsapp_sync_models.dart,5,AUDITED
+SYM_91,Class,WhatsAppSyncConfig,lib/models/whatsapp_sync_models.dart,41,AUDITED
+SYM_92,Class,WhatsAppAiSuggestion,lib/models/whatsapp_sync_models.dart,169,AUDITED
+SYM_93,Class,WhatsAppDraftModel,lib/models/whatsapp_sync_models.dart,206,AUDITED
+SYM_94,Class,AdminDashboardScreen,lib/screens/admin_dashboard_screen.dart,14,AUDITED
+UI_CTL_95,UIControl,IconButton @ L231,lib/screens/admin_dashboard_screen.dart,231,AUDITED
+UI_CTL_96,UIControl,IconButton @ L244,lib/screens/admin_dashboard_screen.dart,244,AUDITED
+UI_CTL_97,UIControl,IconButton @ L251,lib/screens/admin_dashboard_screen.dart,251,AUDITED
+UI_CTL_98,UIControl,IconButton @ L257,lib/screens/admin_dashboard_screen.dart,257,AUDITED
+UI_CTL_99,UIControl,IconButton @ L269,lib/screens/admin_dashboard_screen.dart,269,AUDITED
+UI_CTL_100,UIControl,IconButton @ L275,lib/screens/admin_dashboard_screen.dart,275,AUDITED
+UI_CTL_101,UIControl,TextField @ L544,lib/screens/admin_dashboard_screen.dart,544,AUDITED
+UI_CTL_102,UIControl,IconButton @ L554,lib/screens/admin_dashboard_screen.dart,554,AUDITED
+UI_CTL_103,UIControl,GestureDetector @ L578,lib/screens/admin_dashboard_screen.dart,578,AUDITED
+UI_CTL_104,UIControl,ListTile @ L747,lib/screens/admin_dashboard_screen.dart,747,AUDITED
+UI_CTL_105,UIControl,IconButton @ L959,lib/screens/admin_dashboard_screen.dart,959,AUDITED
+UI_CTL_106,UIControl,PopupMenuButton @ L1917,lib/screens/admin_dashboard_screen.dart,1917,AUDITED
+UI_CTL_107,UIControl,TextButton @ L2041,lib/screens/admin_dashboard_screen.dart,2041,AUDITED
+UI_CTL_108,UIControl,ElevatedButton @ L2046,lib/screens/admin_dashboard_screen.dart,2046,AUDITED
+UI_CTL_109,UIControl,Switch @ L2320,lib/screens/admin_dashboard_screen.dart,2320,AUDITED
+UI_CTL_110,UIControl,IconButton @ L2415,lib/screens/admin_dashboard_screen.dart,2415,AUDITED
+UI_CTL_111,UIControl,TextButton @ L2430,lib/screens/admin_dashboard_screen.dart,2430,AUDITED
+UI_CTL_112,UIControl,TextButton @ L2529,lib/screens/admin_dashboard_screen.dart,2529,AUDITED
+UI_CTL_113,UIControl,Slider @ L2566,lib/screens/admin_dashboard_screen.dart,2566,AUDITED
+UI_CTL_114,UIControl,ElevatedButton @ L2600,lib/screens/admin_dashboard_screen.dart,2600,AUDITED
+UI_CTL_115,UIControl,TextField @ L2661,lib/screens/admin_dashboard_screen.dart,2661,AUDITED
+UI_CTL_116,UIControl,TextButton @ L2837,lib/screens/admin_dashboard_screen.dart,2837,AUDITED
+UI_CTL_117,UIControl,InkWell @ L2856,lib/screens/admin_dashboard_screen.dart,2856,AUDITED
+UI_CTL_118,UIControl,IconButton @ L2975,lib/screens/admin_dashboard_screen.dart,2975,AUDITED
+UI_CTL_119,UIControl,IconButton @ L2980,lib/screens/admin_dashboard_screen.dart,2980,AUDITED
+SYM_120,Class,AiChatScreen,lib/screens/ai_chat_screen.dart,30,AUDITED
+SYM_121,Class,_AiChatScreenState,lib/screens/ai_chat_screen.dart,38,AUDITED
+UI_CTL_122,UIControl,GestureDetector @ L260,lib/screens/ai_chat_screen.dart,260,AUDITED
+UI_CTL_123,UIControl,IconButton @ L430,lib/screens/ai_chat_screen.dart,430,AUDITED
+UI_CTL_124,UIControl,IconButton @ L444,lib/screens/ai_chat_screen.dart,444,AUDITED
+UI_CTL_125,UIControl,IconButton @ L450,lib/screens/ai_chat_screen.dart,450,AUDITED
+SYM_126,Class,BrandSettingsController,lib/screens/brand_settings_screen.dart,12,AUDITED
+SYM_127,Class,BrandSettingsScreen,lib/screens/brand_settings_screen.dart,97,AUDITED
+UI_CTL_128,UIControl,IconButton @ L112,lib/screens/brand_settings_screen.dart,112,AUDITED
+UI_CTL_129,UIControl,GestureDetector @ L129,lib/screens/brand_settings_screen.dart,129,AUDITED
+UI_CTL_130,UIControl,TextField @ L180,lib/screens/brand_settings_screen.dart,180,AUDITED
+UI_CTL_131,UIControl,TextField @ L181,lib/screens/brand_settings_screen.dart,181,AUDITED
+UI_CTL_132,UIControl,TextField @ L182,lib/screens/brand_settings_screen.dart,182,AUDITED
+UI_CTL_133,UIControl,TextField @ L183,lib/screens/brand_settings_screen.dart,183,AUDITED
+UI_CTL_134,UIControl,TextField @ L187,lib/screens/brand_settings_screen.dart,187,AUDITED
+UI_CTL_135,UIControl,TextField @ L188,lib/screens/brand_settings_screen.dart,188,AUDITED
+UI_CTL_136,UIControl,ElevatedButton @ L193,lib/screens/brand_settings_screen.dart,193,AUDITED
+UI_CTL_137,UIControl,TextField @ L222,lib/screens/brand_settings_screen.dart,222,AUDITED
+UI_CTL_138,UIControl,TextField @ L228,lib/screens/brand_settings_screen.dart,228,AUDITED
+SYM_139,Class,CreatorProfileScreen,lib/screens/creator_profile_screen.dart,17,AUDITED
+SYM_140,Class,_CreatorProfileScreenState,lib/screens/creator_profile_screen.dart,24,AUDITED
+UI_CTL_141,UIControl,IconButton @ L143,lib/screens/creator_profile_screen.dart,143,AUDITED
+UI_CTL_142,UIControl,GestureDetector @ L251,lib/screens/creator_profile_screen.dart,251,AUDITED
+UI_CTL_143,UIControl,GestureDetector @ L292,lib/screens/creator_profile_screen.dart,292,AUDITED
+UI_CTL_144,UIControl,InkWell @ L474,lib/screens/creator_profile_screen.dart,474,AUDITED
+SYM_145,Class,GeneralSettingsScreen,lib/screens/general_settings_screen.dart,14,AUDITED
+SYM_146,Class,_GeneralSettingsScreenState,lib/screens/general_settings_screen.dart,21,AUDITED
+UI_CTL_147,UIControl,ListTile @ L79,lib/screens/general_settings_screen.dart,79,AUDITED
+UI_CTL_148,UIControl,ListTile @ L105,lib/screens/general_settings_screen.dart,105,AUDITED
+UI_CTL_149,UIControl,ListTile @ L131,lib/screens/general_settings_screen.dart,131,AUDITED
+UI_CTL_150,UIControl,ListTile @ L146,lib/screens/general_settings_screen.dart,146,AUDITED
+UI_CTL_151,UIControl,ListTile @ L154,lib/screens/general_settings_screen.dart,154,AUDITED
+UI_CTL_152,UIControl,ListTile @ L162,lib/screens/general_settings_screen.dart,162,AUDITED
+UI_CTL_153,UIControl,ListTile @ L188,lib/screens/general_settings_screen.dart,188,AUDITED
+UI_CTL_154,UIControl,ListTile @ L197,lib/screens/general_settings_screen.dart,197,AUDITED
+UI_CTL_155,UIControl,ListTile @ L206,lib/screens/general_settings_screen.dart,206,AUDITED
+UI_CTL_156,UIControl,ListTile @ L261,lib/screens/general_settings_screen.dart,261,AUDITED
+UI_CTL_157,UIControl,ListTile @ L269,lib/screens/general_settings_screen.dart,269,AUDITED
+UI_CTL_158,UIControl,TextButton @ L413,lib/screens/general_settings_screen.dart,413,AUDITED
+UI_CTL_159,UIControl,ElevatedButton @ L426,lib/screens/general_settings_screen.dart,426,AUDITED
+UI_CTL_160,UIControl,TextField @ L487,lib/screens/general_settings_screen.dart,487,AUDITED
+SYM_161,Class,MainWrapper,lib/screens/main_wrapper.dart,9,AUDITED
+UI_CTL_162,UIControl,GestureDetector @ L24,lib/screens/main_wrapper.dart,24,AUDITED
+SYM_163,Class,PrivacyPolicyScreen,lib/screens/privacy_policy_screen.dart,6,AUDITED
+SYM_164,Class,ProductStudioController,lib/screens/product_photography_screen.dart,22,AUDITED
+SYM_165,Class,ProductPhotographyScreen,lib/screens/product_photography_screen.dart,292,AUDITED
+UI_CTL_166,UIControl,TextField @ L399,lib/screens/product_photography_screen.dart,399,AUDITED
+UI_CTL_167,UIControl,Switch @ L434,lib/screens/product_photography_screen.dart,434,AUDITED
+UI_CTL_168,UIControl,TextButton @ L559,lib/screens/product_photography_screen.dart,559,AUDITED
+UI_CTL_169,UIControl,TextButton @ L573,lib/screens/product_photography_screen.dart,573,AUDITED
+UI_CTL_170,UIControl,GestureDetector @ L651,lib/screens/product_photography_screen.dart,651,AUDITED
+UI_CTL_171,UIControl,ElevatedButton @ L736,lib/screens/product_photography_screen.dart,736,AUDITED
+UI_CTL_172,UIControl,InkWell @ L808,lib/screens/product_photography_screen.dart,808,AUDITED
+UI_CTL_173,UIControl,IconButton @ L872,lib/screens/product_photography_screen.dart,872,AUDITED
+UI_CTL_174,UIControl,IconButton @ L878,lib/screens/product_photography_screen.dart,878,AUDITED
+UI_CTL_175,UIControl,IconButton @ L935,lib/screens/product_photography_screen.dart,935,AUDITED
+UI_CTL_176,UIControl,IconButton @ L941,lib/screens/product_photography_screen.dart,941,AUDITED
+UI_CTL_177,UIControl,ElevatedButton @ L951,lib/screens/product_photography_screen.dart,951,AUDITED
+UI_CTL_178,UIControl,GestureDetector @ L969,lib/screens/product_photography_screen.dart,969,AUDITED
+SYM_179,Class,SettingsScreen,lib/screens/settings_screen.dart,21,AUDITED
+UI_CTL_180,UIControl,InkWell @ L301,lib/screens/settings_screen.dart,301,AUDITED
+UI_CTL_181,UIControl,IconButton @ L409,lib/screens/settings_screen.dart,409,AUDITED
+UI_CTL_182,UIControl,InkWell @ L432,lib/screens/settings_screen.dart,432,AUDITED
+UI_CTL_183,UIControl,TextField @ L461,lib/screens/settings_screen.dart,461,AUDITED
+UI_CTL_184,UIControl,ElevatedButton @ L517,lib/screens/settings_screen.dart,517,AUDITED
+UI_CTL_185,UIControl,OutlinedButton @ L569,lib/screens/settings_screen.dart,569,AUDITED
+SYM_186,Class,_ManagedAiCreditsWidget,lib/screens/settings_screen.dart,606,AUDITED
+SYM_187,Class,_SerpApiQuotaWidget,lib/screens/settings_screen.dart,701,AUDITED
+UI_CTL_188,UIControl,IconButton @ L756,lib/screens/settings_screen.dart,756,AUDITED
+SYM_189,Class,_JinaSettingsWidget,lib/screens/settings_screen.dart,807,AUDITED
+UI_CTL_190,UIControl,Switch @ L845,lib/screens/settings_screen.dart,845,AUDITED
+SYM_191,Class,_HiddenModelsInfoWidget,lib/screens/settings_screen.dart,857,AUDITED
+SYM_192,Class,_AiGatewayControlCenterCard,lib/screens/settings_screen.dart,935,AUDITED
+UI_CTL_193,UIControl,IconButton @ L1041,lib/screens/settings_screen.dart,1041,AUDITED
+UI_CTL_194,UIControl,ElevatedButton @ L1081,lib/screens/settings_screen.dart,1081,AUDITED
+UI_CTL_195,UIControl,IconButton @ L1177,lib/screens/settings_screen.dart,1177,AUDITED
+UI_CTL_196,UIControl,TextButton @ L1703,lib/screens/settings_screen.dart,1703,AUDITED
+UI_CTL_197,UIControl,ListTile @ L1808,lib/screens/settings_screen.dart,1808,AUDITED
+UI_CTL_198,UIControl,TextButton @ L1943,lib/screens/settings_screen.dart,1943,AUDITED
+UI_CTL_199,UIControl,GestureDetector @ L2073,lib/screens/settings_screen.dart,2073,AUDITED
+UI_CTL_200,UIControl,GestureDetector @ L2137,lib/screens/settings_screen.dart,2137,AUDITED
+UI_CTL_201,UIControl,GestureDetector @ L2345,lib/screens/settings_screen.dart,2345,AUDITED
+SYM_202,Class,_LastUsedProvidersCard,lib/screens/settings_screen.dart,2549,AUDITED
+SYM_203,Class,SplashScreen,lib/screens/splash_screen.dart,9,AUDITED
+SYM_204,Class,SplashScreenState,lib/screens/splash_screen.dart,16,AUDITED
+SYM_205,Class,SubscriptionScreen,lib/screens/subscription_screen.dart,9,AUDITED
+SYM_206,Class,_SubscriptionScreenState,lib/screens/subscription_screen.dart,16,AUDITED
+UI_CTL_207,UIControl,IconButton @ L136,lib/screens/subscription_screen.dart,136,AUDITED
+UI_CTL_208,UIControl,GestureDetector @ L241,lib/screens/subscription_screen.dart,241,AUDITED
+UI_CTL_209,UIControl,IconButton @ L423,lib/screens/subscription_screen.dart,423,AUDITED
+UI_CTL_210,UIControl,ElevatedButton @ L460,lib/screens/subscription_screen.dart,460,AUDITED
+UI_CTL_211,UIControl,TextButton @ L503,lib/screens/subscription_screen.dart,503,AUDITED
+SYM_212,Class,TermsOfServiceScreen,lib/screens/terms_of_service_screen.dart,5,AUDITED
+SYM_213,Class,ActivityLogService,lib/services/activity_log_service.dart,6,AUDITED
+SYM_214,Class,ActivityTrackingService,lib/services/activity_tracking_service.dart,6,AUDITED
+NET_CALL_215,Network/Storage,Firestore @ L7,lib/services/activity_tracking_service.dart,7,AUDITED
+SYM_216,Class,AIBackendRouter,lib/services/ai_backend_router.dart,21,AUDITED
+NET_CALL_217,Network/Storage,Firebase Auth @ L45,lib/services/ai_backend_router.dart,45,AUDITED
+NET_CALL_218,Network/Storage,Firestore @ L59,lib/services/ai_backend_router.dart,59,AUDITED
+NET_CALL_219,Network/Storage,Firestore @ L89,lib/services/ai_backend_router.dart,89,AUDITED
+NET_CALL_220,Network/Storage,Firestore @ L126,lib/services/ai_backend_router.dart,126,AUDITED
+SYM_221,Class,AiImageGenerationService,lib/services/ai_image_generation_service.dart,23,AUDITED
+NET_CALL_222,Network/Storage,HTTP @ L118,lib/services/ai_image_generation_service.dart,118,AUDITED
+NET_CALL_223,Network/Storage,HTTP @ L259,lib/services/ai_image_generation_service.dart,259,AUDITED
+NET_CALL_224,Network/Storage,HTTP @ L516,lib/services/ai_image_generation_service.dart,516,AUDITED
+NET_CALL_225,Network/Storage,HTTP @ L540,lib/services/ai_image_generation_service.dart,540,AUDITED
+NET_CALL_226,Network/Storage,HTTP @ L629,lib/services/ai_image_generation_service.dart,629,AUDITED
+SYM_227,Class,ImageGenerationResult,lib/services/ai_image_generation_service.dart,808,AUDITED
+SYM_228,Class,AIProvider,lib/services/ai_provider.dart,20,AUDITED
+SYM_229,Class,AIProviderFactory,lib/services/ai_provider.dart,65,AUDITED
+SYM_230,Class,AnthropicService,lib/services/anthropic_service.dart,7,AUDITED
+SYM_231,Class,PlatformAppInfo,lib/services/app_detection_service.dart,10,AUDITED
+SYM_232,Class,AppDetectionService,lib/services/app_detection_service.dart,30,AUDITED
+SYM_233,Class,AuthService,lib/services/auth_service.dart,14,AUDITED
+NET_CALL_234,Network/Storage,Firebase Auth @ L15,lib/services/auth_service.dart,15,AUDITED
+NET_CALL_235,Network/Storage,Supabase @ L17,lib/services/auth_service.dart,17,AUDITED
+SYM_236,Class,AzureOpenAIService,lib/services/azure_openai_service.dart,8,AUDITED
+SYM_237,Class,Back4AppCatalogMediaService,lib/services/back4app_catalog_media_service.dart,11,AUDITED
+NET_CALL_238,Network/Storage,Firebase Auth @ L25,lib/services/back4app_catalog_media_service.dart,25,AUDITED
+NET_CALL_239,Network/Storage,HTTP @ L54,lib/services/back4app_catalog_media_service.dart,54,AUDITED
+NET_CALL_240,Network/Storage,HTTP @ L91,lib/services/back4app_catalog_media_service.dart,91,AUDITED
+SYM_241,Class,Back4AppGatewayService,lib/services/back4app_gateway_service.dart,12,AUDITED
+NET_CALL_242,Network/Storage,HTTP @ L60,lib/services/back4app_gateway_service.dart,60,AUDITED
+NET_CALL_243,Network/Storage,HTTP @ L139,lib/services/back4app_gateway_service.dart,139,AUDITED
+NET_CALL_244,Network/Storage,HTTP @ L191,lib/services/back4app_gateway_service.dart,191,AUDITED
+NET_CALL_245,Network/Storage,HTTP @ L208,lib/services/back4app_gateway_service.dart,208,AUDITED
+NET_CALL_246,Network/Storage,HTTP @ L236,lib/services/back4app_gateway_service.dart,236,AUDITED
+NET_CALL_247,Network/Storage,HTTP @ L288,lib/services/back4app_gateway_service.dart,288,AUDITED
+NET_CALL_248,Network/Storage,HTTP @ L368,lib/services/back4app_gateway_service.dart,368,AUDITED
+NET_CALL_249,Network/Storage,HTTP @ L433,lib/services/back4app_gateway_service.dart,433,AUDITED
+NET_CALL_250,Network/Storage,HTTP @ L533,lib/services/back4app_gateway_service.dart,533,AUDITED
+NET_CALL_251,Network/Storage,HTTP @ L604,lib/services/back4app_gateway_service.dart,604,AUDITED
+NET_CALL_252,Network/Storage,HTTP @ L622,lib/services/back4app_gateway_service.dart,622,AUDITED
+SYM_253,Class,CatalogXlsxImportResult,lib/services/catalog_xlsx_import_service.dart,8,AUDITED
+SYM_254,Class,CatalogXlsxImportService,lib/services/catalog_xlsx_import_service.dart,33,AUDITED
+SYM_255,Class,DBService,lib/services/db_service.dart,11,AUDITED
+NET_CALL_256,Network/Storage,SQLite @ L38,lib/services/db_service.dart,38,AUDITED
+SYM_257,Class,DeepSeekService,lib/services/deepseek_service.dart,7,AUDITED
+SYM_258,Class,FacebookPageService,lib/services/facebook_page_service.dart,8,AUDITED
+NET_CALL_259,Network/Storage,HTTP @ L62,lib/services/facebook_page_service.dart,62,AUDITED
+NET_CALL_260,Network/Storage,HTTP @ L101,lib/services/facebook_page_service.dart,101,AUDITED
+NET_CALL_261,Network/Storage,HTTP @ L131,lib/services/facebook_page_service.dart,131,AUDITED
+NET_CALL_262,Network/Storage,HTTP @ L165,lib/services/facebook_page_service.dart,165,AUDITED
+NET_CALL_263,Network/Storage,HTTP @ L200,lib/services/facebook_page_service.dart,200,AUDITED
+NET_CALL_264,Network/Storage,HTTP @ L228,lib/services/facebook_page_service.dart,228,AUDITED
+SYM_265,Class,FfmpegService,lib/services/ffmpeg_service.dart,11,AUDITED
+SYM_266,Class,FirebaseAiLogicService,lib/services/firebase_ai_logic_service.dart,14,AUDITED
+SYM_267,Class,FirebaseStorageService,lib/services/firebase_storage_service.dart,9,AUDITED
+NET_CALL_268,Network/Storage,Firebase Storage @ L11,lib/services/firebase_storage_service.dart,11,AUDITED
+SYM_269,Class,FirestoreUserService,lib/services/firestore_user_service.dart,8,AUDITED
+NET_CALL_270,Network/Storage,Firestore @ L11,lib/services/firestore_user_service.dart,11,AUDITED
+SYM_271,Class,GatekeeperService,lib/services/gatekeeper_service.dart,15,AUDITED
+SYM_272,Class,GeminiService,lib/services/gemini_service.dart,11,AUDITED
+SYM_273,Class,GlobalConfigService,lib/services/global_config_service.dart,6,AUDITED
+NET_CALL_274,Network/Storage,Firestore @ L7,lib/services/global_config_service.dart,7,AUDITED
+SYM_275,Class,GoogleVeoService,lib/services/google_veo_service.dart,13,AUDITED
+NET_CALL_276,Network/Storage,HTTP @ L28,lib/services/google_veo_service.dart,28,AUDITED
+NET_CALL_277,Network/Storage,HTTP @ L77,lib/services/google_veo_service.dart,77,AUDITED
+SYM_278,Class,GroqService,lib/services/groq_service.dart,7,AUDITED
+SYM_279,Class,HiggsfieldService,lib/services/higgsfield_service.dart,13,AUDITED
+SYM_280,Class,InstagramService,lib/services/instagram_service.dart,17,AUDITED
+NET_CALL_281,Network/Storage,Firebase Auth @ L180,lib/services/instagram_service.dart,180,AUDITED
+NET_CALL_282,Network/Storage,Firestore @ L182,lib/services/instagram_service.dart,182,AUDITED
+NET_CALL_283,Network/Storage,HTTP @ L210,lib/services/instagram_service.dart,210,AUDITED
+NET_CALL_284,Network/Storage,HTTP @ L240,lib/services/instagram_service.dart,240,AUDITED
+NET_CALL_285,Network/Storage,HTTP @ L267,lib/services/instagram_service.dart,267,AUDITED
+NET_CALL_286,Network/Storage,Firebase Auth @ L278,lib/services/instagram_service.dart,278,AUDITED
+NET_CALL_287,Network/Storage,Firestore @ L280,lib/services/instagram_service.dart,280,AUDITED
+NET_CALL_288,Network/Storage,HTTP @ L305,lib/services/instagram_service.dart,305,AUDITED
+NET_CALL_289,Network/Storage,Firebase Auth @ L317,lib/services/instagram_service.dart,317,AUDITED
+NET_CALL_290,Network/Storage,Firestore @ L319,lib/services/instagram_service.dart,319,AUDITED
+NET_CALL_291,Network/Storage,Firebase Auth @ L335,lib/services/instagram_service.dart,335,AUDITED
+NET_CALL_292,Network/Storage,Firestore @ L339,lib/services/instagram_service.dart,339,AUDITED
+NET_CALL_293,Network/Storage,HTTP @ L412,lib/services/instagram_service.dart,412,AUDITED
+SYM_294,Class,KlingService,lib/services/kling_service.dart,13,AUDITED
+NET_CALL_295,Network/Storage,Firebase Auth @ L15,lib/services/manus_ai_service.dart,15,AUDITED
+SYM_296,Class,ManusAiService,lib/services/manus_ai_service.dart,33,AUDITED
+NET_CALL_297,Network/Storage,Firebase Auth @ L48,lib/services/manus_ai_service.dart,48,AUDITED
+NET_CALL_298,Network/Storage,HTTP @ L242,lib/services/manus_ai_service.dart,242,AUDITED
+NET_CALL_299,Network/Storage,HTTP @ L333,lib/services/manus_ai_service.dart,333,AUDITED
+SYM_300,Class,MarketingShareService,lib/services/marketing_share_service.dart,9,AUDITED
+NET_CALL_301,Network/Storage,HTTP @ L100,lib/services/marketing_share_service.dart,100,AUDITED
+SYM_302,Class,MediaMergeService,lib/services/media_merge_service.dart,22,AUDITED
+SYM_303,Class,MediaProcessingResult,lib/services/media_processing_service.dart,16,AUDITED
+SYM_304,Class,MediaProcessingService,lib/services/media_processing_service.dart,58,AUDITED
+NET_CALL_305,Network/Storage,HTTP @ L309,lib/services/media_processing_service.dart,309,AUDITED
+NET_CALL_306,Network/Storage,HTTP @ L418,lib/services/media_processing_service.dart,418,AUDITED
+SYM_307,Class,OpenAIService,lib/services/openai_service.dart,7,AUDITED
+SYM_308,Class,PermissionsSyncService,lib/services/permissions_sync_service.dart,10,AUDITED
+NET_CALL_309,Network/Storage,Firestore @ L14,lib/services/permissions_sync_service.dart,14,AUDITED
+SYM_310,Class,ProductMatchingResult,lib/services/product_matching_service.dart,16,AUDITED
+SYM_311,Class,ProductMatchingService,lib/services/product_matching_service.dart,32,AUDITED
+NET_CALL_312,Network/Storage,Firestore @ L210,lib/services/product_matching_service.dart,210,AUDITED
+SYM_313,Class,ProductMemoryService,lib/services/product_memory_service.dart,9,AUDITED
+SYM_314,Class,ProductPhotographyService,lib/services/product_photography_service.dart,27,AUDITED
+SYM_315,Class,ProfileSyncService,lib/services/profile_sync_service.dart,11,AUDITED
+SYM_316,Class,ReferralService,lib/services/referral_service.dart,8,AUDITED
+SYM_317,Class,RemotionService,lib/services/remotion_service.dart,16,AUDITED
+SYM_318,Class,SecureStorageService,lib/services/secure_storage_service.dart,5,AUDITED
+NET_CALL_319,Network/Storage,SecureStorage @ L6,lib/services/secure_storage_service.dart,6,AUDITED
+SYM_320,Class,SerpApiMasterService,lib/services/serpapi_master_service.dart,10,AUDITED
+SYM_321,Class,GoogleLensService,lib/services/serpapi_services.dart,7,AUDITED
+SYM_322,Class,GoogleTrendsService,lib/services/serpapi_services.dart,57,AUDITED
+SYM_323,Class,SocialProfileService,lib/services/serpapi_services.dart,84,AUDITED
+SYM_324,Class,YoutubeSearchService,lib/services/serpapi_services.dart,117,AUDITED
+SYM_325,Class,AmazonProductService,lib/services/serpapi_services.dart,187,AUDITED
+SYM_326,Class,GoogleNewsService,lib/services/serpapi_services.dart,209,AUDITED
+SYM_327,Class,GoogleShoppingService,lib/services/serpapi_services.dart,231,AUDITED
+SYM_328,Class,GoogleReverseImageService,lib/services/serpapi_services.dart,253,AUDITED
+SYM_329,Class,GoogleShortVideosService,lib/services/serpapi_services.dart,260,AUDITED
+SYM_330,Class,SocialInsightScraperService,lib/services/serpapi_services.dart,339,AUDITED
+SYM_331,Class,BingCopilotService,lib/services/serpapi_services.dart,382,AUDITED
+SYM_332,Class,GoogleImagesService,lib/services/serpapi_services.dart,403,AUDITED
+SYM_333,Class,BingImagesService,lib/services/serpapi_services.dart,425,AUDITED
+SYM_334,Class,GoogleSearchService,lib/services/serpapi_services.dart,446,AUDITED
+SYM_335,Class,VisualExpansionService,lib/services/serpapi_services.dart,518,AUDITED
+SYM_336,Class,SubscriptionService,lib/services/subscription_service.dart,7,AUDITED
+NET_CALL_337,Network/Storage,Firestore @ L8,lib/services/subscription_service.dart,8,AUDITED
+SYM_338,Class,TelegramService,lib/services/telegram_service.dart,11,AUDITED
+NET_CALL_339,Network/Storage,HTTP @ L37,lib/services/telegram_service.dart,37,AUDITED
+SYM_340,Class,TikTokAccountService,lib/services/tiktok_account_service.dart,17,AUDITED
+NET_CALL_341,Network/Storage,Firebase Auth @ L194,lib/services/tiktok_account_service.dart,194,AUDITED
+NET_CALL_342,Network/Storage,Firestore @ L196,lib/services/tiktok_account_service.dart,196,AUDITED
+NET_CALL_343,Network/Storage,Firestore @ L232,lib/services/tiktok_account_service.dart,232,AUDITED
+NET_CALL_344,Network/Storage,Firestore @ L258,lib/services/tiktok_account_service.dart,258,AUDITED
+NET_CALL_345,Network/Storage,HTTP @ L276,lib/services/tiktok_account_service.dart,276,AUDITED
+NET_CALL_346,Network/Storage,HTTP @ L309,lib/services/tiktok_account_service.dart,309,AUDITED
+NET_CALL_347,Network/Storage,Firebase Auth @ L324,lib/services/tiktok_account_service.dart,324,AUDITED
+NET_CALL_348,Network/Storage,Firestore @ L326,lib/services/tiktok_account_service.dart,326,AUDITED
+NET_CALL_349,Network/Storage,HTTP @ L358,lib/services/tiktok_account_service.dart,358,AUDITED
+NET_CALL_350,Network/Storage,HTTP @ L395,lib/services/tiktok_account_service.dart,395,AUDITED
+NET_CALL_351,Network/Storage,HTTP @ L419,lib/services/tiktok_account_service.dart,419,AUDITED
+NET_CALL_352,Network/Storage,Firebase Auth @ L462,lib/services/tiktok_account_service.dart,462,AUDITED
+NET_CALL_353,Network/Storage,Firestore @ L472,lib/services/tiktok_account_service.dart,472,AUDITED
+NET_CALL_354,Network/Storage,Firebase Auth @ L487,lib/services/tiktok_account_service.dart,487,AUDITED
+NET_CALL_355,Network/Storage,Firestore @ L491,lib/services/tiktok_account_service.dart,491,AUDITED
+SYM_356,Class,TikTokService,lib/services/tiktok_service.dart,12,AUDITED
+SYM_357,Class,UnifiedAIService,lib/services/unified_ai_service.dart,33,AUDITED
+NET_CALL_358,Network/Storage,HTTP @ L810,lib/services/unified_ai_service.dart,810,AUDITED
+SYM_359,Class,UnifiedBackendService,lib/services/unified_backend_service.dart,8,AUDITED
+NET_CALL_360,Network/Storage,Firebase Auth @ L17,lib/services/unified_backend_service.dart,17,AUDITED
+NET_CALL_361,Network/Storage,HTTP @ L23,lib/services/unified_backend_service.dart,23,AUDITED
+SYM_362,Class,VertexAiService,lib/services/vertex_ai_service.dart,19,AUDITED
+SYM_363,Class,PipelineStatus,lib/services/video_pipeline_service.dart,27,AUDITED
+SYM_364,Class,VideoPipelineService,lib/services/video_pipeline_service.dart,39,AUDITED
+SYM_365,Class,WhatsAppSyncService,lib/services/whatsapp_sync_service.dart,10,AUDITED
+NET_CALL_366,Network/Storage,Firebase Auth @ L23,lib/services/whatsapp_sync_service.dart,23,AUDITED
+NET_CALL_367,Network/Storage,HTTP @ L35,lib/services/whatsapp_sync_service.dart,35,AUDITED
+NET_CALL_368,Network/Storage,HTTP @ L60,lib/services/whatsapp_sync_service.dart,60,AUDITED
+NET_CALL_369,Network/Storage,HTTP @ L87,lib/services/whatsapp_sync_service.dart,87,AUDITED
+NET_CALL_370,Network/Storage,HTTP @ L113,lib/services/whatsapp_sync_service.dart,113,AUDITED
+NET_CALL_371,Network/Storage,HTTP @ L144,lib/services/whatsapp_sync_service.dart,144,AUDITED
+NET_CALL_372,Network/Storage,HTTP @ L173,lib/services/whatsapp_sync_service.dart,173,AUDITED
+NET_CALL_373,Network/Storage,HTTP @ L199,lib/services/whatsapp_sync_service.dart,199,AUDITED
+SYM_374,Class,AppTheme,lib/theme/app_theme.dart,4,AUDITED
+SYM_375,Class,AppLogger,lib/utils/logger.dart,3,AUDITED
+SYM_376,Class,AccountPickerSheet,lib/widgets/account_picker_sheet.dart,6,AUDITED
+UI_CTL_377,UIControl,IconButton @ L32,lib/widgets/account_picker_sheet.dart,32,AUDITED
+UI_CTL_378,UIControl,ListTile @ L164,lib/widgets/account_picker_sheet.dart,164,AUDITED
+UI_CTL_379,UIControl,ListTile @ L188,lib/widgets/account_picker_sheet.dart,188,AUDITED
+SYM_380,Class,ApiKeyStatusIndicator,lib/widgets/api_key_status_indicator.dart,5,AUDITED
+SYM_381,Class,ChatBubble,lib/widgets/chat_bubble.dart,31,AUDITED
+SYM_382,Class,_ChatBubbleState,lib/widgets/chat_bubble.dart,95,AUDITED
+UI_CTL_383,UIControl,ElevatedButton @ L612,lib/widgets/chat_bubble.dart,612,AUDITED
+UI_CTL_384,UIControl,GestureDetector @ L661,lib/widgets/chat_bubble.dart,661,AUDITED
+UI_CTL_385,UIControl,TextButton @ L796,lib/widgets/chat_bubble.dart,796,AUDITED
+UI_CTL_386,UIControl,InkWell @ L1103,lib/widgets/chat_bubble.dart,1103,AUDITED
+UI_CTL_387,UIControl,InkWell @ L1317,lib/widgets/chat_bubble.dart,1317,AUDITED
+SYM_388,Class,ChatDrawer,lib/widgets/chat_drawer.dart,15,AUDITED
+UI_CTL_389,UIControl,IconButton @ L94,lib/widgets/chat_drawer.dart,94,AUDITED
+UI_CTL_390,UIControl,InkWell @ L199,lib/widgets/chat_drawer.dart,199,AUDITED
+UI_CTL_391,UIControl,InkWell @ L285,lib/widgets/chat_drawer.dart,285,AUDITED
+UI_CTL_392,UIControl,InkWell @ L329,lib/widgets/chat_drawer.dart,329,AUDITED
+UI_CTL_393,UIControl,TextField @ L541,lib/widgets/chat_drawer.dart,541,AUDITED
+UI_CTL_394,UIControl,ListTile @ L626,lib/widgets/chat_drawer.dart,626,AUDITED
+UI_CTL_395,UIControl,ListTile @ L665,lib/widgets/chat_drawer.dart,665,AUDITED
+SYM_396,Class,ChatLoadingShimmer,lib/widgets/chat_loading_shimmer.dart,5,AUDITED
+SYM_397,Class,FacebookSettingsForm,lib/widgets/facebook_settings_form.dart,8,AUDITED
+UI_CTL_398,UIControl,TextField @ L107,lib/widgets/facebook_settings_form.dart,107,AUDITED
+UI_CTL_399,UIControl,ElevatedButton @ L135,lib/widgets/facebook_settings_form.dart,135,AUDITED
+UI_CTL_400,UIControl,ListTile @ L200,lib/widgets/facebook_settings_form.dart,200,AUDITED
+UI_CTL_401,UIControl,ElevatedButton @ L237,lib/widgets/facebook_settings_form.dart,237,AUDITED
+UI_CTL_402,UIControl,OutlinedButton @ L266,lib/widgets/facebook_settings_form.dart,266,AUDITED
+SYM_403,Class,MediaActionBar,lib/widgets/media_action_bar.dart,6,AUDITED
+UI_CTL_404,UIControl,InkWell @ L53,lib/widgets/media_action_bar.dart,53,AUDITED
+SYM_405,Class,MediaAction,lib/widgets/media_action_bar.dart,128,AUDITED
+SYM_406,Class,ModernVideoBubble,lib/widgets/modern_video_bubble.dart,17,AUDITED
+SYM_407,Class,_ModernVideoBubbleState,lib/widgets/modern_video_bubble.dart,42,AUDITED
+UI_CTL_408,UIControl,GestureDetector @ L330,lib/widgets/modern_video_bubble.dart,330,AUDITED
+UI_CTL_409,UIControl,ElevatedButton @ L430,lib/widgets/modern_video_bubble.dart,430,AUDITED
+UI_CTL_410,UIControl,TextButton @ L573,lib/widgets/modern_video_bubble.dart,573,AUDITED
+UI_CTL_411,UIControl,Slider @ L728,lib/widgets/modern_video_bubble.dart,728,AUDITED
+UI_CTL_412,UIControl,GestureDetector @ L759,lib/widgets/modern_video_bubble.dart,759,AUDITED
+UI_CTL_413,UIControl,GestureDetector @ L797,lib/widgets/modern_video_bubble.dart,797,AUDITED
+NET_CALL_414,Network/Storage,HTTP @ L865,lib/widgets/modern_video_bubble.dart,865,AUDITED
+NET_CALL_415,Network/Storage,HTTP @ L894,lib/widgets/modern_video_bubble.dart,894,AUDITED
+SYM_416,Class,PermissionControlledWidget,lib/widgets/permission_controlled_widget.dart,6,AUDITED
+SYM_417,Class,VisibilityControlled,lib/widgets/permission_controlled_widget.dart,46,AUDITED
+SYM_418,Class,ProviderSelectionList,lib/widgets/provider_selection_list.dart,6,AUDITED
+UI_CTL_419,UIControl,ListTile @ L251,lib/widgets/provider_selection_list.dart,251,AUDITED
+SYM_420,Class,RecommendationPanel,lib/widgets/recommendation_panel.dart,3,AUDITED
+UI_CTL_421,UIControl,InkWell @ L56,lib/widgets/recommendation_panel.dart,56,AUDITED
+SYM_422,Class,ScanningOverlay,lib/widgets/scanning_overlay_painter.dart,4,AUDITED
+SYM_423,Class,_ScanningOverlayState,lib/widgets/scanning_overlay_painter.dart,11,AUDITED
+SYM_424,Class,ScanningOverlayPainter,lib/widgets/scanning_overlay_painter.dart,44,AUDITED
+SYM_425,Class,ScenarioDisplayWidget,lib/widgets/scenario_display_widget.dart,6,AUDITED
+UI_CTL_426,UIControl,IconButton @ L48,lib/widgets/scenario_display_widget.dart,48,AUDITED
+UI_CTL_427,UIControl,IconButton @ L149,lib/widgets/scenario_display_widget.dart,149,AUDITED
+SYM_428,Class,SmartAdBubble,lib/widgets/smart_ad_bubble.dart,6,AUDITED
+SYM_429,Class,_SmartAdBubbleState,lib/widgets/smart_ad_bubble.dart,24,AUDITED
+SYM_430,Class,StandardProviderForm,lib/widgets/standard_provider_form.dart,8,AUDITED
+SYM_431,Class,_StandardProviderFormState,lib/widgets/standard_provider_form.dart,17,AUDITED
+UI_CTL_432,UIControl,InkWell @ L51,lib/widgets/standard_provider_form.dart,51,AUDITED
+UI_CTL_433,UIControl,IconButton @ L121,lib/widgets/standard_provider_form.dart,121,AUDITED
+UI_CTL_434,UIControl,InkWell @ L154,lib/widgets/standard_provider_form.dart,154,AUDITED
+UI_CTL_435,UIControl,ElevatedButton @ L236,lib/widgets/standard_provider_form.dart,236,AUDITED
+UI_CTL_436,UIControl,ElevatedButton @ L270,lib/widgets/standard_provider_form.dart,270,AUDITED
+UI_CTL_437,UIControl,TextButton @ L285,lib/widgets/standard_provider_form.dart,285,AUDITED
+UI_CTL_438,UIControl,TextField @ L344,lib/widgets/standard_provider_form.dart,344,AUDITED
+UI_CTL_439,UIControl,IconButton @ L371,lib/widgets/standard_provider_form.dart,371,AUDITED
+UI_CTL_440,UIControl,TextField @ L393,lib/widgets/standard_provider_form.dart,393,AUDITED
+UI_CTL_441,UIControl,TextField @ L435,lib/widgets/standard_provider_form.dart,435,AUDITED
+UI_CTL_442,UIControl,ElevatedButton @ L468,lib/widgets/standard_provider_form.dart,468,AUDITED
+UI_CTL_443,UIControl,TextButton @ L498,lib/widgets/standard_provider_form.dart,498,AUDITED
+SYM_444,Class,TikTokLogoIcon,lib/widgets/tiktok_logo_icon.dart,4,AUDITED
+SYM_445,Class,TikTokSettingsForm,lib/widgets/tiktok_settings_form.dart,10,AUDITED
+UI_CTL_446,UIControl,TextButton @ L109,lib/widgets/tiktok_settings_form.dart,109,AUDITED
+UI_CTL_447,UIControl,TextField @ L119,lib/widgets/tiktok_settings_form.dart,119,AUDITED
+UI_CTL_448,UIControl,TextField @ L125,lib/widgets/tiktok_settings_form.dart,125,AUDITED
+UI_CTL_449,UIControl,TextButton @ L141,lib/widgets/tiktok_settings_form.dart,141,AUDITED
+UI_CTL_450,UIControl,TextField @ L151,lib/widgets/tiktok_settings_form.dart,151,AUDITED
+UI_CTL_451,UIControl,ElevatedButton @ L163,lib/widgets/tiktok_settings_form.dart,163,AUDITED
+UI_CTL_452,UIControl,OutlinedButton @ L223,lib/widgets/tiktok_settings_form.dart,223,AUDITED
+UI_CTL_453,UIControl,OutlinedButton @ L248,lib/widgets/tiktok_settings_form.dart,248,AUDITED
+UI_CTL_454,UIControl,TextField @ L305,lib/widgets/tiktok_settings_form.dart,305,AUDITED
+UI_CTL_455,UIControl,TextField @ L317,lib/widgets/tiktok_settings_form.dart,317,AUDITED
+UI_CTL_456,UIControl,TextField @ L350,lib/widgets/tiktok_settings_form.dart,350,AUDITED
+UI_CTL_457,UIControl,ElevatedButton @ L377,lib/widgets/tiktok_settings_form.dart,377,AUDITED
+SYM_458,Class,TikTokVideoWidget,lib/widgets/tiktok_video_widget.dart,13,AUDITED
+UI_CTL_459,UIControl,GestureDetector @ L47,lib/widgets/tiktok_video_widget.dart,47,AUDITED
+UI_CTL_460,UIControl,IconButton @ L201,lib/widgets/tiktok_video_widget.dart,201,AUDITED
+UI_CTL_461,UIControl,IconButton @ L206,lib/widgets/tiktok_video_widget.dart,206,AUDITED
+UI_CTL_462,UIControl,InkWell @ L259,lib/widgets/tiktok_video_widget.dart,259,AUDITED
+UI_CTL_463,UIControl,IconButton @ L286,lib/widgets/tiktok_video_widget.dart,286,AUDITED
+UI_CTL_464,UIControl,InkWell @ L288,lib/widgets/tiktok_video_widget.dart,288,AUDITED
+SYM_465,Class,VideoFullScreenViewer,lib/widgets/video_full_screen_viewer.dart,9,AUDITED
+SYM_466,Class,_VideoFullScreenViewerState,lib/widgets/video_full_screen_viewer.dart,23,AUDITED
+NET_CALL_467,Network/Storage,HTTP @ L65,lib/widgets/video_full_screen_viewer.dart,65,AUDITED
+UI_CTL_468,UIControl,GestureDetector @ L101,lib/widgets/video_full_screen_viewer.dart,101,AUDITED
+UI_CTL_469,UIControl,IconButton @ L125,lib/widgets/video_full_screen_viewer.dart,125,AUDITED
+UI_CTL_470,UIControl,IconButton @ L135,lib/widgets/video_full_screen_viewer.dart,135,AUDITED
+SYM_471,Class,YoutubeSettingsForm,lib/widgets/youtube_settings_form.dart,8,AUDITED
+UI_CTL_472,UIControl,TextField @ L88,lib/widgets/youtube_settings_form.dart,88,AUDITED
+UI_CTL_473,UIControl,ElevatedButton @ L115,lib/widgets/youtube_settings_form.dart,115,AUDITED
+UI_CTL_474,UIControl,OutlinedButton @ L137,lib/widgets/youtube_settings_form.dart,137,AUDITED
+SYM_475,Class,VipMessageEntry,lib/widgets/animations/vip_message_entry.dart,3,AUDITED
+SYM_476,Class,ChatActionButton,lib/widgets/chat/chat_action_button.dart,5,AUDITED
+SYM_477,Class,ChatInputArea,lib/widgets/chat/chat_input_area.dart,15,AUDITED
+UI_CTL_478,UIControl,IconButton @ L140,lib/widgets/chat/chat_input_area.dart,140,AUDITED
+UI_CTL_479,UIControl,TextField @ L150,lib/widgets/chat/chat_input_area.dart,150,AUDITED
+UI_CTL_480,UIControl,GestureDetector @ L261,lib/widgets/chat/chat_input_area.dart,261,AUDITED
+UI_CTL_481,UIControl,GestureDetector @ L364,lib/widgets/chat/chat_input_area.dart,364,AUDITED
+UI_CTL_482,UIControl,GestureDetector @ L391,lib/widgets/chat/chat_input_area.dart,391,AUDITED
+UI_CTL_483,UIControl,GestureDetector @ L452,lib/widgets/chat/chat_input_area.dart,452,AUDITED
+UI_CTL_484,UIControl,GestureDetector @ L545,lib/widgets/chat/chat_input_area.dart,545,AUDITED
+UI_CTL_485,UIControl,ListTile @ L761,lib/widgets/chat/chat_input_area.dart,761,AUDITED
+SYM_486,Class,ContextPreviewBar,lib/widgets/chat/context_preview_bar.dart,3,AUDITED
+UI_CTL_487,UIControl,InkWell @ L64,lib/widgets/chat/context_preview_bar.dart,64,AUDITED
+SYM_488,Class,FullScreenImageViewer,lib/widgets/chat/full_screen_viewer.dart,10,AUDITED
+NET_CALL_489,Network/Storage,HTTP @ L39,lib/widgets/chat/full_screen_viewer.dart,39,AUDITED
+UI_CTL_490,UIControl,IconButton @ L71,lib/widgets/chat/full_screen_viewer.dart,71,AUDITED
+UI_CTL_491,UIControl,IconButton @ L76,lib/widgets/chat/full_screen_viewer.dart,76,AUDITED
+UI_CTL_492,UIControl,GestureDetector @ L82,lib/widgets/chat/full_screen_viewer.dart,82,AUDITED
+SYM_493,Class,SwipeToReply,lib/widgets/chat/swipe_to_reply.dart,3,AUDITED
+SYM_494,Class,_SwipeToReplyState,lib/widgets/chat/swipe_to_reply.dart,21,AUDITED
+UI_CTL_495,UIControl,GestureDetector @ L73,lib/widgets/chat/swipe_to_reply.dart,73,AUDITED
+SYM_496,Class,SocialProfileDashboard,lib/widgets/social/social_profile_dashboard.dart,9,AUDITED
+UI_CTL_497,UIControl,TextButton @ L107,lib/widgets/social/social_profile_dashboard.dart,107,AUDITED
+SYM_498,Class,SmartButton,lib/widgets/ui_kit/custom_widgets.dart,6,AUDITED
+UI_CTL_499,UIControl,ElevatedButton @ L45,lib/widgets/ui_kit/custom_widgets.dart,45,AUDITED
+SYM_500,Class,SmartTextField,lib/widgets/ui_kit/custom_widgets.dart,90,AUDITED
+UI_CTL_501,UIControl,TextField @ L102,lib/widgets/ui_kit/custom_widgets.dart,102,AUDITED
+UI_CTL_502,UIControl,TextFormField @ L132,lib/widgets/ui_kit/custom_widgets.dart,132,AUDITED
+SYM_503,Class,BrandAnchor,lib/widgets/ui_kit/custom_widgets.dart,153,AUDITED
+SYM_504,Class,SmartBadge,lib/widgets/ui_kit/smart_badge.dart,3,AUDITED
+SYM_505,Class,SmartCard,lib/widgets/ui_kit/smart_card.dart,5,AUDITED
+SYM_506,Class,_SmartCardState,lib/widgets/ui_kit/smart_card.dart,25,AUDITED
+UI_CTL_507,UIControl,GestureDetector @ L53,lib/widgets/ui_kit/smart_card.dart,53,AUDITED
+SYM_508,Class,SmartLoadingOverlay,lib/widgets/ui_kit/smart_loading_overlay.dart,5,AUDITED
+SYM_509,Class,BackgroundRemovalService,lib/services/ai/background_removal_service.dart,11,AUDITED
+SYM_510,Class,GeminiAudioService,lib/services/ai/gemini_audio_service.dart,12,AUDITED
+SYM_511,Class,GeminiDirectorService,lib/services/ai/gemini_director_service.dart,9,AUDITED
+SYM_512,Class,GeminiVisionService,lib/services/ai/gemini_vision_service.dart,12,AUDITED
+SYM_513,Class,GoogleAiModeService,lib/services/ai/google_ai_mode_service.dart,9,AUDITED
+NET_CALL_514,Network/Storage,HTTP @ L112,lib/services/ai/google_ai_mode_service.dart,112,AUDITED
+SYM_515,Class,IntentClassifierService,lib/services/ai/intent_classifier_service.dart,13,AUDITED
+SYM_516,Class,ModelCapabilityService,lib/services/ai/model_capability_service.dart,11,AUDITED
+SYM_517,Class,NaiveBayesClassifier,lib/services/ai/naive_bayes_classifier.dart,4,AUDITED
+SYM_518,Class,OpenRouterVideoService,lib/services/ai/openrouter_video_service.dart,10,AUDITED
+SYM_519,Class,RemoteSegmentationService,lib/services/ai/remote_segmentation_service.dart,15,AUDITED
+SYM_520,Class,SceneDirectorService,lib/services/ai/scene_director_service.dart,9,AUDITED
+SYM_521,Class,VisionProductService,lib/services/ai/vision_product_service.dart,14,AUDITED
+SYM_522,Class,JinaService,lib/services/api/jina_service.dart,6,AUDITED
+SYM_523,Class,SocialMediaApiClient,lib/services/api/social_media_api_client.dart,5,AUDITED
+NET_CALL_524,Network/Storage,HTTP @ L40,lib/services/api/social_media_api_client.dart,40,AUDITED
+SYM_525,Class,TikTokApiClient,lib/services/api/tiktok_api_client.dart,7,AUDITED
+SYM_526,Class,YoutubeStreamService,lib/services/media/youtube_stream_service.dart,5,AUDITED
+SYM_527,Class,PlatformQueryBuilder,lib/services/search/platform_query_builder.dart,6,AUDITED
+SYM_528,Class,ProductSearchContext,lib/services/search/product_search_context.dart,4,AUDITED
+SYM_529,Class,BingImageSearchResponse,lib/services/ai/data/bing_image_models.dart,1,AUDITED
+SYM_530,Class,BingImageResult,lib/services/ai/data/bing_image_models.dart,18,AUDITED
+SYM_531,Class,BingImageSuggestion,lib/services/ai/data/bing_image_models.dart,50,AUDITED
+SYM_532,Class,GoogleAiModeResult,lib/services/ai/data/google_ai_mode_models.dart,3,AUDITED
+SYM_533,Class,AiTextBlock,lib/services/ai/data/google_ai_mode_models.dart,59,AUDITED
+SYM_534,Class,AiListItem,lib/services/ai/data/google_ai_mode_models.dart,89,AUDITED
+SYM_535,Class,AiReference,lib/services/ai/data/google_ai_mode_models.dart,131,AUDITED
+SYM_536,Class,AiShoppingResult,lib/services/ai/data/google_ai_mode_models.dart,163,AUDITED
+SYM_537,Class,AiLocalResult,lib/services/ai/data/google_ai_mode_models.dart,201,AUDITED
+SYM_538,Class,AiInlineVideo,lib/services/ai/data/google_ai_mode_models.dart,242,AUDITED
+SYM_539,Class,AiRelatedQuestion,lib/services/ai/data/google_ai_mode_models.dart,271,AUDITED
+SYM_540,Class,AiBlocksParser,lib/services/ai/data/google_ai_mode_models.dart,286,AUDITED
+SYM_541,Class,GoogleReverseImageResponse,lib/services/ai/data/google_reverse_image_models.dart,1,AUDITED
+SYM_542,Class,ReverseImageResult,lib/services/ai/data/google_reverse_image_models.dart,22,AUDITED
+SYM_543,Class,ReverseImageKnowledgeGraph,lib/services/ai/data/google_reverse_image_models.dart,48,AUDITED
+SYM_544,Class,GoogleShoppingResult,lib/services/ai/data/google_shopping_models.dart,1,AUDITED
+SYM_545,Class,GoogleShortVideosResponse,lib/services/ai/data/google_short_videos_models.dart,1,AUDITED
+SYM_546,Class,ShortVideoResult,lib/services/ai/data/google_short_videos_models.dart,14,AUDITED
+SYM_547,Class,UsersListScreen,lib/screens/admin/users_list_screen.dart,12,AUDITED
+SYM_548,Class,_UsersListScreenState,lib/screens/admin/users_list_screen.dart,19,AUDITED
+UI_CTL_549,UIControl,TextButton @ L70,lib/screens/admin/users_list_screen.dart,70,AUDITED
+UI_CTL_550,UIControl,ElevatedButton @ L74,lib/screens/admin/users_list_screen.dart,74,AUDITED
+UI_CTL_551,UIControl,TextButton @ L119,lib/screens/admin/users_list_screen.dart,119,AUDITED
+UI_CTL_552,UIControl,ElevatedButton @ L123,lib/screens/admin/users_list_screen.dart,123,AUDITED
+UI_CTL_553,UIControl,TextButton @ L261,lib/screens/admin/users_list_screen.dart,261,AUDITED
+UI_CTL_554,UIControl,InkWell @ L279,lib/screens/admin/users_list_screen.dart,279,AUDITED
+UI_CTL_555,UIControl,ListTile @ L396,lib/screens/admin/users_list_screen.dart,396,AUDITED
+UI_CTL_556,UIControl,Switch @ L474,lib/screens/admin/users_list_screen.dart,474,AUDITED
+UI_CTL_557,UIControl,ListTile @ L537,lib/screens/admin/users_list_screen.dart,537,AUDITED
+UI_CTL_558,UIControl,IconButton @ L672,lib/screens/admin/users_list_screen.dart,672,AUDITED
+UI_CTL_559,UIControl,IconButton @ L689,lib/screens/admin/users_list_screen.dart,689,AUDITED
+UI_CTL_560,UIControl,IconButton @ L697,lib/screens/admin/users_list_screen.dart,697,AUDITED
+UI_CTL_561,UIControl,IconButton @ L704,lib/screens/admin/users_list_screen.dart,704,AUDITED
+SYM_562,Class,AccountConfirmationScreen,lib/screens/auth/account_confirmation_screen.dart,13,AUDITED
+SYM_563,Class,_AccountConfirmationScreenState,lib/screens/auth/account_confirmation_screen.dart,20,AUDITED
+UI_CTL_564,UIControl,TextField @ L118,lib/screens/auth/account_confirmation_screen.dart,118,AUDITED
+UI_CTL_565,UIControl,TextButton @ L132,lib/screens/auth/account_confirmation_screen.dart,132,AUDITED
+SYM_566,Class,EditProfileScreen,lib/screens/auth/edit_profile_screen.dart,16,AUDITED
+SYM_567,Class,_EditProfileScreenState,lib/screens/auth/edit_profile_screen.dart,23,AUDITED
+UI_CTL_568,UIControl,TextField @ L149,lib/screens/auth/edit_profile_screen.dart,149,AUDITED
+UI_CTL_569,UIControl,TextField @ L156,lib/screens/auth/edit_profile_screen.dart,156,AUDITED
+UI_CTL_570,UIControl,IconButton @ L193,lib/screens/auth/edit_profile_screen.dart,193,AUDITED
+UI_CTL_571,UIControl,GestureDetector @ L207,lib/screens/auth/edit_profile_screen.dart,207,AUDITED
+UI_CTL_572,UIControl,GestureDetector @ L251,lib/screens/auth/edit_profile_screen.dart,251,AUDITED
+UI_CTL_573,UIControl,TextField @ L349,lib/screens/auth/edit_profile_screen.dart,349,AUDITED
+UI_CTL_574,UIControl,TextFormField @ L369,lib/screens/auth/edit_profile_screen.dart,369,AUDITED
+UI_CTL_575,UIControl,GestureDetector @ L422,lib/screens/auth/edit_profile_screen.dart,422,AUDITED
+SYM_576,Class,LoginScreen,lib/screens/auth/login_screen.dart,15,AUDITED
+SYM_577,Class,_LoginScreenState,lib/screens/auth/login_screen.dart,22,AUDITED
+UI_CTL_578,UIControl,TextField @ L133,lib/screens/auth/login_screen.dart,133,AUDITED
+UI_CTL_579,UIControl,TextField @ L141,lib/screens/auth/login_screen.dart,141,AUDITED
+UI_CTL_580,UIControl,IconButton @ L147,lib/screens/auth/login_screen.dart,147,AUDITED
+UI_CTL_581,UIControl,TextButton @ L175,lib/screens/auth/login_screen.dart,175,AUDITED
+UI_CTL_582,UIControl,TextButton @ L221,lib/screens/auth/login_screen.dart,221,AUDITED
+UI_CTL_583,UIControl,TextButton @ L273,lib/screens/auth/login_screen.dart,273,AUDITED
+UI_CTL_584,UIControl,TextField @ L318,lib/screens/auth/login_screen.dart,318,AUDITED
+SYM_585,Class,PasswordResetOtpScreen,lib/screens/auth/password_reset_otp_screen.dart,14,AUDITED
+SYM_586,Class,_PasswordResetOtpScreenState,lib/screens/auth/password_reset_otp_screen.dart,23,AUDITED
+UI_CTL_587,UIControl,TextField @ L130,lib/screens/auth/password_reset_otp_screen.dart,130,AUDITED
+UI_CTL_588,UIControl,TextField @ L138,lib/screens/auth/password_reset_otp_screen.dart,138,AUDITED
+UI_CTL_589,UIControl,IconButton @ L144,lib/screens/auth/password_reset_otp_screen.dart,144,AUDITED
+UI_CTL_590,UIControl,TextField @ L154,lib/screens/auth/password_reset_otp_screen.dart,154,AUDITED
+UI_CTL_591,UIControl,IconButton @ L160,lib/screens/auth/password_reset_otp_screen.dart,160,AUDITED
+SYM_592,Class,SignupScreen,lib/screens/auth/signup_screen.dart,13,AUDITED
+SYM_593,Class,_SignupScreenState,lib/screens/auth/signup_screen.dart,20,AUDITED
+UI_CTL_594,UIControl,TextField @ L130,lib/screens/auth/signup_screen.dart,130,AUDITED
+UI_CTL_595,UIControl,TextField @ L138,lib/screens/auth/signup_screen.dart,138,AUDITED
+UI_CTL_596,UIControl,TextField @ L146,lib/screens/auth/signup_screen.dart,146,AUDITED
+UI_CTL_597,UIControl,IconButton @ L152,lib/screens/auth/signup_screen.dart,152,AUDITED
+UI_CTL_598,UIControl,TextField @ L162,lib/screens/auth/signup_screen.dart,162,AUDITED
+UI_CTL_599,UIControl,IconButton @ L168,lib/screens/auth/signup_screen.dart,168,AUDITED
+UI_CTL_600,UIControl,TextButton @ L219,lib/screens/auth/signup_screen.dart,219,AUDITED
+SYM_601,Class,ProductCatalogScreen,lib/screens/catalog/product_catalog_screen.dart,21,AUDITED
+UI_CTL_602,UIControl,IconButton @ L65,lib/screens/catalog/product_catalog_screen.dart,65,AUDITED
+UI_CTL_603,UIControl,GestureDetector @ L76,lib/screens/catalog/product_catalog_screen.dart,76,AUDITED
+UI_CTL_604,UIControl,IconButton @ L122,lib/screens/catalog/product_catalog_screen.dart,122,AUDITED
+UI_CTL_605,UIControl,IconButton @ L127,lib/screens/catalog/product_catalog_screen.dart,127,AUDITED
+UI_CTL_606,UIControl,IconButton @ L132,lib/screens/catalog/product_catalog_screen.dart,132,AUDITED
+UI_CTL_607,UIControl,IconButton @ L137,lib/screens/catalog/product_catalog_screen.dart,137,AUDITED
+UI_CTL_608,UIControl,IconButton @ L142,lib/screens/catalog/product_catalog_screen.dart,142,AUDITED
+UI_CTL_609,UIControl,IconButton @ L175,lib/screens/catalog/product_catalog_screen.dart,175,AUDITED
+UI_CTL_610,UIControl,IconButton @ L180,lib/screens/catalog/product_catalog_screen.dart,180,AUDITED
+UI_CTL_611,UIControl,ElevatedButton @ L190,lib/screens/catalog/product_catalog_screen.dart,190,AUDITED
+UI_CTL_612,UIControl,IconButton @ L211,lib/screens/catalog/product_catalog_screen.dart,211,AUDITED
+UI_CTL_613,UIControl,ElevatedButton @ L262,lib/screens/catalog/product_catalog_screen.dart,262,AUDITED
+UI_CTL_614,UIControl,IconButton @ L324,lib/screens/catalog/product_catalog_screen.dart,324,AUDITED
+UI_CTL_615,UIControl,OutlinedButton @ L361,lib/screens/catalog/product_catalog_screen.dart,361,AUDITED
+UI_CTL_616,UIControl,OutlinedButton @ L375,lib/screens/catalog/product_catalog_screen.dart,375,AUDITED
+UI_CTL_617,UIControl,TextField @ L453,lib/screens/catalog/product_catalog_screen.dart,453,AUDITED
+UI_CTL_618,UIControl,GestureDetector @ L494,lib/screens/catalog/product_catalog_screen.dart,494,AUDITED
+UI_CTL_619,UIControl,GestureDetector @ L523,lib/screens/catalog/product_catalog_screen.dart,523,AUDITED
+UI_CTL_620,UIControl,GestureDetector @ L553,lib/screens/catalog/product_catalog_screen.dart,553,AUDITED
+UI_CTL_621,UIControl,ListTile @ L611,lib/screens/catalog/product_catalog_screen.dart,611,AUDITED
+UI_CTL_622,UIControl,InkWell @ L667,lib/screens/catalog/product_catalog_screen.dart,667,AUDITED
+UI_CTL_623,UIControl,InkWell @ L697,lib/screens/catalog/product_catalog_screen.dart,697,AUDITED
+UI_CTL_624,UIControl,GestureDetector @ L745,lib/screens/catalog/product_catalog_screen.dart,745,AUDITED
+UI_CTL_625,UIControl,IconButton @ L823,lib/screens/catalog/product_catalog_screen.dart,823,AUDITED
+UI_CTL_626,UIControl,InkWell @ L873,lib/screens/catalog/product_catalog_screen.dart,873,AUDITED
+UI_CTL_627,UIControl,GestureDetector @ L959,lib/screens/catalog/product_catalog_screen.dart,959,AUDITED
+UI_CTL_628,UIControl,GestureDetector @ L968,lib/screens/catalog/product_catalog_screen.dart,968,AUDITED
+UI_CTL_629,UIControl,GestureDetector @ L1001,lib/screens/catalog/product_catalog_screen.dart,1001,AUDITED
+UI_CTL_630,UIControl,GestureDetector @ L1052,lib/screens/catalog/product_catalog_screen.dart,1052,AUDITED
+UI_CTL_631,UIControl,IconButton @ L1120,lib/screens/catalog/product_catalog_screen.dart,1120,AUDITED
+UI_CTL_632,UIControl,TextField @ L1148,lib/screens/catalog/product_catalog_screen.dart,1148,AUDITED
+UI_CTL_633,UIControl,ElevatedButton @ L1169,lib/screens/catalog/product_catalog_screen.dart,1169,AUDITED
+UI_CTL_634,UIControl,ElevatedButton @ L1186,lib/screens/catalog/product_catalog_screen.dart,1186,AUDITED
+UI_CTL_635,UIControl,ElevatedButton @ L1204,lib/screens/catalog/product_catalog_screen.dart,1204,AUDITED
+UI_CTL_636,UIControl,FloatingActionButton @ L1340,lib/screens/catalog/product_catalog_screen.dart,1340,AUDITED
+UI_CTL_637,UIControl,IconButton @ L1415,lib/screens/catalog/product_catalog_screen.dart,1415,AUDITED
+UI_CTL_638,UIControl,IconButton @ L1522,lib/screens/catalog/product_catalog_screen.dart,1522,AUDITED
+UI_CTL_639,UIControl,TextField @ L1534,lib/screens/catalog/product_catalog_screen.dart,1534,AUDITED
+UI_CTL_640,UIControl,ElevatedButton @ L1555,lib/screens/catalog/product_catalog_screen.dart,1555,AUDITED
+UI_CTL_641,UIControl,ElevatedButton @ L1572,lib/screens/catalog/product_catalog_screen.dart,1572,AUDITED
+UI_CTL_642,UIControl,ElevatedButton @ L1590,lib/screens/catalog/product_catalog_screen.dart,1590,AUDITED
+UI_CTL_643,UIControl,IconButton @ L1664,lib/screens/catalog/product_catalog_screen.dart,1664,AUDITED
+UI_CTL_644,UIControl,IconButton @ L2010,lib/screens/catalog/product_catalog_screen.dart,2010,AUDITED
+NET_CALL_645,Network/Storage,HTTP @ L2119,lib/screens/catalog/product_catalog_screen.dart,2119,AUDITED
+UI_CTL_646,UIControl,IconButton @ L2260,lib/screens/catalog/product_catalog_screen.dart,2260,AUDITED
+UI_CTL_647,UIControl,TextField @ L2275,lib/screens/catalog/product_catalog_screen.dart,2275,AUDITED
+UI_CTL_648,UIControl,GestureDetector @ L2309,lib/screens/catalog/product_catalog_screen.dart,2309,AUDITED
+UI_CTL_649,UIControl,GestureDetector @ L2351,lib/screens/catalog/product_catalog_screen.dart,2351,AUDITED
+UI_CTL_650,UIControl,TextButton @ L2423,lib/screens/catalog/product_catalog_screen.dart,2423,AUDITED
+UI_CTL_651,UIControl,ElevatedButton @ L2428,lib/screens/catalog/product_catalog_screen.dart,2428,AUDITED
+SYM_652,Class,_ActionChip,lib/screens/catalog/product_catalog_screen.dart,2570,AUDITED
+UI_CTL_653,UIControl,GestureDetector @ L2587,lib/screens/catalog/product_catalog_screen.dart,2587,AUDITED
+SYM_654,Class,_StatBadge,lib/screens/catalog/product_catalog_screen.dart,2624,AUDITED
+SYM_655,Class,_SmartToolTile,lib/screens/catalog/product_catalog_screen.dart,2671,AUDITED
+UI_CTL_656,UIControl,InkWell @ L2692,lib/screens/catalog/product_catalog_screen.dart,2692,AUDITED
+SYM_657,Class,_SimilarProductsMergeSheet,lib/screens/catalog/product_catalog_screen.dart,2774,AUDITED
+SYM_658,Class,_SimilarProductsMergeSheetState,lib/screens/catalog/product_catalog_screen.dart,2782,AUDITED
+UI_CTL_659,UIControl,TextButton @ L2861,lib/screens/catalog/product_catalog_screen.dart,2861,AUDITED
+UI_CTL_660,UIControl,ElevatedButton @ L2865,lib/screens/catalog/product_catalog_screen.dart,2865,AUDITED
+UI_CTL_661,UIControl,IconButton @ L2959,lib/screens/catalog/product_catalog_screen.dart,2959,AUDITED
+UI_CTL_662,UIControl,Slider @ L2999,lib/screens/catalog/product_catalog_screen.dart,2999,AUDITED
+UI_CTL_663,UIControl,ElevatedButton @ L3023,lib/screens/catalog/product_catalog_screen.dart,3023,AUDITED
+UI_CTL_664,UIControl,ElevatedButton @ L3107,lib/screens/catalog/product_catalog_screen.dart,3107,AUDITED
+UI_CTL_665,UIControl,InkWell @ L3129,lib/screens/catalog/product_catalog_screen.dart,3129,AUDITED
+SYM_666,Class,ProductFormScreen,lib/screens/catalog/product_form_screen.dart,22,AUDITED
+SYM_667,Class,_ProductFormScreenState,lib/screens/catalog/product_form_screen.dart,30,AUDITED
+UI_CTL_668,UIControl,TextButton @ L116,lib/screens/catalog/product_form_screen.dart,116,AUDITED
+UI_CTL_669,UIControl,TextButton @ L216,lib/screens/catalog/product_form_screen.dart,216,AUDITED
+UI_CTL_670,UIControl,TextButton @ L259,lib/screens/catalog/product_form_screen.dart,259,AUDITED
+UI_CTL_671,UIControl,ElevatedButton @ L362,lib/screens/catalog/product_form_screen.dart,362,AUDITED
+UI_CTL_672,UIControl,ElevatedButton @ L380,lib/screens/catalog/product_form_screen.dart,380,AUDITED
+NET_CALL_673,Network/Storage,HTTP @ L697,lib/screens/catalog/product_form_screen.dart,697,AUDITED
+UI_CTL_674,UIControl,GestureDetector @ L740,lib/screens/catalog/product_form_screen.dart,740,AUDITED
+UI_CTL_675,UIControl,GestureDetector @ L832,lib/screens/catalog/product_form_screen.dart,832,AUDITED
+UI_CTL_676,UIControl,GestureDetector @ L894,lib/screens/catalog/product_form_screen.dart,894,AUDITED
+UI_CTL_677,UIControl,GestureDetector @ L1003,lib/screens/catalog/product_form_screen.dart,1003,AUDITED
+UI_CTL_678,UIControl,GestureDetector @ L1023,lib/screens/catalog/product_form_screen.dart,1023,AUDITED
+UI_CTL_679,UIControl,TextButton @ L1442,lib/screens/catalog/product_form_screen.dart,1442,AUDITED
+UI_CTL_680,UIControl,TextButton @ L1456,lib/screens/catalog/product_form_screen.dart,1456,AUDITED
+UI_CTL_681,UIControl,ElevatedButton @ L1477,lib/screens/catalog/product_form_screen.dart,1477,AUDITED
+UI_CTL_682,UIControl,ElevatedButton @ L1493,lib/screens/catalog/product_form_screen.dart,1493,AUDITED
+UI_CTL_683,UIControl,TextButton @ L1584,lib/screens/catalog/product_form_screen.dart,1584,AUDITED
+UI_CTL_684,UIControl,TextFormField @ L1877,lib/screens/catalog/product_form_screen.dart,1877,AUDITED
+UI_CTL_685,UIControl,IconButton @ L1972,lib/screens/catalog/product_form_screen.dart,1972,AUDITED
+UI_CTL_686,UIControl,ElevatedButton @ L1980,lib/screens/catalog/product_form_screen.dart,1980,AUDITED
+UI_CTL_687,UIControl,ListTile @ L2014,lib/screens/catalog/product_form_screen.dart,2014,AUDITED
+UI_CTL_688,UIControl,IconButton @ L2041,lib/screens/catalog/product_form_screen.dart,2041,AUDITED
+UI_CTL_689,UIControl,IconButton @ L2045,lib/screens/catalog/product_form_screen.dart,2045,AUDITED
+UI_CTL_690,UIControl,TextButton @ L2104,lib/screens/catalog/product_form_screen.dart,2104,AUDITED
+UI_CTL_691,UIControl,ElevatedButton @ L2109,lib/screens/catalog/product_form_screen.dart,2109,AUDITED
+UI_CTL_692,UIControl,TextField @ L2176,lib/screens/catalog/product_form_screen.dart,2176,AUDITED
+UI_CTL_693,UIControl,TextButton @ L2205,lib/screens/catalog/product_form_screen.dart,2205,AUDITED
+UI_CTL_694,UIControl,ElevatedButton @ L2209,lib/screens/catalog/product_form_screen.dart,2209,AUDITED
+SYM_695,Class,_SectionTitle,lib/screens/catalog/product_form_screen.dart,2228,AUDITED
+SYM_696,Class,_AddMediaButton,lib/screens/catalog/product_form_screen.dart,2246,AUDITED
+SYM_697,Class,_AiButton,lib/screens/catalog/product_form_screen.dart,2270,AUDITED
+UI_CTL_698,UIControl,GestureDetector @ L2285,lib/screens/catalog/product_form_screen.dart,2285,AUDITED
+SYM_699,Class,_ShareButton,lib/screens/catalog/product_form_screen.dart,2320,AUDITED
+UI_CTL_700,UIControl,GestureDetector @ L2335,lib/screens/catalog/product_form_screen.dart,2335,AUDITED
+SYM_701,Class,WhatsAppMediaSyncScreen,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,10,AUDITED
+UI_CTL_702,UIControl,IconButton @ L37,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,37,AUDITED
+UI_CTL_703,UIControl,TextButton @ L42,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,42,AUDITED
+UI_CTL_704,UIControl,TextFormField @ L387,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,387,AUDITED
+UI_CTL_705,UIControl,TextFormField @ L404,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,404,AUDITED
+UI_CTL_706,UIControl,TextFormField @ L420,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,420,AUDITED
+UI_CTL_707,UIControl,ElevatedButton @ L438,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,438,AUDITED
+UI_CTL_708,UIControl,IconButton @ L520,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,520,AUDITED
+UI_CTL_709,UIControl,ElevatedButton @ L576,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,576,AUDITED
+UI_CTL_710,UIControl,IconButton @ L671,lib/screens/catalog/whatsapp/whatsapp_media_sync_screen.dart,671,AUDITED
+SYM_711,Class,CatalogProductImage,lib/screens/catalog/widgets/catalog_product_image.dart,13,AUDITED
+SYM_712,Class,ProductCard,lib/screens/catalog/widgets/product_card.dart,9,AUDITED
+UI_CTL_713,UIControl,GestureDetector @ L35,lib/screens/catalog/widgets/product_card.dart,35,AUDITED
+UI_CTL_714,UIControl,GestureDetector @ L84,lib/screens/catalog/widgets/product_card.dart,84,AUDITED
+UI_CTL_715,UIControl,TextField @ L399,lib/screens/catalog/widgets/product_card.dart,399,AUDITED
+UI_CTL_716,UIControl,TextButton @ L417,lib/screens/catalog/widgets/product_card.dart,417,AUDITED
+UI_CTL_717,UIControl,ElevatedButton @ L421,lib/screens/catalog/widgets/product_card.dart,421,AUDITED
+SYM_718,Class,EnterpriseApiClient,lib/core/api/enterprise_api_client.dart,19,AUDITED
+SYM_719,Class,EnterpriseApiException,lib/core/api/enterprise_api_client.dart,300,AUDITED
+SYM_720,Class,InitialBinding,lib/core/bindings/initial_binding.dart,76,AUDITED
+SYM_721,Class,SupabaseConfig,lib/core/config/supabase_config.dart,5,AUDITED
+NET_CALL_722,Network/Storage,Supabase @ L15,lib/core/config/supabase_config.dart,15,AUDITED
+SYM_723,Class,FirebasePromptTemplateIds,lib/core/constants/firebase_prompt_template_ids.dart,7,AUDITED
+SYM_724,Class,ChatRepository,lib/core/data/chat_repository.dart,13,AUDITED
+SYM_725,Class,ApiProvider,lib/core/models/api_provider.dart,289,AUDITED
+SYM_726,Class,AiResult,lib/core/models/api_provider.dart,376,AUDITED
+SYM_727,Class,CanonicalAiRequest,lib/core/models/canonical_ai_request.dart,7,AUDITED
+SYM_728,Class,ChatAttachment,lib/core/models/chat_attachment.dart,25,AUDITED
+SYM_729,Class,ChatMessage,lib/core/models/chat_message.dart,30,AUDITED
+SYM_730,Class,ManusMediaItem,lib/core/models/manus_media_models.dart,5,AUDITED
+SYM_731,Class,ManusTaskStatus,lib/core/models/manus_media_models.dart,46,AUDITED
+SYM_732,Class,ManusGatewayResponse,lib/core/models/manus_media_models.dart,128,AUDITED
+SYM_733,Class,TikTokVideo,lib/core/models/tiktok_video.dart,1,AUDITED
+SYM_734,Class,Back4AppCatalogRepository,lib/core/repositories/back4app_catalog_repository.dart,13,AUDITED
+NET_CALL_735,Network/Storage,HTTP @ L80,lib/core/repositories/back4app_catalog_repository.dart,80,AUDITED
+NET_CALL_736,Network/Storage,HTTP @ L198,lib/core/repositories/back4app_catalog_repository.dart,198,AUDITED
+NET_CALL_737,Network/Storage,HTTP @ L278,lib/core/repositories/back4app_catalog_repository.dart,278,AUDITED
+NET_CALL_738,Network/Storage,HTTP @ L295,lib/core/repositories/back4app_catalog_repository.dart,295,AUDITED
+NET_CALL_739,Network/Storage,HTTP @ L370,lib/core/repositories/back4app_catalog_repository.dart,370,AUDITED
+NET_CALL_740,Network/Storage,HTTP @ L392,lib/core/repositories/back4app_catalog_repository.dart,392,AUDITED
+NET_CALL_741,Network/Storage,HTTP @ L416,lib/core/repositories/back4app_catalog_repository.dart,416,AUDITED
+NET_CALL_742,Network/Storage,HTTP @ L450,lib/core/repositories/back4app_catalog_repository.dart,450,AUDITED
+NET_CALL_743,Network/Storage,HTTP @ L471,lib/core/repositories/back4app_catalog_repository.dart,471,AUDITED
+NET_CALL_744,Network/Storage,HTTP @ L509,lib/core/repositories/back4app_catalog_repository.dart,509,AUDITED
+NET_CALL_745,Network/Storage,HTTP @ L544,lib/core/repositories/back4app_catalog_repository.dart,544,AUDITED
+NET_CALL_746,Network/Storage,HTTP @ L599,lib/core/repositories/back4app_catalog_repository.dart,599,AUDITED
+NET_CALL_747,Network/Storage,HTTP @ L639,lib/core/repositories/back4app_catalog_repository.dart,639,AUDITED
+NET_CALL_748,Network/Storage,HTTP @ L673,lib/core/repositories/back4app_catalog_repository.dart,673,AUDITED
+NET_CALL_749,Network/Storage,HTTP @ L737,lib/core/repositories/back4app_catalog_repository.dart,737,AUDITED
+SYM_750,Class,CatalogRepository,lib/core/repositories/catalog_repository.dart,7,AUDITED
+SYM_751,Class,ChatBrainService,lib/core/services/chat_brain_service.dart,6,AUDITED
+SYM_752,Class,ChatStateService,lib/core/services/chat_state_service.dart,5,AUDITED
+SYM_753,Class,LogService,lib/core/services/log_service.dart,6,AUDITED
+SYM_754,Class,ShareReceiverService,lib/core/services/share_receiver_service.dart,11,AUDITED
+SYM_755,Class,AppStorageService,lib/core/storage/app_storage_service.dart,8,AUDITED
+NET_CALL_756,Network/Storage,SharedPreferences @ L32,lib/core/storage/app_storage_service.dart,32,AUDITED
+SYM_757,Class,StorageKeys,lib/core/storage/storage_keys.dart,1,AUDITED
+SYM_758,Class,AppStrings,lib/core/strings/app_strings.dart,1,AUDITED
+SYM_759,Class,AuthValidation,lib/core/utils/auth_validation.dart,1,AUDITED
+SYM_760,Class,ErrorHandler,lib/core/utils/error_handler.dart,6,AUDITED
+SYM_761,Class,SmartException,lib/core/utils/error_handler.dart,141,AUDITED
+SYM_762,Class,CompositeResult,lib/core/utils/image_utils.dart,9,AUDITED
+SYM_763,Class,CompositionInput,lib/core/utils/image_utils.dart,16,AUDITED
+SYM_764,Class,ImageUtils,lib/core/utils/image_utils.dart,37,AUDITED
+SYM_765,Class,JsonUtils,lib/core/utils/json_utils.dart,4,AUDITED
+SYM_766,Class,KeyRoutingHelper,lib/core/utils/key_routing_helper.dart,6,AUDITED
+SYM_767,Class,LogService,lib/core/utils/log_service.dart,4,AUDITED
+SYM_768,Class,ResponsiveHelper,lib/core/utils/responsive_helper.dart,4,AUDITED
+SYM_769,Class,FluidGridHelper,lib/core/utils/responsive_helper.dart,38,AUDITED
+SYM_770,Class,Result,lib/core/utils/result.dart,8,AUDITED
+SYM_771,Class,Success,lib/core/utils/result.dart,25,AUDITED
+SYM_772,Class,Failure,lib/core/utils/result.dart,44,AUDITED
+SYM_773,Class,NetworkFailure,lib/core/utils/result.dart,83,AUDITED
+SYM_774,Class,AiFailure,lib/core/utils/result.dart,88,AUDITED
+SYM_775,Class,DatabaseFailure,lib/core/utils/result.dart,93,AUDITED
+SYM_776,Class,PermissionFailure,lib/core/utils/result.dart,98,AUDITED
+SYM_777,Class,ValidationFailure,lib/core/utils/result.dart,103,AUDITED
+SYM_778,Class,TimeoutFailure,lib/core/utils/result.dart,108,AUDITED
+SYM_779,Class,SmartUserException,lib/core/utils/smart_exception.dart,1,AUDITED
+SYM_780,Class,SnackBarUtils,lib/core/utils/snackbar_utils.dart,5,AUDITED
+UI_CTL_781,UIControl,InkWell @ L124,lib/core/utils/snackbar_utils.dart,124,AUDITED
+SYM_782,Class,GlassContainer,lib/core/widgets/glass_container.dart,4,AUDITED
+SYM_783,Class,GalacticBackgroundUnified,lib/core/theme/animations/galactic_background_unified.dart,6,AUDITED
+SYM_784,Class,_Nebula,lib/core/theme/animations/galactic_background_unified.dart,62,AUDITED
+SYM_785,Class,_StarPainter,lib/core/theme/animations/galactic_background_unified.dart,82,AUDITED
+SYM_786,Class,SmartBouncyWrapper,lib/core/theme/ui_kit/smart_bouncy_wrapper.dart,6,AUDITED
+SYM_787,Class,_SmartBouncyWrapperState,lib/core/theme/ui_kit/smart_bouncy_wrapper.dart,29,AUDITED
+UI_CTL_788,UIControl,GestureDetector @ L76,lib/core/theme/ui_kit/smart_bouncy_wrapper.dart,76,AUDITED
+UI_CTL_789,UIControl,GestureDetector @ L84,lib/core/theme/ui_kit/smart_bouncy_wrapper.dart,84,AUDITED
+SYM_790,Class,SmartFluidPanel,lib/core/theme/ui_kit/smart_fluid_panel.dart,7,AUDITED
+SYM_791,Class,SmartGlassCard,lib/core/theme/ui_kit/smart_glass_card.dart,6,AUDITED
+SYM_792,Class,SmartNeonButton,lib/core/theme/ui_kit/smart_neon_button.dart,8,AUDITED
+SYM_793,Class,SmartNeonTextField,lib/core/theme/ui_kit/smart_neon_text_field.dart,5,AUDITED
+UI_CTL_794,UIControl,TextField @ L18,lib/core/theme/ui_kit/smart_neon_text_field.dart,18,AUDITED
+UI_CTL_795,UIControl,TextField @ L41,lib/core/theme/ui_kit/smart_neon_text_field.dart,41,AUDITED
+UI_CTL_796,UIControl,IconButton @ L54,lib/core/theme/ui_kit/smart_neon_text_field.dart,54,AUDITED
+SYM_797,Class,SmartSoftIcon,lib/core/theme/ui_kit/smart_soft_icon.dart,6,AUDITED
+SYM_798,Class,SmartStatBox,lib/core/theme/ui_kit/smart_stat_box.dart,5,AUDITED
+SYM_799,Class,MockProductResearchAgent,lib/ai/agents/mock_product_research_agent.dart,4,AUDITED
+SYM_800,Class,AgentFeatureFlags,lib/ai/core/agent_feature_flags.dart,1,AUDITED
+SYM_801,Class,ReplyModeResult,lib/ai/core/agent_models.dart,53,AUDITED
+SYM_802,Class,MediaAnalysisResult,lib/ai/core/agent_models.dart,63,AUDITED
+SYM_803,Class,ProductVisionResult,lib/ai/core/agent_models.dart,75,AUDITED
+SYM_804,Class,ProcessedInput,lib/ai/core/agent_models.dart,93,AUDITED
+SYM_805,Class,AIIntentResult,lib/ai/core/agent_models.dart,113,AUDITED
+SYM_806,Class,ProductGalleryData,lib/ai/core/agent_models.dart,161,AUDITED
+SYM_807,Class,VideoDiscoveryData,lib/ai/core/agent_models.dart,191,AUDITED
+SYM_808,Class,ExpertResearchData,lib/ai/core/agent_models.dart,217,AUDITED
+SYM_809,Class,ImageGalleryData,lib/ai/core/agent_models.dart,255,AUDITED
+SYM_810,Class,ImageItem,lib/ai/core/agent_models.dart,282,AUDITED
+SYM_811,Class,ContentPlanData,lib/ai/core/agent_models.dart,319,AUDITED
+SYM_812,Class,AgentRequest,lib/ai/core/agent_models.dart,359,AUDITED
+SYM_813,Class,SuggestedAction,lib/ai/core/agent_models.dart,379,AUDITED
+SYM_814,Class,IncomingMessage,lib/ai/core/agent_models.dart,404,AUDITED
+SYM_815,Class,AiTask,lib/ai/core/agent_models.dart,437,AUDITED
+SYM_816,Class,AiPlan,lib/ai/core/agent_models.dart,473,AUDITED
+SYM_817,Class,AiPlanStep,lib/ai/core/agent_models.dart,487,AUDITED
+SYM_818,Class,AgentResult,lib/ai/core/agent_models.dart,502,AUDITED
+SYM_819,Class,AgentRouter,lib/ai/core/agent_router.dart,7,AUDITED
+SYM_820,Class,AIConstants,lib/ai/core/ai_constants.dart,7,AUDITED
+SYM_821,Class,BaseAgent,lib/ai/core/base_agent.dart,5,AUDITED
+SYM_822,Class,AgentMemory,lib/ai/memory/agent_memory.dart,1,AUDITED
+SYM_823,Class,AppContext,lib/ai/models/app_context.dart,6,AUDITED
+SYM_824,Class,AgentResultRenderer,lib/ai/ui/agent_result_renderer.dart,11,AUDITED
+SYM_825,Class,ContentPlanWidget,lib/ai/ui/content_plan_widget.dart,6,AUDITED
+UI_CTL_826,UIControl,IconButton @ L116,lib/ai/ui/content_plan_widget.dart,116,AUDITED
+UI_CTL_827,UIControl,ElevatedButton @ L196,lib/ai/ui/content_plan_widget.dart,196,AUDITED
+SYM_828,Class,ResearchResultWidget,lib/ai/ui/expert_research_widget.dart,7,AUDITED
+UI_CTL_829,UIControl,InkWell @ L336,lib/ai/ui/expert_research_widget.dart,336,AUDITED
+UI_CTL_830,UIControl,OutlinedButton @ L382,lib/ai/ui/expert_research_widget.dart,382,AUDITED
+SYM_831,Class,ImageGalleryWidget,lib/ai/ui/image_gallery_widget.dart,24,AUDITED
+UI_CTL_832,UIControl,Switch @ L135,lib/ai/ui/image_gallery_widget.dart,135,AUDITED
+UI_CTL_833,UIControl,GestureDetector @ L143,lib/ai/ui/image_gallery_widget.dart,143,AUDITED
+UI_CTL_834,UIControl,GestureDetector @ L342,lib/ai/ui/image_gallery_widget.dart,342,AUDITED
+UI_CTL_835,UIControl,ElevatedButton @ L453,lib/ai/ui/image_gallery_widget.dart,453,AUDITED
+UI_CTL_836,UIControl,TextButton @ L465,lib/ai/ui/image_gallery_widget.dart,465,AUDITED
+UI_CTL_837,UIControl,ListTile @ L636,lib/ai/ui/image_gallery_widget.dart,636,AUDITED
+NET_CALL_838,Network/Storage,HTTP @ L659,lib/ai/ui/image_gallery_widget.dart,659,AUDITED
+NET_CALL_839,Network/Storage,HTTP @ L708,lib/ai/ui/image_gallery_widget.dart,708,AUDITED
+SYM_840,Class,ProductGalleryWidget,lib/ai/ui/product_gallery_widget.dart,8,AUDITED
+SYM_841,Class,VideoDiscoveryWidget,lib/ai/ui/video_discovery_widget.dart,9,AUDITED
+SYM_842,Class,_VideoCard,lib/ai/ui/video_discovery_widget.dart,84,AUDITED
+UI_CTL_843,UIControl,GestureDetector @ L93,lib/ai/ui/video_discovery_widget.dart,93,AUDITED
+SYM_844,Class,_PlatformInfo,lib/ai/ui/video_discovery_widget.dart,215,AUDITED
