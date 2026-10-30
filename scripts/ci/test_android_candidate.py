@@ -44,6 +44,7 @@ class SigningTests(unittest.TestCase):
 
     def test_sign_and_load_properties_then_clean(self):
         self.prepare()
+        self.assertEqual(candidate.jar_certificate(candidate.private_dir() / "signing-probe.jar"), (candidate.private_dir() / "certificate-sha256.txt").read_text())
         source = self.root / "CheckProperties.java"
         source.write_text('''import java.util.*; import java.io.*;
 class CheckProperties { public static void main(String[] a) throws Exception {

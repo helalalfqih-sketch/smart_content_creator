@@ -14,6 +14,9 @@ import re
 import shutil
 import subprocess
 import sys
+import urllib.error
+import urllib.parse
+import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 
@@ -22,6 +25,8 @@ APP_ID = "com.smartcontentcreator.app"
 VERSION_NAME = "1.3.1-rc.1"
 VERSION_CODE = "7"
 BASELINE_SHA256 = "806329e11d00931db1c28dcb0700843f80e9bcc9ae4e6336b6813451cf9c2df9"
+SHOREBIRD_APP_ID = "50f79796-407c-4909-a7c2-8ed8d05d25b3"
+SHOREBIRD_RELEASE_ID = 783074
 
 
 def run(command, *, env=None):
@@ -127,17 +132,91 @@ def compare_baseline():
     if digest(apk) != BASELINE_SHA256:
         raise RuntimeError("Published v1.3.0 APK checksum mismatch.")
     identity = apk_identity(apk)
-    if identity["application_id"] != APP_ID:
-        raise RuntimeError("Published baseline APK has an unexpected application ID.")
     baseline_cert = apk_certificate(apk)
     current_cert = (directory / "certificate-sha256.txt").read_text()
-    result = {"reference": "GitHub v1.3.0 ARM64 APK (not a verified Shorebird baseline)", "reference_sha256": BASELINE_SHA256, "reference_identity": identity, "reference_certificate_sha256": baseline_cert, "candidate_certificate_sha256": current_cert, "certificate_matches_reference": baseline_cert == current_cert}
+    result = {"reference": "GitHub v1.3.0 ARM64 APK (not a verified Shorebird baseline)", "reference_sha256": BASELINE_SHA256, "reference_identity": identity, "reference_certificate_sha256": baseline_cert, "candidate_certificate_sha256": current_cert, "certificate_matches_reference": baseline_cert == current_cert, "application_id_matches": identity["application_id"] == APP_ID, "authoritative_for_shorebird_continuity": False}
     output = ROOT / "build/candidate-report"
     output.mkdir(parents=True, exist_ok=True)
     (output / "signing-comparison.json").write_text(json.dumps(result, indent=2) + "\n")
     print(json.dumps(result, indent=2))
-    if baseline_cert != current_cert:
-        raise RuntimeError("Signing certificate differs from the published v1.3.0 APK; stop for baseline review.")
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def shorebird_get(path):
+    token = os.environ.get("SHOREBIRD_TOKEN", "").strip()
+    if not token:
+        raise RuntimeError("SHOREBIRD_TOKEN is missing.")
+    request = urllib.request.Request("https://api.shorebird.dev/api/v1/" + path, headers={"Authorization": "Bearer " + token, "Accept": "application/json"}, method="GET")
+    try:
+        with urllib.request.build_opener(NoRedirect).open(request, timeout=60) as response:
+            return json.loads(response.read(1024 * 1024))
+    except urllib.error.HTTPError as error:
+        raise RuntimeError(f"Read-only Shorebird lookup failed: HTTP {error.code}.") from None
+    except (urllib.error.URLError, TimeoutError, ValueError):
+        raise RuntimeError("Read-only Shorebird lookup failed: network or response error.") from None
+
+
+def jar_certificate(path):
+    verification = run(["jarsigner", "-J-Duser.language=en", "-verify", str(path)]).decode()
+    if "jar verified." not in verification:
+        raise RuntimeError("AAB JAR signature did not verify.")
+    certs = keytool("-printcert", "-rfc", "-jarfile", str(path)).decode()
+    pem = re.search(r"-----BEGIN CERTIFICATE-----\s*(.*?)\s*-----END CERTIFICATE-----", certs, re.DOTALL)
+    if not pem:
+        raise RuntimeError("AAB has no readable signing certificate.")
+    return hashlib.sha256(base64.b64decode(pem[1])).hexdigest()
+
+
+def bundle_identity(path):
+    bundletool = str(Path(os.environ["RUNNER_TEMP"]) / "bundletool.jar")
+    run(["java", "-jar", bundletool, "validate", f"--bundle={path}"])
+    manifest = ET.fromstring(run(["java", "-jar", bundletool, "dump", "manifest", f"--bundle={path}"]))
+    android = "{http://schemas.android.com/apk/res/android}"
+    return {"application_id": manifest.get("package"), "version_code": manifest.get(android + "versionCode"), "version_name": manifest.get(android + "versionName")}
+
+
+def compare_shorebird_baseline():
+    config = (ROOT / "shorebird.yaml").read_text()
+    if not re.search(rf"^app_id:\s*{re.escape(SHOREBIRD_APP_ID)}\s*$", config, re.MULTILINE):
+        raise RuntimeError("Repository Shorebird app ID differs from the locked reference.")
+    endpoint = f"apps/{SHOREBIRD_APP_ID}/releases/{SHOREBIRD_RELEASE_ID}"
+    release = shorebird_get(endpoint)["release"]
+    if release.get("app_id") != SHOREBIRD_APP_ID or release.get("version") != "1.3.0+6":
+        raise RuntimeError("Unexpected Shorebird reference release.")
+    artifacts = shorebird_get(endpoint + "/artifacts?arch=aab&platform=android")["artifacts"]
+    artifacts = [a for a in artifacts if a.get("arch") == "aab" and a.get("platform") == "android" and a.get("release_id") == SHOREBIRD_RELEASE_ID]
+    if len(artifacts) != 1:
+        raise RuntimeError("Expected exactly one original Android bundle in Shorebird.")
+    artifact = artifacts[0]
+    url = urllib.parse.urlsplit(artifact["url"])
+    if url.scheme != "https" or url.hostname != "storage.googleapis.com" or url.username or url.password or url.port not in (None, 443):
+        raise RuntimeError(f"Unexpected Shorebird artifact storage host: {url.hostname}.")
+    path = Path(os.environ["RUNNER_TEMP"]) / "scc-shorebird-original.aab"
+    # The signed storage URL is never printed. No Shorebird Authorization
+    # header is attached to this separate storage request or any redirect.
+    try:
+        with urllib.request.build_opener(NoRedirect).open(artifact["url"], timeout=120) as response, path.open("wb") as output:
+            shutil.copyfileobj(response, output, length=1024 * 1024)
+    except (urllib.error.URLError, TimeoutError):
+        raise RuntimeError("Download of the original Shorebird bundle failed.") from None
+    actual_hash = digest(path)
+    if actual_hash != artifact["hash"] or path.stat().st_size != artifact["size"]:
+        raise RuntimeError("Original Shorebird bundle checksum or size mismatch.")
+    identity = bundle_identity(path)
+    original_cert = jar_certificate(path)
+    current_cert = (private_dir() / "certificate-sha256.txt").read_text()
+    expected_identity = {"application_id": APP_ID, "version_code": "6", "version_name": "1.3.0"}
+    result = {"shorebird_app_id": SHOREBIRD_APP_ID, "shorebird_release_id": SHOREBIRD_RELEASE_ID, "release_version": release["version"], "flutter_revision": release["flutter_revision"], "artifact_id": artifact["id"], "artifact_sha256": actual_hash, "original_identity": identity, "original_bundle_certificate_sha256": original_cert, "candidate_certificate_sha256": current_cert, "identity_matches_reference": identity == expected_identity, "matches_shorebird_bundle_certificate": original_cert == current_cert, "installed_app_update_tested": False}
+    report = ROOT / "build/candidate-report"
+    report.mkdir(parents=True, exist_ok=True)
+    (report / "shorebird-signing-comparison.json").write_text(json.dumps(result, indent=2) + "\n")
+    print(json.dumps(result, indent=2))
+    if identity != expected_identity or original_cert != current_cert:
+        raise RuntimeError("Identity or signing certificate differs from the original Shorebird bundle; stop for review.")
 
 
 def verify_artifacts():
@@ -148,18 +227,9 @@ def verify_artifacts():
     expected_identity = {"application_id": APP_ID, "version_code": VERSION_CODE, "version_name": VERSION_NAME}
     if apk_identity(apk) != expected_identity or apk_certificate(apk) != expected_cert:
         raise RuntimeError("APK identity or signing certificate does not match the locked candidate.")
-    verification = run(["jarsigner", "-J-Duser.language=en", "-verify", str(aab)]).decode()
-    if "jar verified." not in verification:
-        raise RuntimeError("AAB JAR signature did not verify.")
-    certs = keytool("-printcert", "-rfc", "-jarfile", str(aab)).decode()
-    pem = re.search(r"-----BEGIN CERTIFICATE-----\s*(.*?)\s*-----END CERTIFICATE-----", certs, re.DOTALL)
-    if not pem or hashlib.sha256(base64.b64decode(pem[1])).hexdigest() != expected_cert:
+    if jar_certificate(aab) != expected_cert:
         raise RuntimeError("AAB signing certificate differs from the verified keystore.")
-    bundletool = str(Path(os.environ["RUNNER_TEMP"]) / "bundletool.jar")
-    run(["java", "-jar", bundletool, "validate", f"--bundle={aab}"])
-    manifest = ET.fromstring(run(["java", "-jar", bundletool, "dump", "manifest", f"--bundle={aab}"]))
-    android = "{http://schemas.android.com/apk/res/android}"
-    identity = {"application_id": manifest.get("package"), "version_code": manifest.get(android + "versionCode"), "version_name": manifest.get(android + "versionName")}
+    identity = bundle_identity(aab)
     if identity != expected_identity:
         raise RuntimeError("AAB identity does not match the locked candidate.")
     run(["git", "diff", "--exit-code", "--", "pubspec.lock"])
@@ -188,10 +258,10 @@ def cleanup():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("prepare", "compare-baseline", "verify", "cleanup"))
+    parser.add_argument("action", choices=("prepare", "compare-baseline", "compare-shorebird", "verify", "cleanup"))
     args = parser.parse_args()
     try:
-        {"prepare": prepare, "compare-baseline": compare_baseline, "verify": verify_artifacts, "cleanup": cleanup}[args.action]()
+        {"prepare": prepare, "compare-baseline": compare_baseline, "compare-shorebird": compare_shorebird_baseline, "verify": verify_artifacts, "cleanup": cleanup}[args.action]()
     except UnicodeError:
         print("Android candidate check failed: invalid credential encoding.", file=sys.stderr)
         sys.exit(1)

@@ -31,11 +31,15 @@ required. Do not distribute this candidate as production.
 2. Decode the repository keystore into the disposable runner's private temp
    directory. Check the alias/store password, then sign and verify a temporary
    JAR to check private-key access and the key password.
-3. Download the published v1.3.0 ARM64 APK and verify its known SHA-256. Compare
-   its application ID and signing certificate with the supplied keystore.
-   A mismatch stops the build for review; it does not prove which key belongs
-   to the user's currently installed app. This APK is not the verified
-   Shorebird baseline (see `SHOREBIRD_RECOVERY.md`).
+3. Record the published v1.3.0 ARM64 APK's identity, certificate and verified
+   SHA-256. The first candidate run confirmed that its application ID differs
+   from the current repository, so it is not the authoritative OTA reference.
+   Fetch the original AAB for Shorebird release 783074 (`1.3.0+6`) using GET
+   requests only. Check its server-reported digest/size, application/version
+   identity and signing certificate against the recovered key. Any mismatch
+   with this Shorebird bundle stops the build for review. Matching an uploaded
+   bundle does not prove the certificate of a Play App Signing installation;
+   the actual installed APK/update path still needs testing.
 4. Build the APK and AAB using locked dependencies. Verify both package
    identities, their signatures/certificates, AAB structure, checksums and
    unchanged dependency lockfile.
@@ -43,8 +47,10 @@ required. Do not distribute this candidate as production.
    explicit APK/AAB/report paths as seven-day Actions artifacts. No keystore,
    password, private-key export, or key.properties is uploaded or printed.
 
-The workflow uses read-only repository permissions. It intentionally does not
-receive SHOREBIRD_TOKEN. Shorebird CLI 1.6.134's release dry-run was reviewed:
+The workflow uses read-only repository permissions. SHOREBIRD_TOKEN is passed
+only to the original-release lookup step, and only to api.shorebird.dev.
+Storage downloads use a separate request without that authorization header;
+signed download URLs are never printed. Shorebird CLI 1.6.134's release dry-run was reviewed:
 although it does not publish a release, its default managed patch-signing key
 lookup can create the organization's key on first use. Any such account change
 and the eventual release/patch require a separately reviewed next step.
