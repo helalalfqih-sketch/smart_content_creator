@@ -11,6 +11,22 @@ from unittest.mock import patch
 import android_candidate as candidate
 
 
+class CertificateOutputTests(unittest.TestCase):
+    def test_numbered_signer_excludes_source_stamp_and_public_key(self):
+        cert, other = "a" * 64, "b" * 64
+        output = f"Signer #1 certificate SHA-256 digest: {cert}\nSource Stamp Signer certificate SHA-256 digest: {other}\nSigner #1 public key SHA-256 digest: {other}\n"
+        self.assertEqual(candidate.parse_apk_certificates(output), [cert])
+
+    def test_rotation_sdk_ranges_preserve_distinct_certificates(self):
+        first, second = "a" * 64, "b" * 64
+        output = f"Signer (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: {first}\nSigner (minSdkVersion=28, maxSdkVersion=32) certificate SHA-256 digest: {second}\n"
+        self.assertEqual(candidate.parse_apk_certificates(output), [first, second])
+
+    def test_missing_signer_fails_closed(self):
+        with self.assertRaisesRegex(RuntimeError, "No APK signing certificate"):
+            candidate.parse_apk_certificates("Source Stamp Signer certificate SHA-256 digest: " + "a" * 64)
+
+
 class SigningTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

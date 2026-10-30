@@ -110,12 +110,18 @@ def android_tool(name):
     return str(max(candidates, key=lambda p: tuple(map(int, p.name.split(".")))) / name)
 
 
-def apk_certificate(path):
+def parse_apk_certificates(output):
+    # apksigner labels v3.1 rotation signers by SDK range instead of number.
+    # Exclude source-stamp certificates and public-key hashes.
+    signers = re.findall(r"^Signer (?:#\d+|\(minSdkVersion=[^\r\n]+\)) certificate SHA-256 digest: ([0-9a-fA-F]{64})$", output, re.MULTILINE)
+    if not signers:
+        raise RuntimeError("No APK signing certificate was reported.")
+    return sorted({signer.lower() for signer in signers})
+
+
+def apk_certificates(path):
     output = run([android_tool("apksigner"), "verify", "--print-certs", str(path)]).decode()
-    signers = re.findall(r"Signer #\d+ certificate SHA-256 digest: ([0-9a-fA-F]+)", output)
-    if len(signers) != 1:
-        raise RuntimeError("Expected exactly one APK signer.")
-    return signers[0].lower()
+    return parse_apk_certificates(output)
 
 
 def apk_identity(path):
@@ -132,9 +138,9 @@ def compare_baseline():
     if digest(apk) != BASELINE_SHA256:
         raise RuntimeError("Published v1.3.0 APK checksum mismatch.")
     identity = apk_identity(apk)
-    baseline_cert = apk_certificate(apk)
+    baseline_certs = apk_certificates(apk)
     current_cert = (directory / "certificate-sha256.txt").read_text()
-    result = {"reference": "GitHub v1.3.0 ARM64 APK (not a verified Shorebird baseline)", "reference_sha256": BASELINE_SHA256, "reference_identity": identity, "reference_certificate_sha256": baseline_cert, "candidate_certificate_sha256": current_cert, "certificate_matches_reference": baseline_cert == current_cert, "application_id_matches": identity["application_id"] == APP_ID, "authoritative_for_shorebird_continuity": False}
+    result = {"reference": "GitHub v1.3.0 ARM64 APK (not a verified Shorebird baseline)", "reference_sha256": BASELINE_SHA256, "reference_identity": identity, "reference_certificate_sha256": baseline_certs, "candidate_certificate_sha256": current_cert, "certificate_matches_reference": baseline_certs == [current_cert], "application_id_matches": identity["application_id"] == APP_ID, "authoritative_for_shorebird_continuity": False}
     output = ROOT / "build/candidate-report"
     output.mkdir(parents=True, exist_ok=True)
     (output / "signing-comparison.json").write_text(json.dumps(result, indent=2) + "\n")
@@ -225,7 +231,7 @@ def verify_artifacts():
     apk = ROOT / "build/app/outputs/flutter-apk/app-release.apk"
     aab = ROOT / "build/app/outputs/bundle/release/app-release.aab"
     expected_identity = {"application_id": APP_ID, "version_code": VERSION_CODE, "version_name": VERSION_NAME}
-    if apk_identity(apk) != expected_identity or apk_certificate(apk) != expected_cert:
+    if apk_identity(apk) != expected_identity or apk_certificates(apk) != [expected_cert]:
         raise RuntimeError("APK identity or signing certificate does not match the locked candidate.")
     if jar_certificate(aab) != expected_cert:
         raise RuntimeError("AAB signing certificate differs from the verified keystore.")
