@@ -1,0 +1,47 @@
+name: Publish verified Android candidate once
+
+on:
+  push:
+    branches: [codex/shorebird-recovery-20261030]
+    paths:
+      - .github/workflows/scc_publish_candidate_once.yml
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPOSITORY: helalalfqih-sketch/smart_content_creator
+      ARTIFACT_ID: '13003817891'
+      TAG: v1.3.1-rc.1
+      TARGET_SHA: 2f0f24a728aaea4955fff24867700d5ccee1d905
+      APK_SHA256: c6dd9825bbe6dfd006e96bbf92e13e3ea9b9547bcfbf055ea4e31c202879490b
+    steps:
+      - name: Download and verify the tested APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir candidate
+          gh api "/repos/${REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > candidate.zip
+          unzip -q candidate.zip -d candidate
+          apk="candidate/app/outputs/flutter-apk/app-release.apk"
+          test -f "$apk"
+          actual="$(sha256sum "$apk" | awk '{print $1}')"
+          test "$actual" = "$APK_SHA256"
+          cp "$apk" app-release.apk
+
+      - name: Publish QA prerelease
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s\n'             'نسخة تجريبية موقعة للاختبار على أجهزة Android.'             ''             '- Version: 1.3.1-rc.1 (build 7)'             '- QA candidate commit: 2f0f24a728aaea4955fff24867700d5ccee1d905'             '- APK SHA-256: C6DD9825BBE6DFD006E96BBF92E13E3EA9B9547BCFBF055EA4E31C202879490B'             '- Signing continuity and emulator install/launch/restart checks passed.'             ''             'هذه ليست النسخة العامة النهائية.' > release-notes.md
+          if gh release view "$TAG" --repo "$REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" app-release.apk --clobber --repo "$REPOSITORY"
+          else
+            gh release create "$TAG" app-release.apk               --repo "$REPOSITORY"               --target "$TARGET_SHA"               --title "Android QA 1.3.1-rc.1"               --notes-file release-notes.md               --prerelease
+          fi
