@@ -72,3 +72,23 @@ python3 -m unittest discover -s scripts/ci -p 'test_android_candidate.py' -v
 Publishing and install/update/OTA checks are not inferred from a successful
 candidate build. Read `candidate.json` and the Actions logs for the exact source,
 identity, signing certificate, artifact digests and untested boundaries.
+
+## Android startup smoke check
+
+The separate `scc_android_smoke.yml` workflow downloads the exact candidate
+artifact from the build run named in its configuration. It checks the APK's
+digest against `candidate.json`, its source commit, and the installed package
+version before launch. It needs only read access to Actions artifacts; no
+Android signing or Shorebird credentials are passed to this job.
+
+On an Android API 35 Google APIs x86_64 emulator, it observes a clean offline
+launch and a restart with networking enabled for 35 seconds each. It records
+process/activity survival, native crashes, Flutter error logs and screenshots.
+The screenshots require visual review: a live process alone does not establish
+that the intended screen rendered. `smoke.json` identifies both the candidate
+and test commits and records the limited checks actually performed.
+
+No user account is entered or created. Successful startup does not test login,
+backend functionality, Play Integrity acceptance, an update over an existing
+installation, ARM hardware, or any Shorebird patch. These remain separate
+release checks. Evidence is retained as a seven-day Actions artifact.
