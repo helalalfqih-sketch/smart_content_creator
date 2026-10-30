@@ -14,7 +14,25 @@ val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 val hasKeystore = keystorePropertiesFile.exists()
 if (hasKeystore) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
+}
+
+// Debug builds remain available, but an unsigned or debug-signed production
+// package must never be produced when release credentials are missing.
+val validateReleaseSigning = tasks.register("validateReleaseSigning") {
+    doLast {
+        check(hasKeystore) { "Release signing requires android/key.properties." }
+        val required = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+        check(required.all { !keystoreProperties.getProperty(it).isNullOrBlank() }) {
+            "Release signing requires storeFile, storePassword, keyAlias and keyPassword."
+        }
+        check(file(keystoreProperties.getProperty("storeFile")).isFile) {
+            "The configured release keystore file does not exist."
+        }
+    }
+}
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(validateReleaseSigning)
 }
 
 android {
@@ -61,7 +79,8 @@ android {
     signingConfigs {
         if (hasKeystore) {
             create("release") {
-                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storeFile = keystoreProperties.getProperty("storeFile")
+                    ?.takeIf { it.isNotBlank() }?.let { file(it) }
                 storePassword = keystoreProperties.getProperty("storePassword")
                 keyAlias = keystoreProperties.getProperty("keyAlias")
                 keyPassword = keystoreProperties.getProperty("keyPassword")
@@ -78,7 +97,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = if (hasKeystore) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
+            signingConfig = if (hasKeystore) signingConfigs.getByName("release") else null
         }
 
         debug {

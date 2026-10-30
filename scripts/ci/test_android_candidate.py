@@ -1,0 +1,132 @@
+"""Exercise real keytool/jarsigner failure boundaries with disposable test keys."""
+import base64
+import contextlib
+import io
+import os
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+
+import android_candidate as candidate
+
+
+class CertificateOutputTests(unittest.TestCase):
+    def test_numbered_signer_excludes_source_stamp_and_public_key(self):
+        cert, other = "a" * 64, "b" * 64
+        output = f"Signer #1 certificate SHA-256 digest: {cert}\nSource Stamp Signer certificate SHA-256 digest: {other}\nSigner #1 public key SHA-256 digest: {other}\n"
+        self.assertEqual(candidate.parse_apk_certificates(output), [cert])
+
+    def test_rotation_sdk_ranges_preserve_distinct_certificates(self):
+        first, second = "a" * 64, "b" * 64
+        output = f"Signer (minSdkVersion=33, maxSdkVersion=2147483647) certificate SHA-256 digest: {first}\nSigner (minSdkVersion=28, maxSdkVersion=32) certificate SHA-256 digest: {second}\n"
+        self.assertEqual(candidate.parse_apk_certificates(output), [first, second])
+
+    def test_missing_signer_fails_closed(self):
+        with self.assertRaisesRegex(RuntimeError, "No APK signing certificate"):
+            candidate.parse_apk_certificates("Source Stamp Signer certificate SHA-256 digest: " + "a" * 64)
+
+    def test_scheme_named_signer_seen_on_github_runner(self):
+        cert = "421cd80d80141ef72cc26235e415277e1af862ffe369234f7d04538f74ba2636"
+        output = f"V2 Signer: certificate SHA-256 digest: {cert}\nV3 Signer: certificate SHA-256 digest: {cert}\n"
+        self.assertEqual(candidate.parse_apk_certificates(output), [cert])
+
+
+class SigningTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.fixture = tempfile.TemporaryDirectory()
+        key = Path(cls.fixture.name) / "fixture.jks"
+        cls.credentials = {"KEYSTORE_PASSWORD": "fixture-store-pass", "KEY_PASSWORD": "fixture-key-pass", "KEY_ALIAS": "fixture"}
+        candidate.keytool("-genkeypair", "-keystore", str(key), "-storetype", "JKS", "-alias", "fixture", "-keyalg", "RSA", "-keysize", "2048", "-validity", "1", "-dname", "CN=Ephemeral CI Test", "-storepass:env", "KEYSTORE_PASSWORD", "-keypass:env", "KEY_PASSWORD", "-noprompt", env={**os.environ, **cls.credentials})
+        cls.credentials["KEYSTORE_BASE64"] = base64.b64encode(key.read_bytes()).decode()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.fixture.cleanup()
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        (self.root / "android").mkdir()
+        self.env = patch.dict(os.environ, {**self.credentials, "RUNNER_TEMP": self.temp.name})
+        self.env.start()
+        self.root_patch = patch.object(candidate, "ROOT", self.root)
+        self.root_patch.start()
+
+    def tearDown(self):
+        self.root_patch.stop()
+        self.env.stop()
+        self.temp.cleanup()
+
+    def prepare(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            candidate.prepare()
+
+    def test_sign_and_load_properties_then_clean(self):
+        self.prepare()
+        self.assertEqual(candidate.jar_certificate(candidate.private_dir() / "signing-probe.jar"), (candidate.private_dir() / "certificate-sha256.txt").read_text())
+        source = self.root / "CheckProperties.java"
+        source.write_text('''import java.util.*; import java.io.*;
+class CheckProperties { public static void main(String[] a) throws Exception {
+Properties p = new Properties(); try (var f = new FileInputStream(a[0])) { p.load(f); }
+if (!p.getProperty("storePassword").equals(System.getenv("KEYSTORE_PASSWORD")) ||
+!p.getProperty("keyPassword").equals(System.getenv("KEY_PASSWORD")) ||
+!p.getProperty("keyAlias").equals(System.getenv("KEY_ALIAS")) ||
+!new File(p.getProperty("storeFile")).isFile()) { System.exit(1); }
+}}''')
+        candidate.run(["java", str(source), str(self.root / "android/key.properties")])
+        candidate.cleanup()
+        self.assertFalse((self.root / "android/key.properties").exists())
+        self.assertFalse(candidate.private_dir().exists())
+
+    def test_windows_base64_whitespace(self):
+        os.environ["KEYSTORE_BASE64"] = "\ufeff\r\n " + self.credentials["KEYSTORE_BASE64"] + "\r\n"
+        self.prepare()
+        candidate.cleanup()
+
+    def test_invalid_base64_fails_without_properties(self):
+        os.environ["KEYSTORE_BASE64"] = "%%%INVALID%%%"
+        with self.assertRaisesRegex(RuntimeError, "not valid Base64"):
+            self.prepare()
+        candidate.cleanup()
+        self.assertFalse((self.root / "android/key.properties").exists())
+
+    def test_wrong_store_password(self):
+        os.environ["KEYSTORE_PASSWORD"] = "wrong-secret"
+        with self.assertRaisesRegex(RuntimeError, "keytool failed") as raised:
+            self.prepare()
+        self.assertNotIn("wrong-secret", str(raised.exception))
+        candidate.cleanup()
+
+    def test_wrong_private_key_password(self):
+        os.environ["KEY_PASSWORD"] = "wrong-secret"
+        with self.assertRaisesRegex(RuntimeError, "jarsigner failed"):
+            self.prepare()
+        candidate.cleanup()
+
+    def test_wrong_alias(self):
+        os.environ["KEY_ALIAS"] = "missing-alias"
+        with self.assertRaisesRegex(RuntimeError, "keytool failed"):
+            self.prepare()
+        candidate.cleanup()
+
+    def test_existing_properties_are_never_deleted(self):
+        properties = self.root / "android/key.properties"
+        properties.write_text("existing configuration")
+        with self.assertRaisesRegex(RuntimeError, "Refusing to replace"):
+            self.prepare()
+        candidate.cleanup()
+        self.assertEqual(properties.read_text(), "existing configuration")
+
+    def test_changed_properties_are_never_deleted(self):
+        self.prepare()
+        properties = self.root / "android/key.properties"
+        properties.write_text("changed configuration")
+        with self.assertRaisesRegex(RuntimeError, "changed by another process"):
+            candidate.cleanup()
+        self.assertTrue(properties.exists())
+
+
+if __name__ == "__main__":
+    unittest.main()

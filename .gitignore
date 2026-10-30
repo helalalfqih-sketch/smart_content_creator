@@ -57,6 +57,13 @@ app.*.map.json
 *.lnk
 *.log
 local.properties
+
+# Private Android signing material, including local Base64 exports.
+*.jks
+*.keystore
+key.properties
+/artifacts/keystore_base64*.txt
+
 web_landing/downloads/
 tmp/
 scratch/
