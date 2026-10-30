@@ -113,7 +113,7 @@ def android_tool(name):
 def parse_apk_certificates(output):
     # apksigner labels v3.1 rotation signers by SDK range instead of number.
     # Exclude source-stamp certificates and public-key hashes.
-    signers = re.findall(r"^Signer (?:#\d+|\(minSdkVersion=[^\r\n]+\)) certificate SHA-256 digest: ([0-9a-fA-F]{64})$", output, re.MULTILINE)
+    signers = re.findall(r"^(?:Signer (?:#\d+|\(minSdkVersion=[^\r\n]+\))|V(?:1|2|3(?:\.1)?|4) Signer:) certificate SHA-256 digest: ([0-9a-fA-F]{64})$", output, re.MULTILINE)
     if not signers:
         raise RuntimeError("No APK signing certificate was reported.")
     return sorted({signer.lower() for signer in signers})

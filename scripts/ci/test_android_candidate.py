@@ -26,6 +26,11 @@ class CertificateOutputTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "No APK signing certificate"):
             candidate.parse_apk_certificates("Source Stamp Signer certificate SHA-256 digest: " + "a" * 64)
 
+    def test_scheme_named_signer_seen_on_github_runner(self):
+        cert = "421cd80d80141ef72cc26235e415277e1af862ffe369234f7d04538f74ba2636"
+        output = f"V2 Signer: certificate SHA-256 digest: {cert}\nV3 Signer: certificate SHA-256 digest: {cert}\n"
+        self.assertEqual(candidate.parse_apk_certificates(output), [cert])
+
 
 class SigningTests(unittest.TestCase):
     @classmethod

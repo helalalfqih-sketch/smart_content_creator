@@ -26,6 +26,23 @@ GitHub v1.3.0 ARM64 APK:
 - It includes shorebird.yaml, but that alone does not establish an updater-enabled engine.
 Do not distribute this APK as the verified OTA baseline. GitHub v2.1.0 assets are also dated before the console release; they have not been inspected.
 
+## Original Shorebird bundle signing verified
+
+Candidate run 41108099136 retrieved original AAB artifact 3463024 for release
+783074 through authenticated GET requests, without changing any Shorebird key,
+release or patch. Its SHA-256 was
+`e22614462f459d299b574fa6db44ce846de41c009eb8abce97910359abd3d897`,
+matching the API digest and byte size. Bundletool and JAR signature verification
+confirmed `com.smartcontentcreator.app`, version `1.3.0+6`, with the same recovered
+certificate above. The release Flutter revision was
+`e34c42f91dd1fd26ef4700510245620e496c07bb`.
+This establishes bundle signing continuity, not installed APK/Play App Signing
+or OTA behavior. The run later failed Java compilation because `--no-pub` kept
+integration_test in generated release registration. The candidate workflow now
+uses Flutter's pub-enabled release path to regenerate the correct registrant.
+
+Evidence: https://github.com/helalalfqih-sketch/smart_content_creator/actions/runs/41108099136
+
 ## Existing work to preserve
 Guest-mode PocketBase integration and server scripts are on
 helalalfqih-sketch/- branch codex/scc-vps-production-foundation-20261029
@@ -101,8 +118,8 @@ secrets. Firestore checks used only a local JVM emulator and test accounts.
   remains untested. Evidence:
   https://github.com/helalalfqih-sketch/smart_content_creator/actions/runs/41099341611/job/124213323218
   All four Android signing secrets are now present and cryptographically usable.
-  This resolves the missing-secret blocker. Original-release certificate
-  continuity and installed-app update compatibility are separate checks:
+  This resolves the missing-secret blocker. Original Shorebird bundle certificate
+  continuity also passed; installed-app update compatibility remains untested:
   https://github.com/helalalfqih-sketch/smart_content_creator/actions/runs/41107098417
 - Reconcile guest mode and the intended VPS backend with this Firebase/Supabase
   source before choosing a baseline version and making an OTA patch.

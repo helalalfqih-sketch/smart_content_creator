@@ -6,7 +6,12 @@ on:
     branches: [codex/shorebird-recovery-20261030]
     paths:
       - .github/workflows/scc_android_candidate.yml
-      - scripts/ci/android_candidate.py
+      - scripts/ci/**
+      - android/**
+      - lib/**
+      - pubspec.yaml
+      - pubspec.lock
+      - shorebird.yaml
 
 permissions:
   contents: read
@@ -65,8 +70,11 @@ jobs:
           flutter pub get --enforce-lockfile
       - name: Build signed APK and AAB for review
         run: |
-          flutter build apk --release --no-pub --target lib/main.dart --build-name 1.3.1-rc.1 --build-number 7
-          flutter build appbundle --release --no-pub --target lib/main.dart --build-name 1.3.1-rc.1 --build-number 7
+          # Flutter 3.44.6 regenerates release-only plugin registrants in its
+          # pub-enabled build path. --no-pub leaves integration_test registered
+          # after the development-mode pub get, but absent from release Gradle.
+          flutter build apk --release --target lib/main.dart --build-name 1.3.1-rc.1 --build-number 7
+          flutter build appbundle --release --target lib/main.dart --build-name 1.3.1-rc.1 --build-number 7
       - name: Verify identity, signature and artifact checksums
         run: python3 scripts/ci/android_candidate.py verify
       - name: Remove signing material

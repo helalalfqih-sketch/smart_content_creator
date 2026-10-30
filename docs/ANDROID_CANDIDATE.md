@@ -43,6 +43,10 @@ required. Do not distribute this candidate as production.
 4. Build the APK and AAB using locked dependencies. Verify both package
    identities, their signatures/certificates, AAB structure, checksums and
    unchanged dependency lockfile.
+   The build commands keep Flutter's pub-enabled path so Flutter 3.44.6
+   regenerates Android plugin registration for release mode, excluding
+   development-only plugins such as `integration_test`. Using `--no-pub`
+   after a normal pub get leaves stale development-mode registration.
 5. Delete only signing files owned by this run, even on failure. Retain only
    explicit APK/AAB/report paths as seven-day Actions artifacts. No keystore,
    password, private-key export, or key.properties is uploaded or printed.
