@@ -8,6 +8,47 @@ on:
 permissions:
   contents: read
 jobs:
+  shorebird-access:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify token access to the configured app without publishing
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.request
+
+          token = os.environ.get("SHOREBIRD_TOKEN", "").strip()
+          if not token:
+              raise SystemExit("SHOREBIRD_TOKEN is missing.")
+          app_id = "50f79796-407c-4909-a7c2-8ed8d05d25b3"
+          request = urllib.request.Request(
+              f"https://api.shorebird.dev/api/v1/apps/{app_id}",
+              headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
+              method="GET",
+          )
+          # Never forward credentials to a redirect destination.
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+          try:
+              with urllib.request.build_opener(NoRedirect).open(request, timeout=30) as response:
+                  app = json.load(response)
+          except urllib.error.HTTPError as error:
+              raise SystemExit(f"Shorebird access check failed: HTTP {error.code}.") from None
+          except (urllib.error.URLError, TimeoutError, ValueError):
+              raise SystemExit("Shorebird access check failed: network or response error.") from None
+          if app.get("app_id") != app_id or app.get("organization_id") != 52539:
+              raise SystemExit("Shorebird returned an unexpected app or organization.")
+          message = "Authenticated read of the configured Shorebird app succeeded. Release/patch write permissions and signing are not tested. No release or patch was sent."
+          print(message)
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write(message + "\n")
+          PY
   prerequisites:
     runs-on: ubuntu-latest
     timeout-minutes: 5

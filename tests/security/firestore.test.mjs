@@ -14,7 +14,7 @@ const db = (uid) => uid ? env.authenticatedContext(uid).firestore() : env.unauth
 before(async () => {
   env = await initializeTestEnvironment({
     projectId: 'demo-scc-security',
-    firestore: { host: '127.0.0.1', port: 8080, rules: readFileSync('../../firestore.rules', 'utf8') },
+    firestore: { host: '127.0.0.1', port: 8080, rules: readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8') },
   });
 });
 beforeEach(async () => {

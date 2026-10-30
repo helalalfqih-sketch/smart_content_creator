@@ -30,7 +30,9 @@ No guest-mode migration has been performed here, and the live guest backend is n
 The prerequisites workflow checks only whether the existing repository secrets
 SHOREBIRD_TOKEN, KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_PASSWORD, KEY_ALIAS
 are available to a GitHub runner. It never prints values, uploads a keystore,
-calls Shorebird, or publishes a release.
+or publishes a release. A separate job uses SHOREBIRD_TOKEN for one authenticated
+GET of this app's metadata from Shorebird; it verifies the app and organization
+IDs without printing response data or testing release/patch write permissions.
 If present, signing identity and token validity must still be verified before use.
 If absent, provision them through GitHub's secure repository settings, using the
 existing signing key when updating an existing installed app. Do not paste secrets

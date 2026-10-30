@@ -1,6 +1,6 @@
 # Firestore authorization tests
 
-Install Node 22 and Java 21, then run from this directory:
+Install Node 24.12 or newer and Java 21, then run from this directory:
 
 ```sh
 npm ci --ignore-scripts
