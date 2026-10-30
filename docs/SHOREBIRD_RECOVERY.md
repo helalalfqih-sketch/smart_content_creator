@@ -68,7 +68,11 @@ cases against the original rules (5/11 passed). After the fix and an additional
 private settings test, all 12 tests passed. This uses a synthetic demo project,
 not production data. `git diff --check` passed. Flutter analysis and tests are
 defined in `scc_release_validation.yml`, pinned to Flutter 3.44.6; their result
-must be checked in Actions. No signed APK or device smoke test has passed yet.
+passed in Actions on code commit `1fad8b4a0eef5df601862b586dc9d4b21d9d042e`:
+analysis reported no issues, 88 Flutter tests passed and 6 optional live tests
+were skipped. The 12 Firestore tests also passed on the GitHub runner.
+Run: https://github.com/helalalfqih-sketch/smart_content_creator/actions/runs/41099352116
+No signed APK, Gradle signing execution, or device smoke test has passed yet.
 
 The local Flutter bootstrap was stopped by automatic approval review because it
 attempted to contact cloud instance metadata. It was not retried or bypassed;
@@ -77,8 +81,11 @@ secrets. Firestore checks used only a local JVM emulator and test accounts.
 
 ## Remaining launch blockers
 
-- SHOREBIRD_TOKEN is present in the prerequisites job; validity/app access are
-  still unverified. KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_PASSWORD and KEY_ALIAS
+- SHOREBIRD_TOKEN passed an authenticated GET of app metadata, including checks
+  for the correct app ID and organization 52539. Release/patch write permission
+  remains untested. Evidence:
+  https://github.com/helalalfqih-sketch/smart_content_creator/actions/runs/41099341611/job/124213323218
+  KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_PASSWORD and KEY_ALIAS
   are missing. Recover the original signing identity; do not substitute a new
   key for an update to existing installations.
 - Reconcile guest mode and the intended VPS backend with this Firebase/Supabase
