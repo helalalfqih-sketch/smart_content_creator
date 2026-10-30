@@ -102,14 +102,24 @@ passed in Actions on code commit `1fad8b4a0eef5df601862b586dc9d4b21d9d042e`:
 analysis reported no issues, 88 Flutter tests passed and 6 optional live tests
 were skipped. The 12 Firestore tests also passed on the GitHub runner.
 Run: https://github.com/helalalfqih-sketch/smart_content_creator/actions/runs/41099352116
-Android key access has now passed a real temporary-JAR signing check. See
-`ANDROID_CANDIDATE.md` for the separate APK/AAB candidate workflow and current
-artifact validation evidence. Device smoke tests remain unverified.
+The signed APK/AAB candidate build passed on source commit
+`2f0f24a728aaea4955fff24867700d5ccee1d905`:
+https://github.com/helalalfqih-sketch/smart_content_creator/actions/runs/41110483983
+Both packages passed signature/identity checks. See `ANDROID_CANDIDATE.md` for
+exact file hashes and separate startup-test evidence. This is a standard Flutter
+QA candidate; it is not a verified Shorebird OTA baseline.
 
 The local Flutter bootstrap was stopped by automatic approval review because it
 attempted to contact cloud instance metadata. It was not retried or bypassed;
 the workflow runs analysis/tests on a separate GitHub runner without application
 secrets. Firestore checks used only a local JVM emulator and test accounts.
+
+The exact signed APK also installed and displayed its Arabic login screen on an
+Android API 35 emulator during an offline launch and an online restart, with no
+native process crash in either 35-second observation. Offline Google Fonts
+loading produced non-fatal asynchronous errors; online restart did not show
+those errors. This is a startup check only, not an authenticated backend test.
+Evidence: https://github.com/helalalfqih-sketch/smart_content_creator/actions/runs/41112804859
 
 ## Remaining launch blockers
 
@@ -131,8 +141,12 @@ secrets. Firestore checks used only a local JVM emulator and test accounts.
   fields will now be rejected. Do not deploy the rules until those flows and any
   public creator-profile feature have been reconciled and tested. A public view
   must not expose the private user document containing provider credentials.
-- Confirm an updater-enabled signed APK, install it on Android, test the intended
-  services and App Check, then verify a staging patch after restart.
+- Address offline font loading; the standard Flutter QA candidate reached the
+  login screen despite these logged errors. Authenticated/backend functionality,
+  production App Check and physical-device/upgrade behavior remain untested.
+- Build and confirm an updater-enabled Shorebird baseline, then verify a
+  compatible staging patch after restart. The signed QA candidate above does
+  not establish OTA support.
 
 ## How Shorebird relates to the VPS
 

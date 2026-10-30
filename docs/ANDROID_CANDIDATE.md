@@ -92,3 +92,50 @@ No user account is entered or created. Successful startup does not test login,
 backend functionality, Play Integrity acceptance, an update over an existing
 installation, ARM hardware, or any Shorebird patch. These remain separate
 release checks. Evidence is retained as a seven-day Actions artifact.
+
+## Verified signed build — 2026-10-30
+
+Source commit: `2f0f24a728aaea4955fff24867700d5ccee1d905`.
+Build run: https://github.com/helalalfqih-sketch/smart_content_creator/actions/runs/41110483983
+Download: https://github.com/helalalfqih-sketch/smart_content_creator/actions/runs/41110483983/artifacts/13003817891
+
+The workflow completed successfully. Twelve signing-helper tests passed; the
+real key matched the original Shorebird AAB certificate and identity. Both new
+packages passed signature, identity/version and structure checks, and the
+dependency lockfile remained unchanged. Signing files were cleaned up.
+
+| File | Bytes | SHA-256 |
+| --- | ---: | --- |
+| app-release.apk | 85966385 | c6dd9825bbe6dfd006e96bbf92e13e3ea9b9547bcfbf055ea4e31c202879490b |
+| app-release.aab | 80894186 | 96ca69569d7084f7cdbd8e6bff3d66522d8719e9a1abd00eac9d61a70190f0dc |
+
+Both packages use `com.smartcontentcreator.app`, version `1.3.1-rc.1+7`, signed
+with certificate SHA-256
+`421cd80d80141ef72cc26235e415277e1af862ffe369234f7d04538f74ba2636`.
+Artifacts expire November 6, 2026. No public release or Shorebird patch was sent.
+The build report intentionally does not claim device or OTA validation; consult
+the separate smoke report for subsequent startup test results.
+
+## Observed emulator startup result
+
+Smoke run: https://github.com/helalalfqih-sketch/smart_content_creator/actions/runs/41112804859
+Evidence: https://github.com/helalalfqih-sketch/smart_content_creator/actions/runs/41112804859/artifacts/13006220322
+Test commit: `c75bd5b356aa9e1682f6b336499539a17937becc`.
+
+The downloaded APK digest matched the signed build above. Installation and
+installed version checks succeeded. Both 35-second observations retained a
+running process and resumed activity, with no native crash. Visual inspection
+of both PNGs confirmed the Arabic login screen, readable email/password fields
+and login button. No credentials were entered.
+
+| Scenario | Native process/activity | Flutter exception log | Visual result |
+| --- | --- | --- | --- |
+| First launch with networking disabled | Passed | Font downloads failed (DNS unavailable) | Login screen visible with fallback fonts |
+| Restart after networking enabled | Passed | No unhandled Flutter exception observed | Login screen visible with intended downloaded fonts |
+
+**Known issue:** Google Fonts runtime fetching logs unhandled asynchronous font
+load exceptions on a fresh offline install. It did not terminate the app or
+prevent this login screen from rendering. Bundling the required fonts remains
+an open quality fix; the smoke workflow's green result covers process/activity
+survival, not absence of every Flutter exception. Full login, backend, billing,
+physical-device attestation, upgrade and OTA checks remain unperformed.
