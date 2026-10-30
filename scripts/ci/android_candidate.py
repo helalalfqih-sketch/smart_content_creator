@@ -138,9 +138,21 @@ def compare_baseline():
     if digest(apk) != BASELINE_SHA256:
         raise RuntimeError("Published v1.3.0 APK checksum mismatch.")
     identity = apk_identity(apk)
-    baseline_certs = apk_certificates(apk)
     current_cert = (directory / "certificate-sha256.txt").read_text()
+    # This older, differently identified APK is diagnostic only. Preserve its
+    # actual public tool output if its certificate format cannot be parsed;
+    # the original Shorebird bundle remains the mandatory continuity gate.
+    signing_output = run([android_tool("apksigner"), "verify", "--print-certs", str(apk)]).decode()
+    try:
+        baseline_certs = parse_apk_certificates(signing_output)
+        signing_note = None
+    except RuntimeError as error:
+        baseline_certs = []
+        signing_note = str(error)
     result = {"reference": "GitHub v1.3.0 ARM64 APK (not a verified Shorebird baseline)", "reference_sha256": BASELINE_SHA256, "reference_identity": identity, "reference_certificate_sha256": baseline_certs, "candidate_certificate_sha256": current_cert, "certificate_matches_reference": baseline_certs == [current_cert], "application_id_matches": identity["application_id"] == APP_ID, "authoritative_for_shorebird_continuity": False}
+    if signing_note:
+        result["reference_signing_parse_note"] = signing_note
+        result["reference_public_apksigner_output"] = signing_output
     output = ROOT / "build/candidate-report"
     output.mkdir(parents=True, exist_ok=True)
     (output / "signing-comparison.json").write_text(json.dumps(result, indent=2) + "\n")
