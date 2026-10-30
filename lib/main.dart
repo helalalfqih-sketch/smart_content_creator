@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart'; // استيراد حزمة Flutter الأساسية لواجهة المستخدم
 import 'package:get/get.dart'; // استيراد حزمة GetX لإدارة الحالة والتنقل
 import 'package:flutter/foundation.dart'
-    show kIsWeb; // استيراد ثوابت للتحقق من المنصة ووضع التشغيل
+    show kIsWeb, kDebugMode; // استيراد ثوابت للتحقق من المنصة ووضع التشغيل
 import 'dart:io' show Platform; // استيراد مكتبة التعامل مع نظام التشغيل
 import 'package:firebase_core/firebase_core.dart'; // استيراد المكتبة الأساسية لخدمات Firebase
 import 'package:cloud_firestore/cloud_firestore.dart'; // استيراد مكتبة Cloud Firestore للتعامل مع قواعد البيانات السحابية
@@ -86,16 +86,20 @@ Future<void> main() async {
     debugPrint("✅ تم تهيئة Firebase بنجاح");
 
     // 🛡️ تفعيل Firebase App Check لحماية API من الاستغلال
-    if (!kIsWeb) {
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS)) {
       try {
         // ignore: deprecated_member_use
         await FirebaseAppCheck.instance.activate(
           // ignore: deprecated_member_use
-          androidProvider: AndroidProvider.debug,
+          androidProvider: kDebugMode
+              ? AndroidProvider.debug
+              : AndroidProvider.playIntegrity,
           // ignore: deprecated_member_use
-          appleProvider: AppleProvider.debug,
+          appleProvider: kDebugMode
+              ? AppleProvider.debug
+              : AppleProvider.appAttestWithDeviceCheckFallback,
         );
-        debugPrint('[APP_CHECK] provider=debug');
+        debugPrint('[APP_CHECK] mode=${kDebugMode ? 'debug' : 'attestation'}');
       } catch (appCheckError) {
         debugPrint("⚠️ Firebase App Check activation failed: $appCheckError");
       }

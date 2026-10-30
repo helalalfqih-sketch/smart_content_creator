@@ -44,5 +44,76 @@ Before claiming install-once updates:
 Native code, plugin, engine, or certain asset changes may require a new full package;
 Dart code patches cannot guarantee every future change without a package update.
 
-No production release, patch, server deployment, or application behavior change is
-made by this recovery branch.
+## Release hardening on the recovery branch
+
+The branch now includes code changes for review; none have been deployed:
+- Private Firestore profiles are readable only by their owner or an administrator.
+  New profiles must use the application's trial defaults. Owners cannot promote
+  themselves, grant paid access/credits, change permissions, or delete/recreate a
+  profile to refill a quota. Normal profile, private settings, and social account
+  sync fields remain writable. Analysis counters can increment by one only.
+- The subcollection wildcard requires a collection segment, avoiding a rules-v2
+  match on the parent profile that would otherwise bypass its restrictions.
+- Android release builds require a real release signing configuration instead of
+  silently falling back to the debug key. Debug builds do not require that key.
+- App Check debug providers apply only to debug builds. Android production uses
+  Play Integrity; Apple production uses App Attest with DeviceCheck fallback.
+  Firebase provider configuration, signing fingerprints, distribution settings
+  (including sideloading if used), and real-device validation remain required.
+
+Validation: a local Firestore 1.22.0 emulator demonstrated six failing security
+cases against the original rules (5/11 passed). After the fix and an additional
+private settings test, all 12 tests passed. This uses a synthetic demo project,
+not production data. `git diff --check` passed. Flutter analysis and tests are
+defined in `scc_release_validation.yml`, pinned to Flutter 3.44.6; their result
+must be checked in Actions. No signed APK or device smoke test has passed yet.
+
+The local Flutter bootstrap was stopped by automatic approval review because it
+attempted to contact cloud instance metadata. It was not retried or bypassed;
+the workflow runs analysis/tests on a separate GitHub runner without application
+secrets. Firestore checks used only a local JVM emulator and test accounts.
+
+## Remaining launch blockers
+
+- SHOREBIRD_TOKEN is present in the prerequisites job; validity/app access are
+  still unverified. KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_PASSWORD and KEY_ALIAS
+  are missing. Recover the original signing identity; do not substitute a new
+  key for an update to existing installations.
+- Reconcile guest mode and the intended VPS backend with this Firebase/Supabase
+  source before choosing a baseline version and making an OTA patch.
+- Storage rules still have a permissive authenticated-user catchall, and catalog
+  ownership needs a separate review. These changes are not a complete security
+  audit or a declaration that the app is safe to launch.
+- Client-managed subscription expiry, AI routing/permissions, and credit usage
+  need trusted backend enforcement. Some legacy client writes to these protected
+  fields will now be rejected. Do not deploy the rules until those flows and any
+  public creator-profile feature have been reconciled and tested. A public view
+  must not expose the private user document containing provider credentials.
+- Confirm an updater-enabled signed APK, install it on Android, test the intended
+  services and App Check, then verify a staging patch after restart.
+
+## How Shorebird relates to the VPS
+
+GitHub Actions can build the app and publish releases/patches to Shorebird. The
+VPS runs backend services and does not need a Shorebird key for that role. Apps
+use `shorebird.yaml` to identify themselves and fetch updates from Shorebird;
+their backend URL/configuration is a separate integration.
+
+For organization-owned CI credentials, create a Shorebird service account named
+`GitHub Actions` with the Developer role. Create its expiring API key and save it
+directly in GitHub's repository secret `SHOREBIRD_TOKEN`. Test the new key before
+revoking the previous personal key. On the current Hobby plan, use an API key;
+keyless GitHub trust rules require Business or Enterprise. No new service account
+or key was created as part of these code changes.
+
+If builds must run on the VPS instead, install the project and its Flutter,
+Shorebird, Java/Android SDK and release-signing prerequisites there, and inject
+the service account key as the `SHOREBIRD_TOKEN` environment variable using a
+restricted secret store. Do not put that key in the app, source, chat, or shell
+history. A successful authenticated API read verifies access; it does not by
+itself produce or publish a working app.
+
+Official reference: https://docs.shorebird.dev/account/service-accounts/
+
+No production release, patch, database-rule deployment, server deployment, or
+merge has been performed by this recovery branch.

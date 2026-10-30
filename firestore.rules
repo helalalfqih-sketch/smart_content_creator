@@ -8,13 +8,60 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
     }
 
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Match the defaults in FirestoreUserService. Privileges and billing
+    // fields must be granted by an administrator or a trusted backend.
+    function isNewUserProfile() {
+      let data = request.resource.data;
+      return data.keys().hasOnly([
+        'email', 'name', 'role', 'isPremium', 'visualAnalysisCount',
+        'credits', 'is_trial_active', 'is_ai_blocked', 'last_credit_reset',
+        'ai_backend', 'newUserNotification', 'createdAt', 'updatedAt'
+      ]) && data.role == 'user'
+        && data.isPremium == false
+        && data.visualAnalysisCount == 0
+        && data.credits == 50
+        && data.is_trial_active == true
+        && data.is_ai_blocked == false
+        && data.ai_backend == 'firebase_ai'
+        && data.newUserNotification == true
+        && data.createdAt == request.time
+        && data.updatedAt == request.time
+        && data.last_credit_reset == request.time;
+    }
+
+    function isOwnerProfileUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.hasOnly([
+        'email', 'name', 'bio', 'photo_url', 'cover_url', 'updatedAt',
+        'creator_stats', 'brand_identity', 'visualAnalysisCount',
+        'tiktok_token', 'tiktok_refresh_token', 'tiktok_profile',
+        'tiktok_connected', 'tiktok_username', 'tiktok_linked_at',
+        'tiktok_client_key', 'tiktok_client_secret', 'tiktok_proxy_key',
+        'tiktok_apify_token', 'instagram_token', 'instagram_profile',
+        'instagram_connected', 'instagram_username', 'instagram_linked_at',
+        'user_api_keys', 'user_secret_keys', 'github_hexa_keys'
+      ]) && (!changed.hasAny(['visualAnalysisCount']) || (
+        request.resource.data.visualAnalysisCount is int
+        && request.resource.data.visualAnalysisCount ==
+          resource.data.get('visualAnalysisCount', 0) + 1
+      ));
+    }
+
     // ✅ Users Collection & Sub-collections
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAdmin() || (isOwner(userId) && isNewUserProfile());
+      allow update: if isAdmin() || (isOwner(userId) && isOwnerProfileUpdate());
+      allow delete: if isAdmin();
       
       // Match sub-collections (chats, etc.)
-      match /{allPaths=**} {
+      // Require a collection segment: a v2 recursive wildcard alone also
+      // matches the parent profile and would bypass the restrictions above.
+      match /{collection}/{allPaths=**} {
         allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
       }
     }
