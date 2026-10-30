@@ -13,6 +13,14 @@
 GitHub v1.3.0 ARM64 APK:
 - Published August 18 2026, before the Shorebird release.
 - SHA256 806329e11d00931db1c28dcb0700843f80e9bcc9ae4e6336b6813451cf9c2df9 matches GitHub asset digest.
+- Android build-tools 36.0.0 `aapt` reports package `com.example.smart_content_creator`,
+  versionName `1.3.0`, versionCode `2006`. This differs from the current package
+  `com.smartcontentcreator.app`; Android treats them as different apps.
+- Independent `apksigner verify --verbose --print-certs` (build-tools 36.0.0)
+  verified its v2 signature and exactly one signer. Its certificate SHA-256 is
+  `421cd80d80141ef72cc26235e415277e1af862ffe369234f7d04538f74ba2636`,
+  matching the recovered keystore. This certificate match does not fix the
+  application-ID mismatch.
 - libapp.so SHA256 723696a47a4294f154eea373ad412bb168c0a648abc443542b61a8cdf1168ae6 does not match the console release artifact prefix.
 - libflutter.so has none of the inspected byte strings: shorebird, libshorebird, patch_check, api.shorebird.dev.
 - It includes shorebird.yaml, but that alone does not establish an updater-enabled engine.
@@ -33,10 +41,15 @@ are available to a GitHub runner. It never prints values, uploads a keystore,
 or publishes a release. A separate job uses SHOREBIRD_TOKEN for one authenticated
 GET of this app's metadata from Shorebird; it verifies the app and organization
 IDs without printing response data or testing release/patch write permissions.
-If present, signing identity and token validity must still be verified before use.
-If absent, provision them through GitHub's secure repository settings, using the
-existing signing key when updating an existing installed app. Do not paste secrets
-into chat or commit them. Do not silently substitute a disposable debug key.
+All five secrets were available on prerequisite run 41099341611, attempt 3.
+The recovered keystore, alias, store password and private-key password passed
+actual temporary-JAR signing and verification on candidate run 41107098417.
+The public certificate SHA-256 is
+`421cd80d80141ef72cc26235e415277e1af862ffe369234f7d04538f74ba2636`.
+This proves key access, not compatibility with existing installations. Compare
+with the original Shorebird bundle and test the installed-app upgrade path.
+Keep credentials in GitHub's secure repository settings; never commit them or
+silently substitute a disposable debug key.
 
 Before claiming install-once updates:
 1. Reconcile the intended guest-mode code with this repository and Android identity.
@@ -72,7 +85,9 @@ passed in Actions on code commit `1fad8b4a0eef5df601862b586dc9d4b21d9d042e`:
 analysis reported no issues, 88 Flutter tests passed and 6 optional live tests
 were skipped. The 12 Firestore tests also passed on the GitHub runner.
 Run: https://github.com/helalalfqih-sketch/smart_content_creator/actions/runs/41099352116
-No signed APK, Gradle signing execution, or device smoke test has passed yet.
+Android key access has now passed a real temporary-JAR signing check. See
+`ANDROID_CANDIDATE.md` for the separate APK/AAB candidate workflow and current
+artifact validation evidence. Device smoke tests remain unverified.
 
 The local Flutter bootstrap was stopped by automatic approval review because it
 attempted to contact cloud instance metadata. It was not retried or bypassed;
@@ -85,9 +100,10 @@ secrets. Firestore checks used only a local JVM emulator and test accounts.
   for the correct app ID and organization 52539. Release/patch write permission
   remains untested. Evidence:
   https://github.com/helalalfqih-sketch/smart_content_creator/actions/runs/41099341611/job/124213323218
-  KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_PASSWORD and KEY_ALIAS
-  are missing. Recover the original signing identity; do not substitute a new
-  key for an update to existing installations.
+  All four Android signing secrets are now present and cryptographically usable.
+  This resolves the missing-secret blocker. Original-release certificate
+  continuity and installed-app update compatibility are separate checks:
+  https://github.com/helalalfqih-sketch/smart_content_creator/actions/runs/41107098417
 - Reconcile guest mode and the intended VPS backend with this Firebase/Supabase
   source before choosing a baseline version and making an OTA patch.
 - Storage rules still have a permissive authenticated-user catchall, and catalog
