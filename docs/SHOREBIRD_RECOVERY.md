@@ -1,0 +1,48 @@
+# Shorebird recovery — 2026-10-30
+
+## Confirmed source
+- Repository: helalalfqih-sketch/smart_content_creator, source commit 957bc43a01209ec1069db7f446fd9dd4ab0584cd.
+- pubspec.yaml: 1.3.0+6.
+- shorebird.yaml app_id: 50f79796-407c-4909-a7c2-8ed8d05d25b3; auto_update:false is commented.
+- Android applicationId: com.smartcontentcreator.app.
+- Authenticated Shorebird console: release 783074 (1.3.0+6), Flutter 3.44.6, created August 21 2026, stable patch #8.
+- Console aarch64 release artifact hash starts a18734d6.
+- Matching version and app ID do not establish that the current source commit exactly matches the original release or patch #8.
+
+## APK investigation
+GitHub v1.3.0 ARM64 APK:
+- Published August 18 2026, before the Shorebird release.
+- SHA256 806329e11d00931db1c28dcb0700843f80e9bcc9ae4e6336b6813451cf9c2df9 matches GitHub asset digest.
+- libapp.so SHA256 723696a47a4294f154eea373ad412bb168c0a648abc443542b61a8cdf1168ae6 does not match the console release artifact prefix.
+- libflutter.so has none of the inspected byte strings: shorebird, libshorebird, patch_check, api.shorebird.dev.
+- It includes shorebird.yaml, but that alone does not establish an updater-enabled engine.
+Do not distribute this APK as the verified OTA baseline. GitHub v2.1.0 assets are also dated before the console release; they have not been inspected.
+
+## Existing work to preserve
+Guest-mode PocketBase integration and server scripts are on
+helalalfqih-sketch/- branch codex/scc-vps-production-foundation-20261029
+(commit ced4e63b20d81c985458661517dffd102127c9a1).
+That repo uses a different Android package (com.example.smart_content_creator).
+Do not apply it blindly as a patch to this existing release.
+No guest-mode migration has been performed here, and the live guest backend is not verified.
+
+## Next build
+The prerequisites workflow checks only whether the existing repository secrets
+SHOREBIRD_TOKEN, KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_PASSWORD, KEY_ALIAS
+are available to a GitHub runner. It never prints values, uploads a keystore,
+calls Shorebird, or publishes a release.
+If present, signing identity and token validity must still be verified before use.
+If absent, provision them through GitHub's secure repository settings, using the
+existing signing key when updating an existing installed app. Do not paste secrets
+into chat or commit them. Do not silently substitute a disposable debug key.
+
+Before claiming install-once updates:
+1. Reconcile the intended guest-mode code with this repository and Android identity.
+2. Build a signed Shorebird baseline with an explicit entrypoint and an unused version.
+3. Install and test the actual APK on Android, including the intended backend.
+4. Send a compatible staging patch and verify application after restart.
+Native code, plugin, engine, or certain asset changes may require a new full package;
+Dart code patches cannot guarantee every future change without a package update.
+
+No production release, patch, server deployment, or application behavior change is
+made by this recovery branch.

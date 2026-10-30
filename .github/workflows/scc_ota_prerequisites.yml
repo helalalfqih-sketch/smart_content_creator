@@ -1,0 +1,38 @@
+name: SCC OTA prerequisites
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/shorebird-recovery-20261030]
+    paths:
+      - .github/workflows/scc_ota_prerequisites.yml
+permissions:
+  contents: read
+jobs:
+  prerequisites:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check existing credentials without revealing their values
+        shell: bash
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          python3 - <<'PY'
+          import os
+          names = ("SHOREBIRD_TOKEN", "KEYSTORE_BASE64", "KEYSTORE_PASSWORD", "KEY_PASSWORD", "KEY_ALIAS")
+          missing = [name for name in names if not os.environ.get(name)]
+          lines = ["# OTA build prerequisites", "", "Presence only: no credential values are printed or uploaded.", ""]
+          lines += [f"- {name}: {'missing' if name in missing else 'present'}" for name in names]
+          lines += ["", "Presence does not prove validity, signing identity, or access to the Shorebird app.",
+                    "This workflow does not build, publish, or patch an application."]
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
+              output.write("\n".join(lines) + "\n")
+          for name in names:
+              print(f"{name}: {'MISSING' if name in missing else 'PRESENT'}")
+          if missing:
+              raise SystemExit("Build blocked: required credentials are absent.")
+          PY
