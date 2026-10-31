@@ -1,4 +1,4 @@
-name: Validate SCC Shorebird baseline
+name: Publish SCC Shorebird baseline once
 
 on:
   push:
@@ -7,25 +7,34 @@ on:
       - .github/workflows/scc_shorebird_baseline_once.yml
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: scc-shorebird-baseline-1.3.1-rc.2-8
   cancel-in-progress: false
 
 jobs:
-  validate:
+  release:
     runs-on: ubuntu-latest
     timeout-minutes: 75
     env:
       CI: "true"
       RELEASE_VERSION: 1.3.1-rc.2+8
+      RELEASE_TAG: v1.3.1-rc.2
       EXPECTED_CERT_SHA256: 421cd80d80141ef72cc26235e415277e1af862ffe369234f7d04538f74ba2636
     steps:
       - name: Check out the exact baseline source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          fetch-depth: 0
           persist-credentials: false
+
+      - name: Lock the application source to the validated dry run
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed="$(git diff --name-only ed1cfa9a8ca1bbbe57d4bc7f0d2f2fefa4e0609b "$GITHUB_SHA" -- . ':(exclude).github/workflows/scc_shorebird_baseline_once.yml')"
+          test -z "$changed"
 
       - name: Set up Java
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
@@ -84,7 +93,8 @@ jobs:
           fi
           echo "Release $RELEASE_VERSION is unused."
 
-      - name: Build and validate without publishing
+      - name: Publish the Shorebird Android baseline
+        id: shorebird-release
         uses: shorebirdtech/shorebird-release@8605c991e8f513451c775ae3909984e9476748a2 # v1
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
@@ -92,16 +102,17 @@ jobs:
           flutter-version: 3.44.6
           platform: android
           args: >-
-            --dry-run
             --artifact apk
             --target lib/main.dart
             --build-name 1.3.1-rc.2
             --build-number 8
 
-      - name: Verify dry-run package identity, signer and checksums
+      - name: Verify published package identity, signer and checksums
         shell: bash
         run: |
           set -euo pipefail
+          test "${{ steps.shorebird-release.outputs.release-version }}" = "$RELEASE_VERSION"
+
           apk="$(find build/app/outputs -type f -name 'app-release.apk' -print -quit)"
           aab="$(find build/app/outputs -type f -name 'app-release.aab' -print -quit)"
           test -n "$apk" && test -f "$apk"
@@ -123,28 +134,58 @@ jobs:
           java -jar "$RUNNER_TEMP/bundletool.jar" validate --bundle="$aab"
           git diff --exit-code -- pubspec.lock
 
-          mkdir -p build/shorebird-validation-report
-          sha256sum "$apk" "$aab" | tee build/shorebird-validation-report/SHA256SUMS.txt
+          mkdir -p build/shorebird-release-report
+          sha256sum "$apk" "$aab" | tee build/shorebird-release-report/SHA256SUMS.txt
           printf '%s\n' \
             "release_version=$RELEASE_VERSION" \
             "source_commit=$GITHUB_SHA" \
             "certificate_sha256=$cert" \
-            "publication=dry-run-only" \
-            > build/shorebird-validation-report/validation.txt
+            "publication=shorebird-active" \
+            > build/shorebird-release-report/release.txt
           echo "APK_PATH=$apk" >> "$GITHUB_ENV"
           echo "AAB_PATH=$aab" >> "$GITHUB_ENV"
 
-      - name: Retain the validated dry-run artifacts
+      - name: Confirm the published baseline in Shorebird
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        run: shorebird releases info --release-version "$RELEASE_VERSION"
+
+      - name: Retain the signed Shorebird baseline artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: scc-shorebird-dry-run-1.3.1-rc.2-build-8
+          name: scc-shorebird-baseline-1.3.1-rc.2-build-8
           path: |
             ${{ env.APK_PATH }}
             ${{ env.AAB_PATH }}
-            build/shorebird-validation-report/
+            build/shorebird-release-report/
             build/candidate-report/shorebird-signing-comparison.json
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 14
+
+      - name: Publish the direct-install APK as a GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > release-notes.md <<'EOF'
+          نسخة Shorebird التجريبية الأساسية لاستقبال التحديثات الهوائية.
+
+          - Version: 1.3.1-rc.2 (build 8)
+          - ثبّت هذا APK مرة واحدة فوق build 7.
+          - التحديثات اللاحقة المتوافقة ستصل دون إعادة تثبيت التطبيق.
+          EOF
+
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$APK_PATH" --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$RELEASE_TAG" "$APK_PATH" \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Android Shorebird OTA baseline 1.3.1-rc.2+8" \
+              --notes-file release-notes.md \
+              --prerelease
+          fi
 
       - name: Remove signing material
         if: always()
