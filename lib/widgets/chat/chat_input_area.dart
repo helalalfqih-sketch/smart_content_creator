@@ -534,6 +534,9 @@ class ChatInputArea extends StatelessWidget {
       if (backend == 'firebase_ai') {
         chipColor = const Color(0xFF8B5CF6);
         chipLabel = "Firebase AI 🟣";
+      } else if (backend == 'openrouter') {
+        chipColor = const Color(0xFFFF8A65);
+        chipLabel = "Opus 5.5 • Vertex 🟠";
       } else if (backend == 'manus') {
         chipColor = const Color(0xFF10B981);
         chipLabel = "Manus AI 🤖";
@@ -587,6 +590,8 @@ class ChatInputArea extends StatelessWidget {
     final backend = router?.currentBackend.value;
     if (backend == 'firebase_ai') {
       return "اسأل Firebase AI...";
+    } else if (backend == 'openrouter') {
+      return "اسأل Claude Opus 5.5...";
     } else if (backend == 'manus') {
       return "اسأل Manus AI (v2)...";
     } else {
@@ -653,7 +658,16 @@ class ChatInputArea extends StatelessWidget {
                     aiRouter: aiRouter,
                   )),
 
-                  // 2. Back4App Gateway (Multi-Key)
+                  // 2. Claude Opus 5.5 through OpenRouter on Google Vertex
+                  Obx(() => _buildBackendMenuItem(
+                    label: "Claude Opus 5.5 • Google Vertex 🟠",
+                    sublabel: "عبر OpenRouter • نص فقط • دون مزود احتياطي",
+                    icon: Icons.auto_awesome_rounded,
+                    backendKey: 'openrouter',
+                    aiRouter: aiRouter,
+                  )),
+
+                  // 3. Back4App Gateway (Multi-Key)
                   Obx(() => _buildBackendMenuItem(
                     label: "Back4App Gateway ☁️",
                     sublabel: "بوابة ai )",
@@ -662,7 +676,7 @@ class ChatInputArea extends StatelessWidget {
                     aiRouter: aiRouter,
                   )),
 
-                  // 3. Manus AI Engine (v2 Agent)
+                  // 4. Manus AI Engine (v2 Agent)
                   Obx(() => _buildBackendMenuItem(
                     label: "Manus AI (v2 Agent) 🤖",
                     sublabel: "محرك Manus v2 المستقل",
@@ -684,6 +698,11 @@ class ChatInputArea extends StatelessWidget {
                       statusColor = const Color(0xFF8B5CF6);
                       statusIcon = Icons.verified_rounded;
                       statusText = "المحرك النشط الآن: Firebase AI Logic SDK";
+                    } else if (current == 'openrouter') {
+                      statusColor = const Color(0xFFFF8A65);
+                      statusIcon = Icons.auto_awesome_rounded;
+                      statusText =
+                          "المحرك النشط: Claude Opus 5.5 عبر Google Vertex";
                     } else if (current == 'manus') {
                       statusColor = const Color(0xFF10B981);
                       statusIcon = Icons.psychology_rounded;
@@ -743,6 +762,8 @@ class ChatInputArea extends StatelessWidget {
     final Color accentColor;
     if (backendKey == 'firebase_ai') {
       accentColor = const Color(0xFF8B5CF6);
+    } else if (backendKey == 'openrouter') {
+      accentColor = const Color(0xFFFF8A65);
     } else if (backendKey == 'manus') {
       accentColor = const Color(0xFF10B981);
     } else {
@@ -759,12 +780,23 @@ class ChatInputArea extends StatelessWidget {
         ),
       ),
       child: ListTile(
-        onTap: () {
-          aiRouter.switchBackend(backendKey);
+        onTap: () async {
+          final switched = await aiRouter.switchBackend(backendKey);
+          if (!switched) {
+            Get.back();
+            SnackBarUtils.showWarning(
+              "مفتاح OpenRouter مطلوب",
+              "أضف مفتاح sk-or-v1-... من الإعدادات أولاً، ثم اختر Claude Opus 5.5.",
+            );
+            return;
+          }
           Get.back();
           final String switchMsg;
           if (backendKey == 'firebase_ai') {
             switchMsg = "تم التبديل إلى Firebase AI Logic 🟣";
+          } else if (backendKey == 'openrouter') {
+            switchMsg =
+                "تم التبديل إلى Claude Opus 5.5 عبر Google Vertex 🟠";
           } else if (backendKey == 'manus') {
             switchMsg = "تم التبديل إلى Manus AI (v2) 🤖";
           } else {

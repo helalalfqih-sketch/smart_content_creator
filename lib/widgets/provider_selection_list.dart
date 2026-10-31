@@ -35,7 +35,7 @@ class ProviderSelectionList extends StatelessWidget {
 
           _buildProviderItem(
             controller,
-            label: "OpenRouter (Gemini/Video)",
+            label: "Claude Opus 5.5 (Google Vertex)",
             icon: Icons.traffic_outlined,
             providerKey: 'openrouter',
             role: 'text',

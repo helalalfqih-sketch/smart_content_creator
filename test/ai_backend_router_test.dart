@@ -89,11 +89,12 @@ void main() {
       expect(AIBackendRouter.defaultBackend, equals('firebase_ai'));
     });
 
-    test('Valid backends must contain firebase_ai, backend, and manus', () {
+    test('Valid backends include the local OpenRouter text route', () {
       expect(AIBackendRouter.validBackends, contains('firebase_ai'));
       expect(AIBackendRouter.validBackends, contains('backend'));
       expect(AIBackendRouter.validBackends, contains('manus'));
-      expect(AIBackendRouter.validBackends.length, equals(3));
+      expect(AIBackendRouter.validBackends, contains('openrouter'));
+      expect(AIBackendRouter.validBackends.length, equals(4));
     });
   });
 

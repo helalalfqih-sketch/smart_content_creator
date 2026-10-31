@@ -47,13 +47,15 @@ void main() {
       expect(AIBackendRouter.validBackends, contains('manus'));
       expect(AIBackendRouter.validBackends, contains('firebase_ai'));
       expect(AIBackendRouter.validBackends, contains('backend'));
-      expect(AIBackendRouter.validBackends.length, equals(3));
+      expect(AIBackendRouter.validBackends, contains('openrouter'));
+      expect(AIBackendRouter.validBackends.length, equals(4));
     });
 
     test('Test C: Quota Pools explicitly separate Gemini from Manus', () {
       expect(AIBackendRouter.quotaPools['firebase_ai'], equals('gemini_primary'));
       expect(AIBackendRouter.quotaPools['backend'], equals('gemini_primary'));
       expect(AIBackendRouter.quotaPools['manus'], equals('manus'));
+      expect(AIBackendRouter.quotaPools['openrouter'], equals('openrouter_paid'));
       expect(AIBackendRouter.quotaPools['manus'], isNot(equals(AIBackendRouter.quotaPools['firebase_ai'])));
     });
 
@@ -67,6 +69,13 @@ void main() {
       // When firebase_ai fails due to quota, findFailoverBackend must prioritize a different quota pool (manus)
       final fallback = router.findFailoverBackend('firebase_ai');
       expect(fallback, equals('manus'));
+    });
+
+    test('Paid OpenRouter route is never entered or left by auto-failover', () {
+      final router = AIBackendRouter();
+
+      expect(router.findFailoverBackend('openrouter'), isNull);
+      expect(router.findFailoverBackend('firebase_ai'), isNot('openrouter'));
     });
 
     test('Test E: App Check / Auth failures MUST NOT fallback to Manus', () {

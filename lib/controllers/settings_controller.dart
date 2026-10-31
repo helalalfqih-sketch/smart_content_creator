@@ -327,6 +327,10 @@ class SettingsController extends GetxController {
         final uri = type == ProviderType.serpapi ? Uri.parse('https://serpapi.com/search.json?q=test&api_key=$key') : Uri.parse('https://api.telegram.org/bot$key/getMe');
         final response = await http.get(uri).timeout(const Duration(seconds: 10));
         if (response.statusCode != 200 && response.statusCode != 201) throw Exception("فشل الاتصال");
+      } else if (type == ProviderType.openrouter) {
+        final service = AIProviderFactory.getServiceByType(type);
+        final isConnected = await service.testConnection(key);
+        if (!isConnected) throw Exception("مفتاح OpenRouter غير صالح");
       } else {
         final service = AIProviderFactory.getServiceByType(type);
         await service.generateText('Test Connection', apiKey: key);
@@ -401,7 +405,11 @@ class SettingsController extends GetxController {
       await _secureStorage.saveApiKey(uid != null ? '${uid}_${type.name}' : type.name, key.trim());
       providerKeys[type] = key.trim();
       await _testConnection(type, key.trim());
-      _syncToFirestore({firestoreApiKeyField: {type.name: key.trim()}});
+      // Keep the paid OpenRouter credential on this device only. It must not
+      // be copied into a Firestore document where rules or exports may expose it.
+      if (type != ProviderType.openrouter) {
+        _syncToFirestore({firestoreApiKeyField: {type.name: key.trim()}});
+      }
     } finally {
       savingProvider.value = null;
     }
@@ -786,7 +794,11 @@ class SettingsController extends GetxController {
             final name = entry.key.replaceAll('managed_key_', '').replaceAll('api_key_', '');
             final value = entry.value.toString();
             final type = ProviderType.values.firstWhereOrNull((e) => e.name == name);
-            if (type != null && value.isNotEmpty) {
+            // OpenRouter is a personal, paid credential. Never let an older
+            // cloud/admin value overwrite the device-local secure key.
+            if (type != null &&
+                type != ProviderType.openrouter &&
+                value.isNotEmpty) {
               await _secureStorage.saveApiKey('${prefix}_$name', value);
               await _secureStorage.saveApiKey(name, value);
               providerKeys[type] = value;

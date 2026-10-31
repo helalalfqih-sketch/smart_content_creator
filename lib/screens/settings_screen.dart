@@ -138,7 +138,7 @@ class SettingsScreen extends StatelessWidget {
                           const SizedBox(height: 12),
                           _buildApiSettingsTile(
                             context: context,
-                            title: "خدمة OpenRouter (Veo/Gemini)",
+                            title: "OpenRouter: Claude Opus 5.5 عبر Google Vertex",
                             icon: Icons.traffic_outlined,
                             type: ProviderType.openrouter,
                             settingsController: settingsController,
@@ -899,7 +899,7 @@ class _HiddenModelsInfoWidget extends StatelessWidget {
           const SizedBox(height: 12),
           _buildInfoItem(
             'نظام التوجيه الذكي (Smart Routing):',
-            'عند إدخال مفتاح يبدأ بـ (sk-or-) أو (ghp-) في حقل Gemini، سيقوم التطبيق تلقائياً بتوجيه الطلب للمزود الصحيح (OpenRouter أو GitHub) وإتاحة موديلات GPT-4o و Gemini 2.0 دون الحاجة لتبويب مستقل.',
+            'أدخل مفتاح (sk-or-v1-...) في قسم OpenRouter، ثم اختر Claude Opus 5.5 عبر Google Vertex من قائمة محركات المحادثة. هذا الخيار للنصوص؛ تبقى الصور على Firebase AI.',
           ),
         ],
       ),

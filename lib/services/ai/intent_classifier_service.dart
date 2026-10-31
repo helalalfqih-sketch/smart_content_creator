@@ -100,6 +100,9 @@ class IntentClassifierService {
       final res = await router.generateText(
         prompt: prompt,
         systemPersona: "You are an Intent and Planning API.",
+        // Classification is an internal preflight step. Keep it on Firebase so
+        // one visible user message does not consume an extra paid Opus call.
+        backendOverride: 'firebase_ai',
       );
       final raw = res['data']?.toString() ?? '';
           

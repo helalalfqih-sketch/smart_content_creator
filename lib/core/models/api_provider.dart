@@ -45,7 +45,7 @@ enum ProviderType {
       case ProviderType.github:
         return "GitHub Models (GPT-4o)";
       case ProviderType.openrouter:
-        return "OpenRouter (Gemini/Refined)";
+        return "Claude Opus 5.5 (Google Vertex)";
       case ProviderType.higgsfield:
         return "Higgsfield AI";
       case ProviderType.telegram:

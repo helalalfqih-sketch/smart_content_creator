@@ -75,7 +75,9 @@ class AIProviderFactory {
   );
   static final _openrouter = OpenAIService(
     baseUrl: 'https://openrouter.ai/api/v1',
-    defaultModel: 'google/gemini-2.0-flash-001',
+    defaultModel: 'anthropic/claude-opus-5.5',
+    providerOnly: const ['google-vertex'],
+    allowProviderFallbacks: false,
   );
 
   /// 🛡️ Circuit Breaker: مزودات الخدمة المحظورة مؤقتاً بسبب المشاكل التقنية (مثلاً 503)

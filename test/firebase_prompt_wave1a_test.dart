@@ -156,12 +156,13 @@ void main() {
     test('AIBackendRouter defines valid independent backends', () {
       expect(AIBackendRouter.validBackends, contains('firebase_ai'));
       expect(AIBackendRouter.validBackends, contains('backend'));
+      expect(AIBackendRouter.validBackends, contains('openrouter'));
       expect(AIBackendRouter.defaultBackend, equals('firebase_ai'));
     });
 
     test('Backend route is unaffected by Firebase template configuration', () {
       // Back4App / backend route is separate and never invokes Firebase template models
-      expect(AIBackendRouter.validBackends.length, equals(3));
+      expect(AIBackendRouter.validBackends.length, equals(4));
       expect(AIBackendRouter.validBackends, contains('backend'));
     });
   });

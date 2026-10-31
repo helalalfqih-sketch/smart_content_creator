@@ -8,8 +8,15 @@ class OpenAIService extends AIProvider {
   final dio.Dio _dio = dio.Dio();
   final String? baseUrl;
   final String defaultModel;
+  final List<String> providerOnly;
+  final bool allowProviderFallbacks;
 
-  OpenAIService({this.baseUrl, this.defaultModel = 'gpt-4o'});
+  OpenAIService({
+    this.baseUrl,
+    this.defaultModel = 'gpt-4o',
+    this.providerOnly = const [],
+    this.allowProviderFallbacks = true,
+  });
 
   @override
   Future<AiResult> generateText(String prompt,
@@ -34,6 +41,11 @@ class OpenAIService extends AIProvider {
           ],
           "max_tokens": maxTokens ?? 1024,
           "temperature": 0.7,
+          if (providerOnly.isNotEmpty)
+            "provider": {
+              "only": providerOnly,
+              "allow_fallbacks": allowProviderFallbacks,
+            },
         },
         options: dio.Options(
           headers: {
@@ -51,8 +63,10 @@ class OpenAIService extends AIProvider {
       if (response.statusCode == 200) {
         final content = response.data['choices'][0]['message']['content'] ?? '';
         return AiResult(
-          description: content, 
-          provider: ProviderType.openai.name
+          description: content,
+          provider: url.contains('openrouter.ai')
+              ? ProviderType.openrouter.name
+              : ProviderType.openai.name,
         );
       } else {
         throw Exception("OpenAI API Error (${response.statusCode}): ${response.data}");
@@ -88,6 +102,18 @@ class OpenAIService extends AIProvider {
   @override
   Future<bool> testConnection(String apiKey) async {
     try {
+      if ((baseUrl ?? '').contains('openrouter.ai')) {
+        final response = await _dio.get(
+          '$baseUrl/key',
+          options: dio.Options(
+            headers: {
+              'Authorization': 'Bearer $apiKey',
+              'Accept': 'application/json',
+            },
+          ),
+        );
+        return response.statusCode == 200;
+      }
       await generateText("Test", apiKey: apiKey);
       return true;
     } catch (_) {

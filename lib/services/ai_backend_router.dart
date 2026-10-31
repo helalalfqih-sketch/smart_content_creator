@@ -8,9 +8,13 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'firebase_ai_logic_service.dart';
 import 'back4app_gateway_service.dart';
 import 'manus_ai_service.dart';
+import 'ai_provider.dart';
 import '../core/models/canonical_ai_request.dart';
 import '../core/models/manus_media_models.dart';
+import '../core/models/api_provider.dart';
+import '../core/storage/app_storage_service.dart';
 import '../controllers/chat_history_controller.dart';
+import '../controllers/settings_controller.dart';
 
 /// 🎯 AIBackendRouter - نقطة الدخول الموحدة لجميع طلبات الذكاء الاصطناعي
 ///
@@ -18,12 +22,20 @@ import '../controllers/chat_history_controller.dart';
 /// - `"firebase_ai"` → FirebaseAiLogicService (Firebase AI Logic SDK)
 /// - `"backend"` → Back4AppGatewayService (Cloud Code Proxy)
 /// - `"manus"` → ManusAiService (Manus API v2 Gateway)
+/// - `"openrouter"` → Claude Opus 5.5 on Google Vertex using a local user key
 class AIBackendRouter extends GetxService {
   /// القيمة الافتراضية لمسار الذكاء الاصطناعي
   static const String defaultBackend = 'firebase_ai';
 
   /// القيم المسموحة
-  static const List<String> validBackends = ['firebase_ai', 'backend', 'manus'];
+  static const List<String> validBackends = [
+    'firebase_ai',
+    'backend',
+    'manus',
+    'openrouter',
+  ];
+
+  static const String _localBackendStorageKey = 'chat_ai_backend';
 
   /// 🏊‍♂️ أحواض الحصص (Quota Pools)
   /// يمنع استهلاك محاولات فاشلة على نفس الحصة عند نفاذ الرصيد
@@ -31,6 +43,7 @@ class AIBackendRouter extends GetxService {
     'firebase_ai': 'gemini_primary',
     'backend': 'gemini_primary',
     'manus': 'manus',
+    'openrouter': 'openrouter_paid',
   };
 
   /// مسار المستخدم الحالي (يُحدَّث لحظياً من Firestore)
@@ -38,6 +51,29 @@ class AIBackendRouter extends GetxService {
 
   /// الاشتراك في تحديثات Firestore لحظياً
   Stream<DocumentSnapshot>? _userDocStream;
+
+  @override
+  void onInit() {
+    super.onInit();
+    final localBackend = _readLocalBackend();
+    if (localBackend != null) {
+      currentBackend.value = localBackend;
+    }
+  }
+
+  String? _readLocalBackend() {
+    if (!Get.isRegistered<AppStorageService>()) return null;
+    final stored = Get.find<AppStorageService>()
+        .readString(_localBackendStorageKey);
+    return validBackends.contains(stored) ? stored : null;
+  }
+
+  bool _hasUsableOpenRouterKey() {
+    if (!Get.isRegistered<SettingsController>()) return false;
+    final settings = Get.find<SettingsController>();
+    return settings.getApiKey(ProviderType.openrouter).trim().isNotEmpty &&
+        settings.getConnectionStatus(ProviderType.openrouter);
+  }
 
   /// 🔒 معرف المستخدم الحالي بأمان
   String? get currentUserId {
@@ -51,10 +87,22 @@ class AIBackendRouter extends GetxService {
   /// 🔄 تبديل مسار الذكاء الاصطناعي وتحديثه في Firestore
   Future<bool> switchBackend(String newBackend) async {
     if (!validBackends.contains(newBackend)) return false;
+    if (newBackend == 'openrouter' && !_hasUsableOpenRouterKey()) return false;
+
     currentBackend.value = newBackend;
+    if (Get.isRegistered<AppStorageService>()) {
+      final storage = Get.find<AppStorageService>();
+      if (newBackend == 'openrouter') {
+        await storage.writeString(_localBackendStorageKey, newBackend);
+      } else {
+        await storage.remove(_localBackendStorageKey);
+      }
+    }
 
     final uid = currentUserId;
-    if (uid != null) {
+    // OpenRouter is intentionally local: Firestore rules do not accept this
+    // backend value, and the paid API key never belongs in the user document.
+    if (uid != null && newBackend != 'openrouter') {
       try {
         await FirebaseFirestore.instance.collection('users').doc(uid).update({
           'ai_backend': newBackend,
@@ -81,6 +129,12 @@ class AIBackendRouter extends GetxService {
 
   /// 🔄 تهيئة المراقبة اللحظية لمسار المستخدم
   void startListening() {
+    final localBackend = _readLocalBackend();
+    if (localBackend != null) {
+      currentBackend.value = localBackend;
+      return;
+    }
+
     final uid = currentUserId;
     if (uid == null) return;
 
@@ -89,6 +143,7 @@ class AIBackendRouter extends GetxService {
           FirebaseFirestore.instance.collection('users').doc(uid).snapshots();
 
       _userDocStream!.listen((snapshot) {
+        if (_readLocalBackend() != null) return;
         if (snapshot.exists) {
           final data = snapshot.data() as Map<String, dynamic>?;
           final backend = data?['ai_backend']?.toString() ?? defaultBackend;
@@ -114,6 +169,14 @@ class AIBackendRouter extends GetxService {
 
   /// 🧠 الحصول على مسار المستخدم الحالي من Firestore (استعلام مباشر)
   Future<String> resolveBackend() async {
+    final localBackend = _readLocalBackend();
+    if (localBackend != null) {
+      currentBackend.value = localBackend;
+      debugPrint(
+          '[AI_ROUTER_DIAG] resolveBackend: resolved=$localBackend reason=local_user_pref');
+      return localBackend;
+    }
+
     try {
       final uid = currentUserId;
       if (uid == null) {
@@ -297,10 +360,14 @@ class AIBackendRouter extends GetxService {
 
   /// 🔍 البحث عن محرك بديل من حوض حصة (Quota Pool) مستقل غير متأثر بالضغط
   String? findFailoverBackend(String failedBackend) {
+    // Never enter or leave a paid user-selected provider silently.
+    if (failedBackend == 'openrouter') return null;
+
     final failedPool = quotaPools[failedBackend] ?? failedBackend;
     // 1. محاولة اختيار محرك من حوض حصة مختلف أولاً
     for (final candidate in validBackends) {
       if (candidate == failedBackend) continue;
+      if (candidate == 'openrouter') continue;
       final candidatePool = quotaPools[candidate] ?? candidate;
       if (candidatePool != failedPool && !isBackendCoolingDown(candidate)) {
         return candidate;
@@ -308,6 +375,7 @@ class AIBackendRouter extends GetxService {
     }
     // 2. إذا لم يتوفر، اختيار أي محرك متاح ليس في فترة تهدئة
     for (final candidate in validBackends) {
+      if (candidate == 'openrouter') continue;
       if (candidate != failedBackend && !isBackendCoolingDown(candidate)) {
         return candidate;
       }
@@ -362,6 +430,13 @@ class AIBackendRouter extends GetxService {
         temperature: temperature,
         systemPersona: systemPersona,
       );
+    } else if (backend == 'openrouter') {
+      return _routeToOpenRouter(
+        prompt: prompt,
+        history: history,
+        maxTokens: maxTokens,
+        systemPersona: systemPersona,
+      );
     } else {
       return _routeToBackend(
         prompt: prompt,
@@ -392,6 +467,14 @@ class AIBackendRouter extends GetxService {
         imageBytes: imageBytes,
         mimeType: mimeType,
       );
+    } else if (backend == 'openrouter') {
+      // OpenAIService.analyzeImage is not implemented. Keep media requests on
+      // the existing Firebase vision route while OpenRouter remains text-only.
+      return _routeVisionToFirebaseAi(
+        prompt: prompt,
+        imageBytes: imageBytes,
+        mimeType: mimeType,
+      );
     } else {
       return _routeVisionToBackend(
         prompt: prompt,
@@ -414,9 +497,13 @@ class AIBackendRouter extends GetxService {
     String? templateId,
     Map<String, Object?>? templateInputs,
     bool autoRetry = true,
+    String? backendOverride,
   }) async {
     final uid = currentUserId;
-    final backend = await resolveBackend();
+    final backend = backendOverride != null &&
+            validBackends.contains(backendOverride)
+        ? backendOverride
+        : await resolveBackend();
     final redactedId = _redactUserId(uid);
 
     debugPrint(
@@ -659,6 +746,82 @@ class AIBackendRouter extends GetxService {
         'success': false,
         'error': e.toString(),
         'meta': {'provider': 'firebase_ai_logic', 'status': 'error'},
+      };
+    }
+  }
+
+  // ──────────────────────────────────────────────────────
+  // 🟠 OpenRouter / Claude Opus 5.5 / Google Vertex (text only)
+  // ──────────────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> _routeToOpenRouter({
+    required String prompt,
+    List<Map<String, String>>? history,
+    int maxTokens = 2048,
+    String? systemPersona,
+  }) async {
+    debugPrint('[OPENROUTER_AI] operation=text status=start');
+
+    if (!Get.isRegistered<SettingsController>()) {
+      return {
+        'success': false,
+        'error': 'auth_error: تعذر الوصول إلى إعدادات OpenRouter.',
+        'meta': {'provider': 'openrouter', 'status': 'auth_error'},
+      };
+    }
+
+    final key = Get.find<SettingsController>()
+        .getApiKey(ProviderType.openrouter)
+        .trim();
+    if (key.isEmpty) {
+      return {
+        'success': false,
+        'error': 'auth_error: أضف مفتاح OpenRouter من الإعدادات أولاً.',
+        'meta': {'provider': 'openrouter', 'status': 'auth_error'},
+      };
+    }
+
+    try {
+      final result = await AIProviderFactory
+          .getServiceByType(ProviderType.openrouter)
+          .generateText(
+        prompt,
+        apiKey: key,
+        history: history,
+        maxTokens: maxTokens,
+        systemPersona: systemPersona,
+      );
+
+      if (result.description.trim().isEmpty) {
+        return {
+          'success': false,
+          'error': 'استجابة فارغة من Claude Opus 5.5.',
+          'meta': {'provider': 'openrouter', 'status': 'error'},
+        };
+      }
+
+      debugPrint('[OPENROUTER_AI] operation=text status=success');
+      return {
+        'success': true,
+        'data': result.description,
+        'meta': {
+          'provider': 'openrouter',
+          'model': 'anthropic/claude-opus-5.5',
+          'upstream_provider': 'google-vertex',
+          'status': 'active',
+        },
+      };
+    } catch (e) {
+      debugPrint('[OPENROUTER_AI] operation=text status=error');
+      return {
+        'success': false,
+        'error': e.toString(),
+        'meta': {
+          'provider': 'openrouter',
+          'model': 'anthropic/claude-opus-5.5',
+          'upstream_provider': 'google-vertex',
+          'status': 'error',
+        },
       };
     }
   }
