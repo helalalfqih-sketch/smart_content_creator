@@ -1,0 +1,136 @@
+name: Publish SCC Shorebird baseline once
+
+on:
+  push:
+    branches: [codex/shorebird-baseline-20261031]
+    paths:
+      - .github/workflows/scc_shorebird_baseline_once.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: scc-shorebird-baseline-1.3.1-rc.2-8
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      CI: "true"
+      RELEASE_VERSION: 1.3.1-rc.2+8
+      RELEASE_TAG: v1.3.1-rc.2
+      EXPECTED_CERT_SHA256: 421cd80d80141ef72cc26235e415277e1af862ffe369234f7d04538f74ba2636
+    steps:
+      - name: Check out the exact baseline source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Verify and prepare the recovered Android signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: python3 scripts/ci/android_candidate.py prepare
+
+      - name: Install Shorebird
+        uses: shorebirdtech/setup-shorebird@8b1059ddb56a926f0146edf4133cc647775c162f # v1
+        with:
+          cache: "false"
+
+      - name: Publish the Shorebird Android baseline
+        id: shorebird-release
+        uses: shorebirdtech/shorebird-release@8605c991e8f513451c775ae3909984e9476748a2 # v1
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        with:
+          flutter-version: 3.44.6
+          platform: android
+          args: >-
+            --artifact apk
+            --target lib/main.dart
+            --build-name 1.3.1-rc.2
+            --build-number 8
+
+      - name: Verify release version, package identity and signer
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ steps.shorebird-release.outputs.release-version }}" = "$RELEASE_VERSION"
+
+          apk="$(find build/app/outputs -type f -name 'app-release.apk' -print -quit)"
+          aab="$(find build/app/outputs -type f -name 'app-release.aab' -print -quit)"
+          test -n "$apk" && test -f "$apk"
+          test -n "$aab" && test -f "$aab"
+
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          "$build_tools/apksigner" verify --print-certs "$apk" | tee "$RUNNER_TEMP/apksigner.txt"
+          cert="$(awk -F': ' '/Signer #1 certificate SHA-256 digest/ {print tolower($2); exit}' "$RUNNER_TEMP/apksigner.txt" | tr -d ':[:space:]')"
+          test "$cert" = "$EXPECTED_CERT_SHA256"
+
+          badging="$("$build_tools/aapt" dump badging "$apk" | head -n 1)"
+          grep -F "package: name='com.smartcontentcreator.app'" <<<"$badging"
+          grep -F "versionCode='8'" <<<"$badging"
+          grep -F "versionName='1.3.1-rc.2'" <<<"$badging"
+
+          mkdir -p build/shorebird-release-report
+          sha256sum "$apk" "$aab" | tee build/shorebird-release-report/SHA256SUMS.txt
+          printf '%s\n' \
+            "release_version=$RELEASE_VERSION" \
+            "source_commit=$GITHUB_SHA" \
+            "certificate_sha256=$cert" \
+            "apk_path=$apk" \
+            "aab_path=$aab" \
+            > build/shorebird-release-report/release.txt
+          echo "APK_PATH=$apk" >> "$GITHUB_ENV"
+          echo "AAB_PATH=$aab" >> "$GITHUB_ENV"
+
+      - name: Confirm the baseline exists in Shorebird
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        run: shorebird releases info --release-version "$RELEASE_VERSION"
+
+      - name: Retain the signed Shorebird baseline artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: scc-shorebird-baseline-1.3.1-rc.2-build-8
+          path: |
+            ${{ env.APK_PATH }}
+            ${{ env.AAB_PATH }}
+            build/shorebird-release-report/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish the direct-install APK as a GitHub prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > release-notes.md <<'EOF'
+          نسخة Shorebird تجريبية موقعة، وهي خط الأساس المطلوب لاستقبال التحديثات الهوائية اللاحقة.
+
+          - Version: 1.3.1-rc.2 (build 8)
+          - Install this APK once over the existing build 7.
+          - Future Dart-only updates can then arrive through Shorebird without reinstalling the APK.
+          - This is a QA prerelease, not the stable 2.1.0 release.
+          EOF
+          gh release create "$RELEASE_TAG" "$APK_PATH" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Android Shorebird OTA baseline 1.3.1-rc.2+8" \
+            --notes-file release-notes.md \
+            --prerelease
+
+      - name: Remove signing material
+        if: always()
+        run: python3 scripts/ci/android_candidate.py cleanup
