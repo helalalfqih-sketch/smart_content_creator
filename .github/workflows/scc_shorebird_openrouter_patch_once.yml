@@ -1,4 +1,4 @@
-name: Validate SCC OpenRouter Google Vertex patch
+name: Publish SCC OpenRouter Google Vertex patch once
 
 on:
   push:
@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  validate:
+  patch:
     runs-on: ubuntu-latest
     timeout-minutes: 75
     env:
@@ -77,16 +77,28 @@ jobs:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
         run: shorebird releases info --release-version "$RELEASE_VERSION"
 
-      - name: Build and validate the Dart patch without publishing
+      - name: Publish the validated Dart patch
+        id: shorebird-patch
         uses: shorebirdtech/shorebird-patch@06df73215dc3fafdef1d949fe4866a6822d145f9 # v1
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
         with:
           platform: android
           release-version: ${{ env.RELEASE_VERSION }}
+          track: stable
           args: >-
-            --dry-run
             --target lib/main.dart
+
+      - name: Confirm the published patch
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          patch_number="${{ steps.shorebird-patch.outputs.patch-number }}"
+          test -n "$patch_number"
+          shorebird patches list --release-version "$RELEASE_VERSION"
+          echo "Published stable Shorebird patch $patch_number for $RELEASE_VERSION."
 
       - name: Confirm the lockfile stayed unchanged
         run: git diff --exit-code -- pubspec.lock
