@@ -109,7 +109,7 @@ jobs:
 
           build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
           "$build_tools/apksigner" verify --verbose --print-certs "$apk" | tee "$RUNNER_TEMP/apksigner.txt"
-          cert="$(awk -F': ' '/Signer #1 certificate SHA-256 digest/ {print tolower($2); exit}' "$RUNNER_TEMP/apksigner.txt" | tr -d ':[:space:]')"
+          cert="$(sed -nE 's/^.*certificate SHA-256 digest: ([0-9a-fA-F]{64})$/\1/p' "$RUNNER_TEMP/apksigner.txt" | head -n 1 | tr '[:upper:]' '[:lower:]')"
           test "$cert" = "$EXPECTED_CERT_SHA256"
 
           badging="$("$build_tools/aapt" dump badging "$apk" | head -n 1)"
