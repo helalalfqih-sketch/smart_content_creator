@@ -1,0 +1,86 @@
+name: Validate SCC visible Shorebird patch
+
+on:
+  push:
+    branches: [codex/shorebird-visible-patch-20261031]
+    paths:
+      - .github/workflows/scc_shorebird_patch_once.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scc-shorebird-visible-patch-1.3.1-rc.2-8
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      CI: "true"
+      RELEASE_VERSION: 1.3.1-rc.2+8
+      EXPECTED_CERT_SHA256: 421cd80d80141ef72cc26235e415277e1af862ffe369234f7d04538f74ba2636
+    steps:
+      - name: Check out the exact patch source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Allow only the intended Dart text change
+        shell: bash
+        run: |
+          set -euo pipefail
+          unexpected="$(git diff --name-only da3e10c5625e3338433ac7b07a32f86d803f7c35 "$GITHUB_SHA" -- . | grep -Ev '^(lib/screens/ai_chat_screen\.dart|\.github/workflows/scc_shorebird_patch_once\.yml)$' || true)"
+          test -z "$unexpected"
+          grep -F "صانع المحتوى • محدث ✓" lib/screens/ai_chat_screen.dart
+
+      - name: Set up Java
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Verify and prepare Android signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: python3 scripts/ci/android_candidate.py prepare
+
+      - name: Lock the signing certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(tr -d ':[:space:]' < "$RUNNER_TEMP/scc-android-signing/certificate-sha256.txt" | tr '[:upper:]' '[:lower:]')"
+          test "$actual" = "$EXPECTED_CERT_SHA256"
+
+      - name: Install Shorebird
+        uses: shorebirdtech/setup-shorebird@8b1059ddb56a926f0146edf4133cc647775c162f # v1
+        with:
+          cache: "false"
+
+      - name: Confirm the target baseline exists
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        run: shorebird releases info --release-version "$RELEASE_VERSION"
+
+      - name: Build and validate the Dart patch without publishing
+        uses: shorebirdtech/shorebird-patch@06df73215dc3fafdef1d949fe4866a6822d145f9 # v1
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        with:
+          platform: android
+          release-version: ${{ env.RELEASE_VERSION }}
+          args: >-
+            --dry-run
+            --target lib/main.dart
+
+      - name: Confirm the lockfile stayed unchanged
+        run: git diff --exit-code -- pubspec.lock
+
+      - name: Remove signing material
+        if: always()
+        run: python3 scripts/ci/android_candidate.py cleanup
