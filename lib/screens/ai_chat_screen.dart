@@ -423,7 +423,7 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
           filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
           child: AppBar(
             automaticallyImplyLeading: false,
-            title: Text('صانع المحتوى  ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
+            title: Text('صانع المحتوى • محدث ✓', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black87)),
             centerTitle: true,
             elevation: 0,
             backgroundColor: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.2),
