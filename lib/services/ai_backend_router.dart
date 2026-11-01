@@ -484,21 +484,22 @@ class AIBackendRouter extends GetxService {
         'meta': {'provider': backend, 'status': 'error'},
       });
     }
+    final routedPrompt = systemPersona == null ? prompt : '$systemPersona\n\n$prompt';
     if (backend == 'firebase_ai') {
       return _routeVisionToFirebaseAi(
-        prompt: prompt,
+        prompt: routedPrompt,
         imageBytes: imageBytes,
         mimeType: mimeType,
       );
     } else if (backend == 'manus') {
       return _routeVisionToManus(
-        prompt: prompt,
+        prompt: routedPrompt,
         imageBytes: imageBytes,
         mimeType: mimeType,
       );
     } else {
       return _routeVisionToBackend(
-        prompt: prompt,
+        prompt: routedPrompt,
         imageBytes: imageBytes,
         mimeType: mimeType,
       );
