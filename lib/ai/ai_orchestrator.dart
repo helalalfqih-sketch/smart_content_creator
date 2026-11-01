@@ -337,24 +337,12 @@ class AIOrchestrator extends GetxService {
       if (mode == ExecutionMode.directMultimodal) {
         if (prompt.trim().isEmpty) {
           // صورة/صور بدون نص مرفق
-          if (images != null && images.length >= 3) {
+          if (images != null && images.length > 1) {
             _agent.pipelineMessage.value =
-                "جاري إجراء تحليل مجمع للمنتج (3D Mode)... 🧊";
-            await _agent.executeTask(
-              AiDecisionEngine.createTask(
-                "تحليل مجمع لهذه الصور",
-                images: images,
-                context: context,
-                overrideIntent: Intent.productDetected,
-              ),
-              skipHistory: true,
-              cancelToken: cancelToken,
-            );
-          } else if (images != null && images.length == 2) {
-            _agent.pipelineMessage.value =
-                "جاري استيعاب (المنتج + القالب)... 🍱";
-            await _agent.analyzeJointProductAndTemplate(images,
-                userPrompt: prompt, cancelToken: cancelToken);
+                "جاري تحليل الصور المرفقة... 👁️";
+            await _agent.respondNormally(
+              'صف كل صورة مرفقة بالعربية بناءً على ما يظهر فيها، واذكر الفروق دون تخمين التفاصيل غير الواضحة.',
+              images: images, cancelToken: cancelToken);
           } else if (images != null && images.isNotEmpty) {
             _agent.pipelineMessage.value = "جاري تحليل المنتج... 🔍";
             await _agent.analyzeProductAndFetchTrends(

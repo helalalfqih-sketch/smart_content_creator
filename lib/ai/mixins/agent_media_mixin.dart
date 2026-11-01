@@ -29,11 +29,14 @@ mixin AgentMediaMixin on GetxService {
             cancelToken: cancelToken,
           );
       
-      // 📸 Increment count on success
-      await agent.incrementVisualCount();
-
       final Map<String, dynamic> data = result.data ?? {};
       final String? productName = result.productName;
+      if (data['description'] is! String ||
+          (data['description'] as String).trim().isEmpty) {
+        throw Exception('❌ لم يكتمل تحليل الصورة. أعد المحاولة.');
+      }
+      // Only validated visual analysis consumes the local usage allowance.
+      await agent.incrementVisualCount();
 
       String response;
       bool isCommercial = data['is_commercial'] == true;
@@ -45,7 +48,7 @@ mixin AgentMediaMixin on GetxService {
         isCommercial = data['is_commercial'] == true;
         final String category = (data['category'] ?? '').toString().toLowerCase();
         final bool isPerson = category.contains('person') || category.contains('selfie');
-        final String teaser = data['teaser'] ?? "✨ منتج مميز بتصميم عملي وجذاب.";
+        final String teaser = data['teaser']?.toString() ?? '';
 
         if (isCommercial && !isPerson) {
           agent.saveProductToMemory(productName);
@@ -88,7 +91,7 @@ $teaser
       // =========================
       else {
         final String description =
-            data['description'] ?? "هذه صورة تحتوي على عناصر متعددة.";
+            data['description'] as String;
 
         response = """
 🖼️ **وصف الصورة:**
@@ -145,14 +148,7 @@ $description
         force: true,
       );
     } catch (e) {
-      final errStr = e.toString();
-      if (errStr.contains('429') || errStr.contains('402')) {
-        Get.snackbar(
-          "تنبيه الرصيد",
-          "رصيد التوليد السحابي نفد، جاري المحاولة باستخدام المحرك البديل.",
-          snackPosition: SnackPosition.BOTTOM,
-        );
-      }
+      if (e is dio.DioException && dio.CancelToken.isCancel(e)) return;
       ErrorHandler.logError('Vision Analysis', e);
       final mapped = ErrorHandler.mapError(e);
       await agent.addAndSaveMessage(

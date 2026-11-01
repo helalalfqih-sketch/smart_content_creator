@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,6 +16,7 @@ import '../core/models/api_provider.dart';
 import '../core/storage/app_storage_service.dart';
 import '../controllers/chat_history_controller.dart';
 import '../controllers/settings_controller.dart';
+import '../core/utils/vision_image.dart';
 
 /// 🎯 AIBackendRouter - نقطة الدخول الموحدة لجميع طلبات الذكاء الاصطناعي
 ///
@@ -24,6 +26,13 @@ import '../controllers/settings_controller.dart';
 /// - `"manus"` → ManusAiService (Manus API v2 Gateway)
 /// - `"openrouter"` → Claude Opus 5.5 on Google Vertex using a local user key
 class AIBackendRouter extends GetxService {
+  final AIProvider? _openRouterService;
+  final String Function()? _openRouterKeyReader;
+
+  AIBackendRouter({AIProvider? openRouterService, String Function()? openRouterKeyReader})
+      : _openRouterService = openRouterService,
+        _openRouterKeyReader = openRouterKeyReader;
+
   /// القيمة الافتراضية لمسار الذكاء الاصطناعي
   static const String defaultBackend = 'firebase_ai';
 
@@ -454,7 +463,27 @@ class AIBackendRouter extends GetxService {
     required String prompt,
     required Uint8List imageBytes,
     String mimeType = 'image/jpeg',
+    List<Uint8List> additionalImages = const [],
+    List<Map<String, String>>? history,
+    String? systemPersona,
+    dio.CancelToken? cancelToken,
   }) {
+    if (backend == 'openrouter') {
+      return _routeToOpenRouter(
+        prompt: prompt,
+        images: [imageBytes, ...additionalImages],
+        history: history,
+        systemPersona: systemPersona,
+        cancelToken: cancelToken,
+      );
+    }
+    if (additionalImages.isNotEmpty) {
+      return Future.value({
+        'success': false,
+        'error': '❌ اختر OpenRouter لتحليل عدة صور معاً، أو أرسل صورة واحدة.',
+        'meta': {'provider': backend, 'status': 'error'},
+      });
+    }
     if (backend == 'firebase_ai') {
       return _routeVisionToFirebaseAi(
         prompt: prompt,
@@ -463,14 +492,6 @@ class AIBackendRouter extends GetxService {
       );
     } else if (backend == 'manus') {
       return _routeVisionToManus(
-        prompt: prompt,
-        imageBytes: imageBytes,
-        mimeType: mimeType,
-      );
-    } else if (backend == 'openrouter') {
-      // OpenAIService.analyzeImage is not implemented. Keep media requests on
-      // the existing Firebase vision route while OpenRouter remains text-only.
-      return _routeVisionToFirebaseAi(
         prompt: prompt,
         imageBytes: imageBytes,
         mimeType: mimeType,
@@ -626,9 +647,20 @@ class AIBackendRouter extends GetxService {
     required Uint8List imageBytes,
     String mimeType = 'image/jpeg',
     bool autoRetry = true,
+    List<Uint8List> additionalImages = const [],
+    List<Map<String, String>>? history,
+    String? systemPersona,
+    dio.CancelToken? cancelToken,
   }) async {
+    if (cancelToken?.isCancelled == true) throw cancelToken!.cancelError!;
     // 🗜️ ضغط الصورة لتسريع الرفع والمعالجة
     final optimizedBytes = await _optimizeImageForVision(imageBytes);
+    final optimizedAdditional = <Uint8List>[];
+    for (final bytes in additionalImages) {
+      if (cancelToken?.isCancelled == true) throw cancelToken!.cancelError!;
+      optimizedAdditional.add(await _optimizeImageForVision(bytes));
+    }
+    final actualMimeType = visionImageMimeType(optimizedBytes) ?? mimeType;
 
     final uid = currentUserId;
     final backend = await resolveBackend();
@@ -644,7 +676,11 @@ class AIBackendRouter extends GetxService {
         backend: backend,
         prompt: prompt,
         imageBytes: optimizedBytes,
-        mimeType: 'image/jpeg',
+        mimeType: actualMimeType,
+        additionalImages: optimizedAdditional,
+        history: history,
+        systemPersona: systemPersona,
+        cancelToken: cancelToken,
       ),
     );
 
@@ -662,7 +698,11 @@ class AIBackendRouter extends GetxService {
           backend: fallbackBackend,
           prompt: prompt,
           imageBytes: optimizedBytes,
-          mimeType: 'image/jpeg',
+          mimeType: actualMimeType,
+          additionalImages: optimizedAdditional,
+          history: history,
+          systemPersona: systemPersona,
+          cancelToken: cancelToken,
         );
       }
     }
@@ -751,7 +791,7 @@ class AIBackendRouter extends GetxService {
   }
 
   // ──────────────────────────────────────────────────────
-  // 🟠 OpenRouter / Claude Opus 5.5 / Google Vertex (text only)
+  // 🟠 OpenRouter / Claude Opus 5.5 / Google Vertex (text and vision)
   // ──────────────────────────────────────────────────────
 
   Future<Map<String, dynamic>> _routeToOpenRouter({
@@ -759,10 +799,13 @@ class AIBackendRouter extends GetxService {
     List<Map<String, String>>? history,
     int maxTokens = 2048,
     String? systemPersona,
+    List<Uint8List>? images,
+    dio.CancelToken? cancelToken,
   }) async {
-    debugPrint('[OPENROUTER_AI] operation=text status=start');
+    final operation = images == null ? 'text' : 'vision';
+    debugPrint('[OPENROUTER_AI] operation=$operation status=start');
 
-    if (!Get.isRegistered<SettingsController>()) {
+    if (_openRouterKeyReader == null && !Get.isRegistered<SettingsController>()) {
       return {
         'success': false,
         'error': 'auth_error: تعذر الوصول إلى إعدادات OpenRouter.',
@@ -770,9 +813,8 @@ class AIBackendRouter extends GetxService {
       };
     }
 
-    final key = Get.find<SettingsController>()
-        .getApiKey(ProviderType.openrouter)
-        .trim();
+    final key = (_openRouterKeyReader?.call() ?? Get.find<SettingsController>()
+        .getApiKey(ProviderType.openrouter)).trim();
     if (key.isEmpty) {
       return {
         'success': false,
@@ -782,14 +824,21 @@ class AIBackendRouter extends GetxService {
     }
 
     try {
-      final result = await AIProviderFactory
-          .getServiceByType(ProviderType.openrouter)
-          .generateText(
+      final service = _openRouterService ?? AIProviderFactory
+          .getServiceByType(ProviderType.openrouter);
+      final result = images != null
+          ? await service.analyzeBatchImages(
+              images, prompt, apiKey: key, history: history,
+              maxTokens: maxTokens, systemPersona: systemPersona,
+              cancelToken: cancelToken,
+            )
+          : await service.generateText(
         prompt,
         apiKey: key,
         history: history,
         maxTokens: maxTokens,
         systemPersona: systemPersona,
+        cancelToken: cancelToken,
       );
 
       if (result.description.trim().isEmpty) {
@@ -800,7 +849,7 @@ class AIBackendRouter extends GetxService {
         };
       }
 
-      debugPrint('[OPENROUTER_AI] operation=text status=success');
+      debugPrint('[OPENROUTER_AI] operation=$operation status=success');
       return {
         'success': true,
         'data': result.description,
@@ -812,7 +861,8 @@ class AIBackendRouter extends GetxService {
         },
       };
     } catch (e) {
-      debugPrint('[OPENROUTER_AI] operation=text status=error');
+      if (e is dio.DioException && dio.CancelToken.isCancel(e)) rethrow;
+      debugPrint('[OPENROUTER_AI] operation=$operation status=error');
       return {
         'success': false,
         'error': e.toString(),
@@ -1072,4 +1122,3 @@ class AIBackendRouter extends GetxService {
     );
   }
 }
-

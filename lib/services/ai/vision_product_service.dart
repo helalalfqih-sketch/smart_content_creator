@@ -17,14 +17,9 @@ class VisionProductService extends GetxService {
       Get.find<ProductMemoryService>();
   FirestoreUserService get _firestoreService => Get.find<FirestoreUserService>();
 
-  /// 🧠 تحليل ذكي باستخدام رؤية Gemini عبر AIBackendRouter
+  /// Analyze through the user's selected vision provider; failures stay failures.
   Future<ProductVisionResult> analyzeImage(File image, {BrandIdentity? brand, dio.CancelToken? cancelToken}) async {
     try {
-      // 1. فحص مبدئي سريع (اسم الملف) - للأداء فقط ولا يُعتمد عليه وحده (Naive Check)
-      final name = image.path.toLowerCase();
-      final heuristicsFound = ['watch', 'bag', 'perfume', 'shoes', 'phone']
-          .any((k) => name.contains(k));
-
       // 2. جلب الهوية البصرية (Brand Identity Context) - Support passed brand
       BrandIdentity? resolvedBrand = brand;
       if (resolvedBrand == null) {
@@ -41,12 +36,14 @@ class VisionProductService extends GetxService {
       // 3. تحليل الذكاء الاصطناعي الحقيقي (AI Analysis) عبر AIBackendRouter
       final brandContext = resolvedBrand != null ? """
 CONTEXT: The user belongs to the brand '${resolvedBrand.storeName}'. 
-If the product in the image looks like it belongs to this brand or category (${resolvedBrand.industry}), please prioritize identifying it as such.
+This is marketing context only. Do not infer the photographed item's brand from it.
 """ : "";
 
       final prompt = """
 $brandContext
 You are an expert visual analyst. Analyze the image and extract details.
+Describe only visible evidence. Do not invent a brand, model, specifications, or unreadable text.
+If you cannot identify an item, describe its visible features and state the uncertainty.
 CRITICAL: Distinguish between a commercial product (for sale) and a personal item/person (selfie, person wearing clothes, casual photo).
 
 Return ONLY JSON:
@@ -56,6 +53,7 @@ Return ONLY JSON:
   "category": "Category (Electronics, Fashion, Person, Home, Selfie, Food)",
   "brand": "Brand or 'Unknown'",
   "is_commercial": true/false,
+  "confidence": 0.0,
   "search_query": "Detailed English search query including [Brand] [Product Name] [Model] for best search results",
   "description": "Brief description in Arabic",
   "teaser": "A smart, unique marketing teaser or friendly comment in Arabic based SPECIFICALLY on this image (Max 15 words)"
@@ -68,16 +66,25 @@ NO MARKDOWN. NO EXTRA TEXT.
         prompt: prompt,
         imageBytes: bytes,
         mimeType: 'image/jpeg',
+        cancelToken: cancelToken,
       );
 
+      if (visionResponse['success'] != true) {
+        throw Exception(visionResponse['error'] ?? '❌ تعذر تحليل الصورة. أعد المحاولة.');
+      }
       final rawText = visionResponse['data']?.toString() ?? '';
       final Map<String, dynamic> info = JsonUtils.parseSafe(rawText);
-      info['provider'] = visionResponse['meta']?['provider'] ?? 'firebase_ai';
+      if (info['description'] is! String ||
+          (info['description'] as String).trim().isEmpty ||
+          info['is_commercial'] is! bool ||
+          (info['name'] != null && info['name'] is! String)) {
+        throw Exception('❌ لم يُرجع النموذج تحليلاً صالحاً للصورة. أعد المحاولة.');
+      }
+      info['provider'] = visionResponse['meta']?['provider'] ?? 'unknown';
 
-      // إذا أعاد الذكاء الاصطناعي اسماً صالحاً، فهو غالباً منتج
-      bool isProduct = heuristicsFound;
-      String? productName = heuristicsFound ? name : null;
-      Map<String, dynamic> data = {};
+      final bool isProduct = info['is_commercial'] == true;
+      String? productName;
+      final Map<String, dynamic> data = info;
 
       if (info.containsKey('name') && info['name'] != null && info['name'].toString().isNotEmpty) {
         String n = info['name'].toString().trim();
@@ -103,9 +110,7 @@ NO MARKDOWN. NO EXTRA TEXT.
           }
         }
 
-        isProduct = true;
         productName = n;
-        data = info;
         if (info.containsKey('provider') && info['provider'] != null) {
           final prov = info['provider'].toString();
           if (Get.isRegistered<SettingsController>()) {
@@ -127,7 +132,8 @@ NO MARKDOWN. NO EXTRA TEXT.
       final result = ProductVisionResult(
         isProduct: isProduct,
         productName: productName,
-        confidence: isProduct ? 0.95 : 0.0,
+        confidence: info['confidence'] is num
+            ? (info['confidence'] as num).toDouble().clamp(0.0, 1.0) : 0.0,
         data: data,
       );
 
@@ -208,7 +214,7 @@ NO MARKDOWN. NO EXTRA TEXT.
       if (kDebugMode) {
         debugPrint('❌ VisionProductService.analyzeImage error: $e');
       }
-      return ProductVisionResult(isProduct: false, confidence: 0.0);
+      rethrow;
     }
   }
 

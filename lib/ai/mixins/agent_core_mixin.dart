@@ -716,7 +716,7 @@ $productDescSection
     try {
       // 📜 Contextual Injection: Pass the last 5 messages as history (Reduced from 10 to prevent bloat/repetition)
       final List<Map<String, String>> chatHistory = agent.history
-          .where((m) => m.content.isNotEmpty)
+          .where((m) => m.content.isNotEmpty && !m.isError)
           .toList()
           .reversed
           .take(5)
@@ -737,18 +737,23 @@ $productDescSection
 
       final router = Get.find<AIBackendRouter>();
       final String response;
+      String? providerUsed;
       if (images != null && images.isNotEmpty) {
-        final finalPrompt = "$systemPersona\n\n$prompt";
-        final bytes = await images.first.readAsBytes();
+        final imageBytes = await Future.wait(images.map((image) => image.readAsBytes()));
         final result = await router.analyzeProductVision(
-          prompt: finalPrompt,
-          imageBytes: bytes,
+          prompt: prompt,
+          imageBytes: imageBytes.first,
+          additionalImages: imageBytes.skip(1).toList(),
+          history: chatHistory,
+          systemPersona: systemPersona,
           mimeType: 'image/jpeg',
+          cancelToken: cancelToken,
         );
         if (result['success'] != true) {
           throw Exception(result['error'] ?? 'Vision analysis failed');
         }
         response = result['data']?.toString() ?? '';
+        providerUsed = result['meta']?['provider']?.toString();
       } else {
         final result = await router.generateText(
           prompt: prompt, 
@@ -759,6 +764,7 @@ $productDescSection
           throw Exception(result['error'] ?? 'Text generation failed');
         }
         response = result['data']?.toString() ?? '';
+        providerUsed = result['meta']?['provider']?.toString();
       }
       
       String cleanContent = stripJsonFromResponse(response);
@@ -769,6 +775,7 @@ $productDescSection
       agent.history.add(ChatMessage.assistant(
         content: cleanContent,
         agentResult: agentResult,
+        provider: providerUsed,
         productContext: agent.lastAnalyzedProduct.value,
       ).copyWith(state: MessageState.completed));
 
@@ -776,6 +783,12 @@ $productDescSection
       await agent.saveToDb(prompt, cleanContent, productContext: currentProduct);
     } catch (e) {
       ErrorHandler.logError('Normal Response', e);
+      if (e is dio.DioException && dio.CancelToken.isCancel(e)) return;
+      final mapped = ErrorHandler.mapError(e);
+      await agent.addAndSaveMessage(ChatMessage.assistant(
+        content: images != null && images.isNotEmpty
+            ? '⚠️ فشل تحليل الصورة: ${mapped.message}' : mapped.message,
+      ).copyWith(state: MessageState.error, isError: true));
     } finally {
       agent.isLoading.value = false;
       agent.activeRequests.value--;

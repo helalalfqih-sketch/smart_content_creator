@@ -618,24 +618,7 @@ class AIProviderFactory {
       );
     }
 
-    // ☁️ [BACK4APP VISION RESCUE]: All vision providers failed → try Back4App for text-only analysis
-    if (lastError != null) {
-      if (kDebugMode) {
-        debugPrint('☁️ [Back4App-Vision-Rescue]: All vision providers failed. Trying Back4App text analysis...');
-      }
-      try {
-        final gateway = Get.find<Back4AppGatewayService>();
-        final res = await gateway.generateTextWithVertex(
-          'لم أتمكن من رؤية الصورة مباشرة، لكن بناءً على الطلب التالي، أجب بأفضل شكل ممكن:\n\n$prompt',
-          maxTokens: 4096,
-        );
-        _updateLastImageProvider(res.provider);
-        return res;
-      } catch (_) {
-        // Fall through to original error
-      }
-    }
-
+    // A text-only answer is not a successful analysis of the uploaded image.
     throw lastError ?? Exception('❌ لم ينجح أي مزود في تحليل الصورة.');
   }
 
