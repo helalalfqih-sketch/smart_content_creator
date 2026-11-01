@@ -1,0 +1,85 @@
+name: Diagnose installed Android release
+
+on:
+  push:
+    branches: [codex/installed-release-diagnostics-20261101]
+    paths: [.github/workflows/scc_installed_release_diagnostics.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: "true"
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: shorebirdtech/setup-shorebird@8b1059ddb56a926f0146edf4133cc647775c162f
+        with:
+          cache: "true"
+      - name: Read installed release metadata
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        run: shorebird releases info --release-version "1.3.0+6" --json
+      - name: Retrieve original release for inspection only
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        run: shorebird releases get-apks --release-version "1.3.0+6" --out "$RUNNER_TEMP/legacy-inspection"
+      - name: Compare original and supported Android binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 2 --max-time 300 \
+            'https://github.com/helalalfqih-sketch/smart_content_creator/releases/download/v1.3.1-rc.2/app-release.apk' \
+            --output "$RUNNER_TEMP/supported-baseline.apk"
+          echo "8dfa9616b50fd4b7ee33a3d040344258f95a7c765583a2f9f579251d89843686  $RUNNER_TEMP/supported-baseline.apk" | sha256sum --check --strict
+          legacy="$(find "$RUNNER_TEMP/legacy-inspection" -type f -name '*.apk' -print -quit)"
+          test -n "$legacy"
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
+          "$build_tools/aapt" dump badging "$legacy" > "$RUNNER_TEMP/legacy-badging.txt"
+          "$build_tools/aapt" dump badging "$RUNNER_TEMP/supported-baseline.apk" > "$RUNNER_TEMP/supported-badging.txt"
+          head -n 1 "$RUNNER_TEMP/legacy-badging.txt"
+          head -n 1 "$RUNNER_TEMP/supported-badging.txt"
+          mkdir -p build/installed-release-diagnostics
+          python3 - "$legacy" "$RUNNER_TEMP/supported-baseline.apk" <<'PY'
+          import hashlib, json, pathlib, sys, zipfile
+          old_path, current_path = sys.argv[1:]
+          def fingerprint(archive, names):
+              return {n:hashlib.sha256(archive.read(n)).hexdigest() for n in names}
+          with zipfile.ZipFile(old_path) as old, zipfile.ZipFile(current_path) as current:
+              old_names, new_names = set(old.namelist()), set(current.namelist())
+              def native(name):
+                  return name.endswith(".dex") or (name.startswith("lib/") and name.endswith(".so") and not name.endswith("/libapp.so"))
+              old_native, new_native = {n for n in old_names if native(n)}, {n for n in new_names if native(n)}
+              old_hash, new_hash = fingerprint(old, old_native), fingerprint(current, new_native)
+              old_assets, new_assets = {n for n in old_names if n.startswith("assets/flutter_assets/") and not n.endswith("/")}, {n for n in new_names if n.startswith("assets/flutter_assets/") and not n.endswith("/")}
+              old_asset_hash, new_asset_hash = fingerprint(old, old_assets), fingerprint(current, new_assets)
+              report = {
+                  "old_release":"1.3.0+6", "supported_release":"1.3.1-rc.2+8",
+                  "native_added":sorted(new_native-old_native), "native_removed":sorted(old_native-new_native),
+                  "native_changed":sorted(n for n in old_native&new_native if old_hash[n]!=new_hash[n]),
+                  "assets_added":sorted(new_assets-old_assets), "assets_removed":sorted(old_assets-new_assets),
+                  "assets_changed":sorted(n for n in old_assets&new_assets if old_asset_hash[n]!=new_asset_hash[n]),
+                  "old_updater_config":old.read("assets/flutter_assets/shorebird.yaml").decode(),
+                  "current_updater_config":current.read("assets/flutter_assets/shorebird.yaml").decode(),
+                  "note":"Comparison only. Nothing published or installed. Generated legacy APK is not for distribution."
+              }
+          pathlib.Path("build/installed-release-diagnostics/comparison.json").write_text(json.dumps(report,ensure_ascii=False,indent=2))
+          print(json.dumps(report,ensure_ascii=False,indent=2))
+          PY
+      - name: Retain comparison only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: installed-release-comparison
+          path: build/installed-release-diagnostics/comparison.json
+          if-no-files-found: ignore
+          retention-days: 3
