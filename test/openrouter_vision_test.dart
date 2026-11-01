@@ -80,7 +80,7 @@ void main() {
 
   tearDown(() async {
     client.close(force: true);
-    await Get.reset();
+    Get.reset();
   });
 
   test(
