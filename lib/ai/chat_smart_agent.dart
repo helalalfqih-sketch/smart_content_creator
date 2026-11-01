@@ -333,7 +333,9 @@ class ChatSmartAgent extends GetxService
         case 'generate_image':
         case 'IMAGE_GEN':
           await handleImageGeneration(text,
-              referenceImages: images ?? (image == null ? null : [image]),
+              referenceImages: images?.isNotEmpty == true
+                  ? images
+                  : (image == null ? null : [image]),
               cancelToken: cancelToken);
           break;
         default:

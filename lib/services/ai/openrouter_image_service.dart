@@ -29,8 +29,11 @@ class OpenRouterImageService {
   OpenRouterImageService({
     Dio? client,
     Future<Directory> Function()? documentsDirectory,
-  }) : _client = client ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 45))),
-       _documentsDirectory = documentsDirectory ?? getApplicationDocumentsDirectory;
+  }) : _client =
+           client ??
+           Dio(BaseOptions(connectTimeout: const Duration(seconds: 45))),
+       _documentsDirectory =
+           documentsDirectory ?? getApplicationDocumentsDirectory;
 
   Future<GeneratedImage> generate({
     required String prompt,
@@ -40,13 +43,19 @@ class OpenRouterImageService {
     CancelToken? cancelToken,
   }) async {
     if (apiKey.trim().isEmpty) {
-      throw const ImageGenerationException('أضف مفتاح OpenRouter في إعدادات الخدمات.');
+      throw const ImageGenerationException(
+        'أضف مفتاح OpenRouter في إعدادات الخدمات.',
+      );
     }
     if (prompt.trim().isEmpty) {
-      throw const ImageGenerationException('اكتب وصف الصورة التي تريد إنشاءها.');
+      throw const ImageGenerationException(
+        'اكتب وصف الصورة التي تريد إنشاءها.',
+      );
     }
     if (referenceImages.length > maxReferences) {
-      throw const ImageGenerationException('يمكن استخدام ثلاث صور مرجعية كحد أقصى في هذا الطلب.');
+      throw const ImageGenerationException(
+        'يمكن استخدام ثلاث صور مرجعية كحد أقصى في هذا الطلب.',
+      );
     }
     if (cancelToken?.isCancelled == true) {
       throw const ImageGenerationException('تم إلغاء إنشاء الصورة.');
@@ -55,12 +64,16 @@ class OpenRouterImageService {
     final references = <Map<String, dynamic>>[];
     for (final file in referenceImages) {
       if (!await file.exists() || await file.length() > _maxBytes) {
-        throw const ImageGenerationException('الصورة المرجعية غير متاحة أو يتجاوز حجمها 20 ميجابايت. أرفقها مجددًا.');
+        throw const ImageGenerationException(
+          'الصورة المرجعية غير متاحة أو يتجاوز حجمها 20 ميجابايت. أرفقها مجددًا.',
+        );
       }
       final bytes = await file.readAsBytes();
       final mime = visionImageMimeType(bytes);
       if (mime == null || mime == 'image/gif') {
-        throw const ImageGenerationException('استخدم صورة مرجعية بصيغة PNG أو JPEG أو WebP.');
+        throw const ImageGenerationException(
+          'استخدم صورة مرجعية بصيغة PNG أو JPEG أو WebP.',
+        );
       }
       references.add({
         'type': 'image_url',
@@ -102,27 +115,43 @@ class OpenRouterImageService {
       final images = body is Map ? body['data'] : null;
       final first = images is List && images.isNotEmpty ? images.first : null;
       final encoded = first is Map ? first['b64_json'] : null;
-      if (encoded is! String || encoded.isEmpty || encoded.length > _maxBytes * 4 ~/ 3 + 4) {
-        throw const ImageGenerationException('لم يُرجع المزوّد ملف صورة صالحًا. لم يتم إنشاء صورة.');
+      if (encoded is! String ||
+          encoded.isEmpty ||
+          encoded.length > _maxBytes * 4 ~/ 3 + 4) {
+        throw const ImageGenerationException(
+          'لم يُرجع المزوّد ملف صورة صالحًا. لم يتم إنشاء صورة.',
+        );
       }
       final bytes = base64Decode(encoded);
       final mime = await compute(_validateRaster, bytes);
       if (cancelToken?.isCancelled == true) {
         throw const ImageGenerationException('تم إلغاء إنشاء الصورة.');
       }
-      final dir = Directory('${(await _documentsDirectory()).path}/generated_images');
+      final dir = Directory(
+        '${(await _documentsDirectory()).path}/generated_images',
+      );
       await dir.create(recursive: true);
-      final extension = {'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp'}[mime]!;
-      final file = File('${dir.path}/openrouter_${DateTime.now().microsecondsSinceEpoch}.$extension');
+      final extension = {
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'image/webp': 'webp',
+      }[mime]!;
+      final file = File(
+        '${dir.path}/openrouter_${DateTime.now().microsecondsSinceEpoch}.$extension',
+      );
       await file.writeAsBytes(bytes, flush: true);
       return GeneratedImage(file, mime, model);
     } on DioException catch (error) {
       if (CancelToken.isCancel(error)) {
         throw const ImageGenerationException('تم إلغاء إنشاء الصورة.');
       }
-      throw ImageGenerationException(_statusMessage(error.response?.statusCode));
+      throw ImageGenerationException(
+        _statusMessage(error.response?.statusCode),
+      );
     } on FormatException {
-      throw const ImageGenerationException('تعذّرت قراءة الصورة التي أعادها المزوّد.');
+      throw const ImageGenerationException(
+        'تعذّرت قراءة الصورة التي أعادها المزوّد.',
+      );
     }
   }
 
@@ -151,8 +180,11 @@ String _validateRaster(Uint8List bytes) {
   }
   final decoder = raster.findDecoderForData(bytes);
   final info = decoder?.startDecode(bytes);
-  if (info == null || info.width < 1 || info.height < 1 ||
-      info.width * info.height > 16777216 || decoder!.decodeFrame(0) == null) {
+  if (info == null ||
+      info.width < 1 ||
+      info.height < 1 ||
+      info.width * info.height > 16777216 ||
+      decoder!.decodeFrame(0) == null) {
     throw const FormatException('Invalid image pixels');
   }
   return mime!;
