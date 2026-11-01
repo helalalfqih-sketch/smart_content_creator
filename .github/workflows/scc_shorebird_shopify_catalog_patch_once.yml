@@ -153,8 +153,16 @@ jobs:
           
               baseline = assets(io.BytesIO(baseline_bytes), "assets/")
               candidate = assets(candidate_path, "base/assets/")
+              # bundletool adds these ART optimization profiles when producing an APK.
+              # In an AAB the same metadata lives outside base/assets, not in app assets.
+              packaging_profiles = {"dexopt/baseline.prof", "dexopt/baseline.profm"}
+              ignored_profiles = sorted(packaging_profiles & baseline.keys())
+              baseline = {name: data for name, data in baseline.items() if name not in packaging_profiles}
               if not baseline or baseline.keys() != candidate.keys():
-                  raise ValueError("Patch adds or removes packaged assets")
+                  raise ValueError(
+                      f"Packaged assets differ: added={sorted(candidate.keys() - baseline.keys())}; "
+                      f"removed={sorted(baseline.keys() - candidate.keys())}"
+                  )
               changed = {name for name in baseline if baseline[name] != candidate[name]}
               icon = "flutter_assets/fonts/MaterialIcons-Regular.otf"
               if not changed.issubset({icon}) or icon not in baseline:
@@ -185,6 +193,7 @@ jobs:
                   "baseline_sha256": expected_sha,
                   "asset_count": len(baseline),
                   "changed_assets": sorted(changed),
+                  "apk_packaging_profiles": ignored_profiles,
                   "baseline_icon_count": len(old_map),
                   "candidate_icon_count": len(new_map),
                   "removed_unused_icon_count": len(old_map.keys() - new_map.keys()),
@@ -225,6 +234,17 @@ jobs:
 
       - name: Confirm the lockfile stayed unchanged
         run: git diff --exit-code -- pubspec.lock
+
+      - name: Retain the built catalog bundle for diagnosis
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: scc-shopify-catalog-patch-bundle
+          path: |
+            build/app/outputs/bundle/release/app-release.aab
+            ${{ runner.temp }}/catalog-asset-compatibility.json
+          if-no-files-found: ignore
+          retention-days: 3
 
       - name: Remove signing material
         if: always()
