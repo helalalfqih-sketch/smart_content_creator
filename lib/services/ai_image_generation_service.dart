@@ -19,9 +19,14 @@ import 'ai_provider.dart';
 import '../core/utils/image_utils.dart';
 import 'ai/background_removal_service.dart';
 import 'ai/remote_segmentation_service.dart';
+import 'ai/openrouter_image_service.dart';
 
 class AiImageGenerationService extends GetxService {
   static AiImageGenerationService get to => Get.find();
+  final OpenRouterImageService _openRouterImages;
+
+  AiImageGenerationService({OpenRouterImageService? openRouterImages})
+      : _openRouterImages = openRouterImages ?? OpenRouterImageService();
 
   // Provider enum
   static const String providerGemini = 'gemini';
@@ -155,6 +160,7 @@ class AiImageGenerationService extends GetxService {
     String aspectRatio = '1:1',
     int? seed,
     dio.CancelToken? cancelToken,
+    List<File> referenceImages = const [],
   }) async {
     String effectiveProvider = provider ?? currentProvider;
 
@@ -165,12 +171,13 @@ class AiImageGenerationService extends GetxService {
 
     try {
       return await _executeGeneration(effectiveProvider, prompt,
-          style: style, aspectRatio: aspectRatio, cancelToken: cancelToken);
+          style: style, aspectRatio: aspectRatio, cancelToken: cancelToken,
+          referenceImages: referenceImages);
     } catch (e) {
       debugPrint('⚠️ Primary Provider ($effectiveProvider) Failed: $e');
 
       // 🧠 Smart Fallback Logic
-      if (effectiveProvider != providerMock) {
+      if (effectiveProvider != providerMock && effectiveProvider != providerOpenRouter && referenceImages.isEmpty) {
         String fallbackProvider = providerStability;
         if (effectiveProvider == providerStability) {
           fallbackProvider = providerMock; // Last resort
@@ -198,7 +205,12 @@ class AiImageGenerationService extends GetxService {
   /// Helper to execute the specific generation method
   Future<ImageGenerationResult> _executeGeneration(
       String provider, String prompt,
-      {required String style, required String aspectRatio, dio.CancelToken? cancelToken}) async {
+      {required String style, required String aspectRatio, dio.CancelToken? cancelToken,
+      List<File> referenceImages = const []}) async {
+    if (referenceImages.isNotEmpty && provider != providerOpenRouter) {
+      return ImageGenerationResult(success: false,
+          error: 'اختر OpenRouter لإنشاء صورة باستخدام الصور المرجعية.');
+    }
     switch (provider) {
       case providerMock:
         return await _generateMockImage(prompt, style: style);
@@ -210,7 +222,9 @@ class AiImageGenerationService extends GetxService {
       case providerDalle:
         return await _generateWithDalle(prompt, style: style, cancelToken: cancelToken);
       case providerOpenRouter:
-        return await _generateWithOpenRouter(prompt, style: style, cancelToken: cancelToken);
+        return await _generateWithOpenRouter(prompt, style: style,
+            aspectRatio: aspectRatio, referenceImages: referenceImages,
+            cancelToken: cancelToken);
       default:
         return await _generateMockImage(prompt, style: style);
     }
@@ -574,6 +588,8 @@ class AiImageGenerationService extends GetxService {
     String prompt, {
     String style = 'cinematic',
     dio.CancelToken? cancelToken,
+    String aspectRatio = '1:1',
+    List<File> referenceImages = const [],
   }) async {
     final settings = Get.find<SettingsController>();
     final apiKey = settings.getApiKey(ProviderType.openrouter);
@@ -587,66 +603,20 @@ class AiImageGenerationService extends GetxService {
 
     final enhancedPrompt = _enhancePrompt(prompt, style);
     
-    // Choose a default high-end model based on availability
-    // Flux 1.1 Pro or FLUX.2 Klein/Max based on the shared list
-    String modelId = "black-forest-labs/flux-1.1-pro"; 
-
     try {
-      final response = await _apiClient.request(
-        url: 'https://openrouter.ai/api/v1/chat/completions',
-        method: 'POST',
-        providerName: 'openrouter-image',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
-          'HTTP-Referer': 'https://smartcontentcreator2.web.app',
-          'X-Title': 'Smart Content Creator',
-        },
-        data: {
-          'model': modelId,
-          'messages': [
-            {'role': 'user', 'content': enhancedPrompt}
-          ],
-          'modalities': ['image'],
-        },
+      final generated = await _openRouterImages.generate(
+        prompt: enhancedPrompt,
+        apiKey: apiKey,
+        aspectRatio: aspectRatio,
+        referenceImages: referenceImages,
+        cancelToken: cancelToken,
       );
-
-      if (response.statusCode == 200) {
-        final content = response.data['choices']?[0]?['message']?['content'] as String?;
-        
-        String? imageUrl;
-        if (content != null) {
-          final match = RegExp(r'!\[.*?\]\((.*?)\)').firstMatch(content);
-          if (match != null) {
-            imageUrl = match.group(1);
-          } else if (content.trim().startsWith('http')) {
-            imageUrl = content.trim();
-          }
-        }
-
-        if (imageUrl != null) {
-          // Download and save locally
-          final imageResponse = await http.get(Uri.parse(imageUrl));
-          if (imageResponse.statusCode == 200) {
-            final dir = await getTemporaryDirectory();
-            final fileName = 'openrouter_${DateTime.now().millisecondsSinceEpoch}.png';
-            final file = File('${dir.path}/$fileName');
-            await file.writeAsBytes(imageResponse.bodyBytes);
-
-            return ImageGenerationResult(
-              success: true,
-              localPath: file.path,
-              imageUrl: imageUrl,
-              prompt: prompt,
-              provider: providerOpenRouter,
-            );
-          }
-        }
-      }
-
       return ImageGenerationResult(
-        success: false,
-        error: 'فشل OpenRouter: ${response.statusCode}',
+        success: true,
+        localPath: generated.file.path,
+        prompt: prompt,
+        provider: providerOpenRouter,
+        metadata: {'model': generated.model, 'mime_type': generated.mimeType},
       );
     } catch (e) {
       return ImageGenerationResult(
@@ -715,7 +685,7 @@ class AiImageGenerationService extends GetxService {
       {'id': providerGemini, 'name': 'Gemini Imagen', 'icon': '🌟'},
       {'id': providerStability, 'name': 'Stability AI', 'icon': '🎨'},
       {'id': providerDalle, 'name': 'DALL·E 3', 'icon': '🎭'},
-      {'id': providerOpenRouter, 'name': 'OpenRouter (FLUX/Riverflow)', 'icon': '🌐'},
+      {'id': providerOpenRouter, 'name': 'OpenRouter (Nano Banana)', 'icon': '🌐'},
     ];
   }
 
@@ -724,6 +694,11 @@ class AiImageGenerationService extends GetxService {
     try {
       if (!Get.isRegistered<SettingsController>()) return currentProvider;
       final settings = Get.find<SettingsController>();
+
+      if (settings.getActiveProvider() == ProviderType.openrouter &&
+          settings.getApiKey(ProviderType.openrouter).trim().isNotEmpty) {
+        return providerOpenRouter;
+      }
 
       // 1. Stability AI (Best Quality for Images)
       if (settings.getApiKey(ProviderType.stability).isNotEmpty) {
@@ -738,6 +713,9 @@ class AiImageGenerationService extends GetxService {
       // 3. DALL·E 3 (High Quality, Expensive)
       if (settings.getApiKey(ProviderType.openai).isNotEmpty) {
         return providerDalle;
+      }
+      if (settings.getApiKey(ProviderType.openrouter).trim().isNotEmpty) {
+        return providerOpenRouter;
       }
     } catch (e) {
       debugPrint("⚠️ Smart Provider Selection Error: $e");

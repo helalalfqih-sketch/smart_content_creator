@@ -18,6 +18,7 @@ import 'core/agent_models.dart';
 import '../services/api/jina_service.dart';
 import '../services/ai_backend_router.dart';
 import 'core/ai_constants.dart';
+import 'core/image_generation_request.dart';
 import '../utils/logger.dart';
 
 /// 🧭 نمط تنفيذ طلب الذكاء الاصطناعي (Deterministic Execution Modes)
@@ -251,6 +252,28 @@ class AIOrchestrator extends GetxService {
       final routingMs = routingWatch.elapsedMilliseconds;
       debugPrint('[AI_ROUTE] mode=${_modeString(mode)} routing_ms=$routingMs');
 
+      // Image creation must reach a rendering tool, including when references
+      // are attached. A multimodal chat completion only describes the image.
+      if ((mode == ExecutionMode.directText || mode == ExecutionMode.directMultimodal) &&
+          video == null && _containsImageGenRequest(normalizedText)) {
+        _agent.pipelineMessage.value = 'جاري إنشاء الصورة...';
+        await _agent.executeTask(
+          AiDecisionEngine.createTask(
+            prompt,
+            context: context,
+            hasImage: images?.isNotEmpty ?? false,
+            mediaFile: image,
+            images: images,
+            overrideIntent: Intent.imageGeneration,
+          ),
+          skipHistory: true,
+          cancelToken: cancelToken,
+        );
+        _agent.isLoading.value = false;
+        _agent.pipelineMessage.value = '';
+        return;
+      }
+
       // ──────────────────────────────────────────────────────
       // 🚀 EXECUTION ENGINE: Execute according to selected mode
       // ──────────────────────────────────────────────────────
@@ -275,28 +298,6 @@ class AIOrchestrator extends GetxService {
               '[AI_CALL] count=1 retries=0 backend=${_getBackend()} total_ms=${totalWatch.elapsedMilliseconds}');
           AppLogger.info(
               'EXITING: processUserInput (Background Removal Fast-Path)');
-          return;
-        }
-
-        // Fast-Path 2: توليد الصور الصريح
-        if (_containsImageGenRequest(normalizedText)) {
-          _agent.pipelineMessage.value =
-              "جاري تصميم الصورة بالذكاء الاصطناعي... 🎨";
-          await _agent.executeTask(
-            AiDecisionEngine.createTask(
-              prompt,
-              context: context,
-              overrideIntent: Intent.imageGeneration,
-            ),
-            skipHistory: true,
-            cancelToken: cancelToken,
-          );
-          _agent.isLoading.value = false;
-          _agent.pipelineMessage.value = "";
-          totalWatch.stop();
-          debugPrint(
-              '[AI_CALL] count=1 retries=0 backend=${_getBackend()} total_ms=${totalWatch.elapsedMilliseconds}');
-          AppLogger.info('EXITING: processUserInput (Direct Image Gen)');
           return;
         }
 
@@ -813,56 +814,7 @@ class AIOrchestrator extends GetxService {
 
   /// فحص إذا كان النص يطلب توليد صور بشكل صريح
   bool _containsImageGenRequest(String text) {
-    if (text.isEmpty) return false;
-    // 1. Direct keyword match (normalized)
-    if (AIConstants.imageGenKeywords.any((k) => text.contains(_normalizeArabic(k)))) {
-      return true;
-    }
-
-    // 2. Flexible Pattern: (creation/action verb) + (image noun)
-    final hasImageNoun = text.contains('صوره') ||
-        text.contains('صورة') ||
-        text.contains('صور') ||
-        text.contains('image') ||
-        text.contains('photo') ||
-        text.contains('picture') ||
-        text.contains('pic');
-
-    if (hasImageNoun) {
-      const actionVerbs = [
-        'انش',
-        'اصنع',
-        'صنع',
-        'اعمل',
-        'عمل',
-        'ولد',
-        'توليد',
-        'صمم',
-        'تصميم',
-        'ارسم',
-        'رسم',
-        'سوي',
-        'سو',
-        'كون',
-        'تكوين',
-        'اريد',
-        'ابغي',
-        'ابغى',
-        'ابي',
-        'اعطني',
-        'هات',
-        'تخيل',
-        'create',
-        'generate',
-        'make',
-        'draw',
-        'design',
-        'render'
-      ];
-      if (actionVerbs.any((v) => text.contains(v))) return true;
-    }
-
-    return false;
+    return ImageGenerationRequest.matches(text);
   }
 
   /// فحص إذا كان النص يطلب توليد فيديو بشكل صريح

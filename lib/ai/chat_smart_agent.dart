@@ -13,6 +13,7 @@ import '../controllers/auth_controller.dart';
 import '../core/data/chat_repository.dart';
 import '../core/services/chat_state_service.dart';
 import '../core/models/chat_message.dart';
+import '../core/models/chat_attachment.dart';
 import '../core/models/tiktok_video.dart';
 
 // Services
@@ -23,6 +24,7 @@ import '../services/unified_ai_service.dart';
 import '../services/ai/vision_product_service.dart';
 import '../services/ai/background_removal_service.dart';
 import '../services/ai_image_generation_service.dart';
+import '../services/ai/openrouter_image_service.dart';
 import '../services/video_pipeline_service.dart';
 import '../services/serpapi_services.dart';
 import '../services/firebase_storage_service.dart';
@@ -35,6 +37,7 @@ import 'mixins/agent_search_mixin.dart';
 import 'mixins/agent_media_mixin.dart';
 import 'mixins/agent_core_mixin.dart';
 import 'core/ai_helpers_mixin.dart';
+import 'core/image_generation_request.dart';
 import '../core/utils/error_handler.dart';
 import '../ai/core/agent_models.dart';
 import '../core/services/log_service.dart';
@@ -235,7 +238,7 @@ class ChatSmartAgent extends GetxService
   }
 
   Future<void> _smartRouter(dynamic intent, String text,
-      {File? image, dio.CancelToken? cancelToken}) async {
+      {File? image, List<File>? images, dio.CancelToken? cancelToken}) async {
     AppLogger.info('ENTERING: _smartRouter with intent: $intent');
     final intentName = (intent is AIIntentResult)
         ? intent.intent
@@ -327,7 +330,11 @@ class ChatSmartAgent extends GetxService
           break;
         case 'image_generation':
         case 'generate_creative_image':
-          await handleImageGeneration(text, cancelToken: cancelToken);
+        case 'generate_image':
+        case 'IMAGE_GEN':
+          await handleImageGeneration(text,
+              referenceImages: images ?? (image == null ? null : [image]),
+              cancelToken: cancelToken);
           break;
         default:
           LogService.warning("Unhandled AI Action: $intentName", tag: 'AGENT');
@@ -342,10 +349,10 @@ class ChatSmartAgent extends GetxService
   }
 
   Future<void> handleImageGeneration(String prompt,
-      {dio.CancelToken? cancelToken}) async {
+      {List<File>? referenceImages, dio.CancelToken? cancelToken}) async {
     AppLogger.info('ENTERING: handleImageGeneration with prompt: $prompt');
     isLoading.value = true;
-    updateStage(1, 1, "🎨 جاري تخيل وإنشاء الصورة عبر Manus... ✨");
+    updateStage(1, 1, "🎨 جاري إنشاء الصورة...");
 
     // Correction #8: ONE placeholder message
     final placeholder = ChatMessage.assistant(
@@ -358,8 +365,42 @@ class ChatSmartAgent extends GetxService
     final messageId = dbId != null ? "${dbId}_a" : placeholder.id;
 
     try {
+      if (await aiRouter.resolveBackend() == 'openrouter') {
+        final references = referenceImages ?? _currentImageReferences(prompt);
+        final generationPrompt = references.isEmpty ? prompt :
+            '$prompt\nCreate an image using the attached references. Preserve the visible product identity, colors and markings unless the user requests a change.';
+        final result = await imageGenService.generateImage(
+          generationPrompt,
+          provider: AiImageGenerationService.providerOpenRouter,
+          referenceImages: references,
+          cancelToken: cancelToken,
+        );
+        final file = result.file;
+        if (!result.success || file == null || !await file.exists() || await file.length() == 0) {
+          throw ImageGenerationException(result.error ?? 'لم يُرجع المزوّد صورة صالحة.');
+        }
+        if (cancelToken?.isCancelled == true) {
+          throw const ImageGenerationException('تم إلغاء إنشاء الصورة.');
+        }
+        await updateMessage(messageId, placeholder.copyWith(
+          content: 'تم إنشاء الصورة. يمكنك فتحها وحفظها أو مشاركتها.',
+          attachments: [ChatAttachment.fromLocalFile(
+            file: file,
+            type: AttachmentType.image,
+            mimeType: result.metadata?['mime_type'] as String?,
+            source: 'openrouter_generated',
+            metadata: result.metadata,
+          )],
+          provider: 'OpenRouter · Nano Banana',
+          state: MessageState.completed,
+          isNew: false,
+        ), dbId: dbId);
+        await incrementVisualCount();
+        return;
+      }
+
       // Correction #11: Route through Manus ONLY via AIBackendRouter
-      final latestPath = latestUploadPath.value;
+      final latestPath = referenceImages?.firstOrNull?.path ?? latestUploadPath.value;
       final hasProductImage = latestPath != null &&
           latestPath.trim().isNotEmpty &&
           File(latestPath).existsSync();
@@ -388,10 +429,9 @@ class ChatSmartAgent extends GetxService
       final taskId = gatewayResponse.taskId;
       if (taskId == null || !gatewayResponse.isAsync) {
         // Synchronous response (unlikely for media, but handle it)
-        if (gatewayResponse.media.isNotEmpty) {
+        if (gatewayResponse.media.any((media) => media.isImage)) {
           final imageUrl = gatewayResponse.media.firstWhere(
             (m) => m.isImage,
-            orElse: () => gatewayResponse.media.first,
           ).url;
           await updateMessage(messageId, placeholder.copyWith(
             content: "✨ تمت عملية التوليد بنجاح! إليك ما قمت بإنشائه لـ: **$prompt**",
@@ -401,9 +441,9 @@ class ChatSmartAgent extends GetxService
           ), dbId: dbId);
         } else {
           await updateMessage(messageId, placeholder.copyWith(
-            content: gatewayResponse.data ?? "✨ تمت العملية بنجاح!",
-            state: MessageState.completed,
-            isNew: true,
+            content: 'لم يُرجع المزوّد صورة. لا يُعد الرد النصي إنشاءً لصورة.',
+            state: MessageState.error,
+            isError: true,
           ), dbId: dbId);
         }
         return;
@@ -435,12 +475,10 @@ class ChatSmartAgent extends GetxService
         ), dbId: dbId);
         await incrementVisualCount();
       } else if (finalStatus.isCompleted) {
-        // Completed but no image — show text response
         await updateMessage(messageId, placeholder.copyWith(
-          content: finalStatus.data ?? "✨ تمت العملية بنجاح!",
-          attachments: finalStatus.chatAttachments,
-          state: MessageState.completed,
-          isNew: true,
+          content: 'لم يُرجع المزوّد صورة. لا يُعد الرد النصي إنشاءً لصورة.',
+          state: MessageState.error,
+          isError: true,
         ), dbId: dbId);
       } else {
         // Error or timeout
@@ -450,15 +488,28 @@ class ChatSmartAgent extends GetxService
         ), dbId: dbId);
       }
     } catch (e) {
-      ErrorHandler.logError('Image Gen (Manus)', e);
+      ErrorHandler.logError('Image generation', e);
       await updateMessage(messageId, placeholder.copyWith(
         content: "⚠️ حدث خطأ أثناء توليد الصورة: ${e.toString().split('\n').first}",
         state: MessageState.error,
+        isError: true,
       ), dbId: dbId);
     } finally {
       isLoading.value = false;
+      pipelineMessage.value = '';
       AppLogger.info('EXITING: handleImageGeneration');
     }
+  }
+
+  List<File> _currentImageReferences(String prompt) {
+    if (!ImageGenerationRequest.usesPreviousImage(prompt)) return const [];
+    for (final message in history.reversed) {
+      if (message.role != 'user') continue;
+      final images = message.images;
+      if (images != null && images.isNotEmpty) return images;
+      if (message.image != null) return [message.image!];
+    }
+    return const [];
   }
 
 
@@ -486,7 +537,7 @@ class ChatSmartAgent extends GetxService
 
   Future<void> generateCreatorImage(String prompt) async {
     AppLogger.info('ENTERING: generateCreatorImage with prompt: $prompt');
-    await imageGenService.generateImage(prompt);
+    await handleImageGeneration(prompt);
     AppLogger.info('EXITING: generateCreatorImage');
   }
 
@@ -708,7 +759,7 @@ class ChatSmartAgent extends GetxService
         AppLogger.info(
             '🎯 EXECUTION BYPASS: Using planned tool: ${task.suggestedTool}');
         await _smartRouter(task.suggestedTool!, prompt,
-            image: task.mediaFile, cancelToken: cancelToken);
+            image: task.mediaFile, images: task.images, cancelToken: cancelToken);
         return;
       }
 
