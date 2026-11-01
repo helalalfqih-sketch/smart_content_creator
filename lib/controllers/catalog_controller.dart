@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../models/catalog_product_model.dart';
 import '../models/catalog_media_model.dart';
 import '../services/db_service.dart';
@@ -21,12 +20,11 @@ import '../controllers/auth_controller.dart';
 import '../controllers/whatsapp_sync_controller.dart';
 import '../core/storage/app_storage_service.dart';
 import '../core/repositories/catalog_repository.dart';
-import '../core/repositories/back4app_catalog_repository.dart';
+import '../core/repositories/vps_shopify_catalog_repository.dart';
 import '../screens/catalog/widgets/catalog_product_image.dart';
 
 /// 🛍️ CatalogController
-/// متحكم إدارة الكتالوج الحصري عبر Back4App Cloud Code و SQLite:
-/// إضافة / تعديل / حذف المنتجات، إدارة الوسائط، استيراد Excel، ومزامنة Meta
+/// قراءة كاتالوج Shopify عبر VPSDime مع كاش SQLite للعمل دون اتصال.
 class CatalogController extends GetxController {
   DBService get _db => Get.find<DBService>();
   AppStorageService get _appStorage => Get.find<AppStorageService>();
@@ -58,34 +56,30 @@ class CatalogController extends GetxController {
 
   String? get _uid => Get.isRegistered<AuthController>() ? Get.find<AuthController>().firebaseUid : null;
 
+  CatalogRepository? _defaultCatalogRepository;
+
   CatalogRepository get _catalogRepo {
     if (Get.isRegistered<CatalogRepository>()) {
       return Get.find<CatalogRepository>();
     }
-    return Back4AppCatalogRepository(
+    final existing = _defaultCatalogRepository;
+    if (existing != null) return existing;
+
+    final repository = VpsShopifyCatalogRepository(
       dbService: _db,
-      getFirebaseIdToken: () async {
-        final user = firebase_auth.FirebaseAuth.instance.currentUser;
-        if (user == null) return null;
-        try {
-          return await user.getIdToken(false);
-        } catch (e) {
-          if (kDebugMode) debugPrint('⚠️ Failed to get Firebase ID token: $e');
-          return null;
-        }
-      },
-      getCurrentUid: () => _uid,
     );
+    _defaultCatalogRepository = repository;
+    return repository;
   }
 
   @override
   void onInit() {
     super.onInit();
     loadCustomCategories();
-    feedUrl.value = _appStorage.readString('catalog_feed_url') ?? '';
+    feedUrl.value = '';
     gridColumns.value = _appStorage.readInt('catalog_grid_columns', defaultValue: 2) ?? 2;
     
-    // 🏛️ تحميل المنتجات من Back4App مع الكاش المحلي SQLite
+    // تحميل منتجات Shopify عبر VPS مع الكاش المحلي SQLite.
     loadProducts();
   }
 
@@ -97,47 +91,54 @@ class CatalogController extends GetxController {
   }
 
   // ---------------------------------------------------------------------------
-  // 🏛️ التحميل الحصري للكتالوج: Back4App Primary -> SQLite Cache
+  // Shopify عبر VPS هو المصدر الأساسي، وSQLite كاش للعمل دون اتصال.
   // ---------------------------------------------------------------------------
   Future<void> loadProducts() async {
     isLoading.value = true;
     CatalogProductImage.clearFailedCache();
     try {
-      // 1. القراءة الأساسية لجميع الصفحات من Back4App CatalogRepository
-      final b4aProducts = await _catalogRepo.getProducts(limit: 100, forceRefresh: true);
+      final remoteProducts = await _catalogRepo.getProducts(
+        limit: 250,
+        forceRefresh: true,
+      );
 
-      if (b4aProducts.isNotEmpty) {
-        // 2. قراءة كاش SQLite المحدث
-        final sqliteRows = await _db.getRecords('catalog_products', where: 'deleted_at IS NULL');
+      if (remoteProducts.isNotEmpty) {
+        final sqliteRows = await _db.getRecords(
+          'catalog_products',
+          where: "is_synced = 1 AND id LIKE 'shopify:%' AND deleted_at IS NULL",
+        );
         final sqliteCount = sqliteRows.length;
 
-        // 3. عرض المنتجات في الواجهة
-        b4aProducts.sort((a, b) {
-          final aTime = a.createdAt ?? DateTime.now();
-          final bTime = b.createdAt ?? DateTime.now();
+        final epoch = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+        remoteProducts.sort((a, b) {
+          final aTime = a.updatedAt ?? a.createdAt ?? epoch;
+          final bTime = b.updatedAt ?? b.createdAt ?? epoch;
           return bTime.compareTo(aTime);
         });
-        products.value = b4aProducts;
+        products.value = remoteProducts;
         isLoading.value = false;
 
-        // 4. طباعة سجلات الحالة الحصرية
-        debugPrint('[CATALOG_SOURCE] primary=back4app');
-        debugPrint('[CATALOG_COUNT] back4app=${b4aProducts.length}');
+        debugPrint('[CATALOG_SOURCE] primary=vps_shopify');
+        debugPrint('[CATALOG_COUNT] shopify=${remoteProducts.length}');
         debugPrint('[CATALOG_CACHE] sqlite=$sqliteCount');
         debugPrint('[CATALOG_UI] rendered=${products.length}');
         return;
       }
     } catch (e) {
-      if (kDebugMode) debugPrint('⚠️ [CATALOG_SOURCE] Back4App fetch exception: $e');
+      if (kDebugMode) debugPrint('⚠️ [CATALOG_SOURCE] VPS Shopify fetch exception: $e');
     }
 
-    // 5. Fallback إلى كاش SQLite المحلي في حال عدم توفر الاتصال
+    // Fallback إلى آخر لقطة Shopify محفوظة في SQLite.
     try {
-      final localRows = await _db.getRecords('catalog_products', where: 'deleted_at IS NULL');
+      final localRows = await _db.getRecords(
+        'catalog_products',
+        where: "is_synced = 1 AND id LIKE 'shopify:%' AND deleted_at IS NULL",
+      );
       final localProducts = localRows.map((r) => CatalogProduct.fromMap(r)).toList();
+      final epoch = DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
       localProducts.sort((a, b) {
-        final aTime = a.createdAt ?? DateTime.now();
-        final bTime = b.createdAt ?? DateTime.now();
+        final aTime = a.updatedAt ?? a.createdAt ?? epoch;
+        final bTime = b.updatedAt ?? b.createdAt ?? epoch;
         return bTime.compareTo(aTime);
       });
       products.value = localProducts;

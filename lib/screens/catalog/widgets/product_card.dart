@@ -13,6 +13,7 @@ class ProductCard extends StatelessWidget {
   final VoidCallback onShare;
   final VoidCallback onShareFacebook;
   final int columns;
+  final bool readOnly;
 
   const ProductCard({
     super.key,
@@ -22,12 +23,13 @@ class ProductCard extends StatelessWidget {
     required this.onShare,
     required this.onShareFacebook,
     this.columns = 2,
+    this.readOnly = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onEdit,
+      onTap: readOnly ? null : onEdit,
       child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFF111122),
@@ -178,10 +180,12 @@ class ProductCard extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                       itemBuilder: (_) {
-                        final auth = Get.find<AuthController>();
-                        final currentUid = auth.firebaseUid;
-                        final isAdmin = auth.isAdmin;
-                        final isOwner = product.creatorUid == currentUid;
+                        final auth = readOnly ? null : Get.find<AuthController>();
+                        final currentUid = auth?.firebaseUid;
+                        final isAdmin = auth?.isAdmin ?? false;
+                        final isOwner = !readOnly &&
+                            currentUid != null &&
+                            product.creatorUid == currentUid;
 
                         return [
                           PopupMenuItem(
@@ -220,7 +224,7 @@ class ProductCard extends StatelessWidget {
                                       fontFamily: 'IBMPlexSansArabic')),
                             ]),
                           ),
-                          if (isOwner || isAdmin) ...[
+                          if (!readOnly && (isOwner || isAdmin)) ...[
                             PopupMenuItem(
                               value: 'edit',
                               child: Row(children: [
@@ -285,7 +289,7 @@ class ProductCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    product.formattedPrice,
+                    product.formattedSalePrice ?? product.formattedPrice,
                     style: TextStyle(
                       color: const Color(0xFF1877F2),
                       fontFamily: 'IBMPlexSansArabic',

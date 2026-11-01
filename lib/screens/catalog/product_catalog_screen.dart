@@ -13,7 +13,6 @@ import '../../core/storage/app_storage_service.dart';
 import 'widgets/product_card.dart';
 import 'widgets/catalog_product_image.dart';
 import 'product_form_screen.dart';
-import 'whatsapp/whatsapp_media_sync_screen.dart';
 import '../../services/facebook_page_service.dart';
 import '../../controllers/settings_controller.dart';
 
@@ -71,12 +70,7 @@ class ProductCatalogScreen extends StatelessWidget {
         ),
       ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.chat_bubble_outline, color: Color(0xFF25D366)),
-          tooltip: 'WhatsApp Media Sync',
-          onPressed: () => Get.to(() => const WhatsAppMediaSyncScreen()),
-        ),
-        Obx(() => ctrl.isSyncing.value
+        Obx(() => ctrl.isLoading.value
             ? const Padding(
                 padding: EdgeInsets.all(16),
                 child: SizedBox(
@@ -89,9 +83,9 @@ class ProductCatalogScreen extends StatelessWidget {
                 ),
               )
             : IconButton(
-                icon: const Icon(Icons.cloud_upload_rounded, color: Colors.white),
-                tooltip: 'مزامنة مع Meta',
-                onPressed: ctrl.syncToMeta,
+                icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+                tooltip: 'تحديث كتالوج Shopify',
+                onPressed: ctrl.loadProducts,
               )),
       ],
     );
@@ -211,29 +205,7 @@ class ProductCatalogScreen extends StatelessWidget {
   // 🔘 أزرار الإجراءات
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildActionButtons(CatalogController ctrl) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 10,
-        children: [
-          _ActionChip(
-            icon: Icons.table_chart_rounded,
-            label: 'استيراد Excel',
-            color: Colors.green,
-            isLoading: ctrl.isImporting,
-            onTap: ctrl.importFromExcel,
-          ),
-          _ActionChip(
-            icon: Icons.cloud_sync_rounded,
-            label: 'مزامنة مع Meta',
-            color: const Color(0xFF1877F2),
-            isLoading: ctrl.isSyncing,
-            onTap: ctrl.syncToMeta,
-          ),
-        ],
-      ),
-    );
+    return const _ShopifySourceCard();
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -563,7 +535,7 @@ class ProductCatalogScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'اضغط + لإضافة منتج جديد أو استورد من Excel',
+                  'أضف المنتجات من Shopify ثم اضغط زر التحديث هنا',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.25),
                     fontFamily: 'IBMPlexSansArabic',
@@ -587,6 +559,7 @@ class ProductCatalogScreen extends StatelessWidget {
               onShare: () => _shareProduct(items[i], toFacebook: false),
               onShareFacebook: () => _shareProduct(items[i], toFacebook: true),
               columns: ctrl.gridColumns.value,
+              readOnly: true,
             ),
             childCount: items.length,
           ),
@@ -611,15 +584,7 @@ class ProductCatalogScreen extends StatelessWidget {
   // ➕ زر الإضافة
   // ─────────────────────────────────────────────────────────────────────────────
   Widget _buildFab(CatalogController ctrl) {
-    return FloatingActionButton.extended(
-      backgroundColor: const Color(0xFF1877F2),
-      onPressed: () => _openProductForm(ctrl),
-      icon: const Icon(Icons.add_rounded),
-      label: const Text(
-        'منتج جديد',
-        style: TextStyle(fontFamily: 'IBMPlexSansArabic', fontWeight: FontWeight.bold),
-      ),
-    );
+    return const SizedBox.shrink();
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -801,7 +766,7 @@ class ProductCatalogScreen extends StatelessWidget {
     await shareProductWithImages(
       title: product.title,
       description: product.description,
-      formattedPrice: product.formattedPrice,
+      formattedPrice: product.formattedSalePrice ?? product.formattedPrice,
       shareUrl: shareUrl,
       images: [product.imageLink, ...product.additionalImageLinks],
     );
@@ -822,7 +787,8 @@ class ProductCatalogScreen extends StatelessWidget {
 
     // تجهيز النص الأولي بدون روابط مع إضافة هاشتاقات ذكية للمنتج واليمن
     final categoryTags = _getCategoryHashtags(product);
-    final initialText = '🛍️ ${product.title}\n\n${product.description}\n\n💰 السعر: ${product.formattedPrice}\n\n$categoryTags';
+    final displayPrice = product.formattedSalePrice ?? product.formattedPrice;
+    final initialText = '🛍️ ${product.title}\n\n${product.description}\n\n💰 السعر: $displayPrice\n\n$categoryTags';
     final textCtrl = TextEditingController(text: initialText);
 
     // تجميع كل الصور المتوفرة
@@ -1166,57 +1132,53 @@ class ProductCatalogScreen extends StatelessWidget {
 // =============================================================================
 // 🔧 Widgets مساعدة
 // =============================================================================
-class _ActionChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final RxBool isLoading;
-  final VoidCallback onTap;
-
-  const _ActionChip({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.isLoading,
-    required this.onTap,
-  });
+class _ShopifySourceCard extends StatelessWidget {
+  const _ShopifySourceCard();
 
   @override
   Widget build(BuildContext context) {
-    return Obx(() => GestureDetector(
-          onTap: isLoading.value ? null : onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: color.withValues(alpha: 0.4)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D2A1C),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFF36B37E).withValues(alpha: 0.5),
+        ),
+      ),
+      child: const Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.storefront_rounded, color: Color(0xFF36B37E)),
+          SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                isLoading.value
-                    ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                            color: color, strokeWidth: 2),
-                      )
-                    : Icon(icon, color: color, size: 16),
-                const SizedBox(width: 8),
                 Text(
-                  label,
+                  'المصدر: Shopify • العرض عبر VPSDime',
                   style: TextStyle(
-                    color: color,
+                    color: Colors.white,
                     fontFamily: 'IBMPlexSansArabic',
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'الإضافة والتعديل والحذف تتم من لوحة Shopify، ثم تظهر هنا عند التحديث.',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontFamily: 'IBMPlexSansArabic',
+                    fontSize: 12,
                   ),
                 ),
               ],
             ),
           ),
-        ));
+        ],
+      ),
+    );
   }
 }
 
