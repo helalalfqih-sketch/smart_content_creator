@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -139,10 +138,11 @@ class GalleryStore {
     final video = mime.startsWith('video/');
     final limit = video ? maxVideoBytes : maxPhotoBytes;
     final length = await sourceFile.length();
-    if (length <= 0 || length > limit)
+    if (length <= 0 || length > limit) {
       throw GalleryFailure(
         video ? 'حد الفيديو 512 ميغابايت.' : 'حد الصورة 40 ميغابايت.',
       );
+    }
     final id = _id();
     final staged = await temporaryFile();
     final target = File(p.join(root.path, 'media', '$id.$ext'));
@@ -155,8 +155,9 @@ class GalleryStore {
         await for (final chunk in sourceFile.openRead()) {
           if (cancelled()) throw const GalleryFailure('أُلغي الاستيراد.');
           size += chunk.length;
-          if (size > limit)
+          if (size > limit) {
             throw const GalleryFailure('الملف أكبر من الحد المسموح.');
+          }
           sink.add(chunk);
         }
         await sink.flush();
@@ -171,11 +172,12 @@ class GalleryStore {
         whereArgs: [digest],
         limit: 1,
       );
-      if (duplicate.isNotEmpty)
+      if (duplicate.isNotEmpty) {
         return GalleryImportResult(
           duplicate.first['id'] as String,
           duplicate: true,
         );
+      }
       await staged.rename(target.path);
       Uint8List? preview;
       if (video) {
@@ -195,10 +197,11 @@ class GalleryStore {
           keepExif: false,
         );
       }
-      if (preview == null || preview.isEmpty)
+      if (preview == null || preview.isEmpty) {
         throw const GalleryFailure(
           'تعذر قراءة هذا الملف. استخدم صيغة يدعمها الهاتف.',
         );
+      }
       await thumb.writeAsBytes(preview, flush: true);
       final hash = video ? null : await compute(galleryImageHash, preview);
       if (cancelled()) throw const GalleryFailure('أُلغي الاستيراد.');
@@ -234,16 +237,18 @@ class GalleryStore {
     await db.transaction((tx) async {
       final rows = (await tx.query('media')).map(GalleryItem.fromRow).toList();
       final selected = rows.where((x) => names.containsKey(x.id)).toList();
-      if (selected.length != names.length)
+      if (selected.length != names.length) {
         throw const GalleryFailure(
           'تغيرت المكتبة؛ افتح معاينة الأسماء مجدداً.',
         );
+      }
       final plan = planGalleryRename(rows, selected, names);
       // Reject stale previews instead of silently changing approved names.
-      if (plan.entries.any((x) => names[x.key] != x.value))
+      if (plan.entries.any((x) => names[x.key] != x.value)) {
         throw const GalleryFailure(
           'اسم متكرر أو غير صالح. راجع معاينة الأسماء مجدداً.',
         );
+      }
       for (final id in names.keys) {
         await tx.update(
           'media',
@@ -272,8 +277,9 @@ class GalleryStore {
 
   Future<void> createAlbum(String name) async {
     final clean = name.trim();
-    if (clean.isEmpty || clean.runes.length > 60)
+    if (clean.isEmpty || clean.runes.length > 60) {
       throw const GalleryFailure('اسم الألبوم من 1 إلى 60 حرفاً.');
+    }
     await db.insert('albums', {
       'name': clean,
     }, conflictAlgorithm: ConflictAlgorithm.ignore);
@@ -353,8 +359,9 @@ class GalleryStore {
       await for (final file in Directory(
         p.join(root.path, pair.$1),
       ).list(followLinks: false)) {
-        if (file is File && !pair.$2.contains(p.basename(file.path)))
+        if (file is File && !pair.$2.contains(p.basename(file.path))) {
           await file.delete();
+        }
       }
     }
     // Exported copies are disposable and must not survive deletion of a photo.

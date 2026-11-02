@@ -87,8 +87,9 @@ class GalleryController extends ChangeNotifier {
       !accountIsCurrent() ||
       (_cancel?.isCancelled ?? false);
   void _check() {
-    if (cancelled)
+    if (cancelled) {
       throw const GalleryFailure('أُوقفت العملية. النتائج المكتملة محفوظة.');
+    }
   }
 
   Future<void> refresh() async {
@@ -144,16 +145,20 @@ class GalleryController extends ChangeNotifier {
   static String safeError(Object error) {
     if (error is GalleryFailure) return error.message;
     if (error is AiRequestException) return error.message;
-    if (error is DioException && CancelToken.isCancel(error))
+    if (error is DioException && CancelToken.isCancel(error)) {
       return 'أُوقفت العملية. النتائج المكتملة محفوظة.';
+    }
     if (error is DioException ||
         error is SocketException ||
-        error is TimeoutException)
+        error is TimeoutException) {
       return 'تعذر الاتصال. تحقق من الإنترنت ثم أعد المحاولة؛ النتائج المكتملة محفوظة.';
-    if (error is FileSystemException)
+    }
+    if (error is FileSystemException) {
       return 'تعذر حفظ الملف. تحقق من المساحة المتاحة على الهاتف.';
-    if (error is PlatformException)
+    }
+    if (error is PlatformException) {
       return 'تعذر فتح الملف أو منتقي الصور. تحقق من صلاحيات التطبيق ثم أعد المحاولة.';
+    }
     return 'لم تكتمل العملية. أعد فتح المعرض وحاول مجدداً.';
   }
 
@@ -278,15 +283,17 @@ class GalleryController extends ChangeNotifier {
 
   Future<void> analyze(List<GalleryItem> chosen) => run(() async {
     final photos = chosen.where((x) => !x.isVideo).toList();
-    if (photos.isEmpty || photos.length > 20)
+    if (photos.isEmpty || photos.length > 20) {
       throw const GalleryFailure(
         'حدد من 1 إلى 20 صورة للتحليل. تحليل الفيديو غير متاح.',
       );
+    }
     final key = readKey();
-    if (key.trim().isEmpty)
+    if (key.trim().isEmpty) {
       throw const GalleryFailure(
         'أضف مفتاح OpenRouter من إعدادات الخدمات أولاً.',
       );
+    }
     final analyzer = GalleryAnalyzer();
     var completed = 0;
     for (final item in photos) {

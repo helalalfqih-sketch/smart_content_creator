@@ -56,8 +56,9 @@ class GalleryPhotosAuthorization {
       final account = await _google.signIn();
       if (account == null) return null;
       final auth = await account.authentication;
-      if (auth.accessToken == null)
+      if (auth.accessToken == null) {
         throw const GalleryFailure('لم يمنح Google صلاحية اختيار الصور.');
+      }
       return auth.accessToken;
     } on GalleryFailure {
       rethrow;
@@ -158,11 +159,13 @@ class GooglePhotosPicker {
     );
     _checkStatus(result.statusCode);
     if (result.data == null || result.data!.isEmpty) return {};
-    if (result.data!.length > 2 * 1024 * 1024)
+    if (result.data!.length > 2 * 1024 * 1024) {
       throw const GalleryFailure('استجابة Google Photos أكبر من المتوقع.');
+    }
     final decoded = jsonDecode(result.data!);
-    if (decoded is! Map<String, dynamic>)
+    if (decoded is! Map<String, dynamic>) {
       throw const GalleryFailure('استجابة Google Photos غير صالحة.');
+    }
     return decoded;
   }
 
@@ -196,12 +199,13 @@ class GooglePhotosPicker {
           uri.port != 443) {
         throw const GalleryFailure('تعذر فتح جلسة اختيار الصور.');
       }
-      if (!await _open(uri))
+      if (!await _open(uri)) {
         throw const GalleryFailure('تعذر فتح Google Photos في المتصفح.');
+      }
       progress('اختر الصور في Google Photos ثم اضغط «تم» وعد إلى التطبيق.');
       var deadline = _now().add(const Duration(minutes: 10));
       while (session['mediaItemsSet'] != true) {
-        cancel.throwIfCancellationRequested();
+        if (cancel.isCancelled) throw cancel.cancelError!;
         final config = session['pollingConfig'];
         final timeout = seconds(
           config is Map ? config['timeoutIn'] : null,
@@ -211,24 +215,26 @@ class GooglePhotosPicker {
         final recommended = _now().add(timeout);
         if (recommended.isBefore(deadline)) deadline = recommended;
         final expiration = DateTime.tryParse('${session['expireTime']}');
-        if (expiration != null && expiration.isBefore(deadline))
+        if (expiration != null && expiration.isBefore(deadline)) {
           deadline = expiration;
-        if (!_now().add(poll).isBefore(deadline))
+        }
+        if (!_now().add(poll).isBefore(deadline)) {
           throw const GalleryFailure(
             'انتهت مهلة الاختيار. ابدأ الاستيراد مجدداً.',
           );
+        }
         await _wait(
           poll < const Duration(seconds: 1) ? const Duration(seconds: 1) : poll,
           cancel,
         );
-        cancel.throwIfCancellationRequested();
+        if (cancel.isCancelled) throw cancel.cancelError!;
         session = await _api('GET', 'sessions/$sessionId', token, cancel);
       }
       String? page;
       var count = 0;
       final pages = <String>{};
       do {
-        cancel.throwIfCancellationRequested();
+        if (cancel.isCancelled) throw cancel.cancelError!;
         final response = await _api(
           'GET',
           'mediaItems',
@@ -241,20 +247,23 @@ class GooglePhotosPicker {
           },
         );
         final items = response['mediaItems'];
-        if (items != null && items is! List)
+        if (items != null && items is! List) {
           throw const GalleryFailure('قائمة صور Google غير صالحة.');
+        }
         for (final json in (items as List? ?? [])) {
-          cancel.throwIfCancellationRequested();
-          if (++count > 100)
+          if (cancel.isCancelled) throw cancel.cancelError!;
+          if (++count > 100) {
             throw const GalleryFailure('حد الاستيراد 100 ملف في كل مرة.');
+          }
           progress('استيراد ملف $count من Google Photos…');
           await import(
             PickedGalleryMedia.fromJson(Map<String, dynamic>.from(json as Map)),
           );
         }
         page = response['nextPageToken'] as String?;
-        if (page != null && page.isNotEmpty && !pages.add(page))
+        if (page != null && page.isNotEmpty && !pages.add(page)) {
           throw const GalleryFailure('تكررت صفحة نتائج Google Photos.');
+        }
       } while (page != null && page.isNotEmpty);
     } finally {
       if (sessionId != null &&
@@ -274,10 +283,11 @@ class GooglePhotosPicker {
     File target,
     CancelToken cancel,
   ) async {
-    if (!item.videoReady)
+    if (!item.videoReady) {
       throw const GalleryFailure(
         'الفيديو ما زال قيد المعالجة في Google Photos.',
       );
+    }
     final video = item.mime.startsWith('video/');
     var uri = contentUri(item.baseUrl, video);
     final limit = video
@@ -299,8 +309,9 @@ class GooglePhotosPicker {
         if ([301, 302, 303, 307, 308].contains(response.statusCode)) {
           await response.data?.stream.listen((_) {}).cancel();
           final location = response.headers.value('location');
-          if (redirects == 3 || location == null)
+          if (redirects == 3 || location == null) {
             throw const GalleryFailure('تعذر تنزيل ملف Google Photos.');
+          }
           final next = uri.resolve(location);
           // Validate the redirect before forwarding the Google bearer token.
           contentUri(next.toString(), video);
@@ -328,14 +339,16 @@ class GooglePhotosPicker {
           await for (final chunk in body.stream.timeout(
             const Duration(seconds: 90),
           )) {
-            cancel.throwIfCancellationRequested();
+            if (cancel.isCancelled) throw cancel.cancelError!;
             size += chunk.length;
-            if (size > limit || _now().isAfter(deadline))
+            if (size > limit || _now().isAfter(deadline)) {
               throw const GalleryFailure('تجاوز التنزيل حد الحجم أو الوقت.');
+            }
             sink.add(chunk);
           }
-          if (size == 0 || (advertised != null && size != advertised))
+          if (size == 0 || (advertised != null && size != advertised)) {
             throw const GalleryFailure('لم يكتمل تنزيل الملف.');
+          }
           await sink.flush();
         } finally {
           await sink.close();

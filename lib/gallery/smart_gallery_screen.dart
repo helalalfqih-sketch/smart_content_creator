@@ -65,7 +65,7 @@ class _SmartGalleryScreenState extends State<SmartGalleryScreen> {
           (_) => controller.lockIfAccountChanged(),
         );
       }
-      await controller.refresh();
+      await controller.run(() async {});
       if (mounted) setState(() {});
       await controller.recoverPhoneSelection();
     } catch (error) {
@@ -76,6 +76,9 @@ class _SmartGalleryScreenState extends State<SmartGalleryScreen> {
   void _changed() {
     if (mounted) setState(() {});
   }
+
+  GalleryItem _current(GalleryItem item) =>
+      _controller!.items.firstWhere((x) => x.id == item.id);
 
   @override
   void dispose() {
@@ -154,9 +157,11 @@ class _SmartGalleryScreenState extends State<SmartGalleryScreen> {
         () => controller.cancelled,
       );
       if (controller.cancelled) return;
-      final result = await Share.shareXFiles(
-        files.map((f) => XFile(f.path)).toList(),
-        sharePositionOrigin: origin,
+      final result = await SharePlus.instance.share(
+        ShareParams(
+          files: files.map((f) => XFile(f.path)).toList(),
+          sharePositionOrigin: origin,
+        ),
       );
       controller.setStatus(
         result.status == ShareResultStatus.dismissed
@@ -184,8 +189,9 @@ class _SmartGalleryScreenState extends State<SmartGalleryScreen> {
         ],
       ),
     );
-    if (chosen != null && mounted)
+    if (chosen != null && mounted) {
       await _controller!.move(items, chosen.isEmpty ? null : chosen);
+    }
   }
 
   Future<void> _createAlbum() async {
@@ -213,11 +219,12 @@ class _SmartGalleryScreenState extends State<SmartGalleryScreen> {
       ),
     );
     text.dispose();
-    if (name != null && mounted)
+    if (name != null && mounted) {
       await _controller!.run(() async {
         await _controller!.store.createAlbum(name);
         _controller!.setStatus('أُنشئ الألبوم.');
       });
+    }
   }
 
   @override
@@ -267,362 +274,400 @@ class _SmartGalleryScreenState extends State<SmartGalleryScreen> {
             ? const Center(
                 child: Text('تغير الحساب. أعد فتح المعرض لعرض مكتبتك.'),
               )
-            : Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    child: Column(
-                      children: [
-                        Row(
+            : LayoutBuilder(
+                builder: (context, layout) => Column(
+                  children: [
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: layout.maxHeight * 0.55,
+                      ),
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '${c.items.length} ملف • محفوظ على هذا الهاتف',
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall,
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: c.busy ? null : _createAlbum,
+                                    child: const Text('ألبوم جديد'),
+                                  ),
+                                ],
+                              ),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: [
+                                  FilledButton.icon(
+                                    onPressed: c.busy ? null : c.importPhone,
+                                    icon: const Icon(
+                                      Icons.photo_library_rounded,
+                                    ),
+                                    label: const Text('معرض الهاتف'),
+                                  ),
+                                  OutlinedButton(
+                                    onPressed: c.busy ? null : c.importGoogle,
+                                    child: const Text(
+                                      'استيراد من Google Photos',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              TextField(
+                                onChanged: (text) {
+                                  c.query = text;
+                                  c.changed();
+                                },
+                                decoration: const InputDecoration(
+                                  hintText:
+                                      'ابحث بالاسم أو الوصف أو النص أو الوسوم',
+                                  prefixIcon: Icon(Icons.search),
+                                  isDense: true,
+                                  border: OutlineInputBorder(),
+                                ),
+                              ),
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    for (final option in [
+                                      ('all', 'الكل'),
+                                      ('photo', 'صور'),
+                                      ('video', 'فيديو'),
+                                    ])
+                                      Padding(
+                                        padding:
+                                            const EdgeInsetsDirectional.only(
+                                              end: 6,
+                                            ),
+                                        child: ChoiceChip(
+                                          label: Text(option.$2),
+                                          selected: c.filter == option.$1,
+                                          onSelected: (_) {
+                                            c.filter = option.$1;
+                                            c.selected.clear();
+                                            c.changed();
+                                          },
+                                        ),
+                                      ),
+                                    FilterChip(
+                                      label: Text(
+                                        'متشابهة (${c.similar.length})',
+                                      ),
+                                      selected: c.onlySimilar,
+                                      onSelected: (value) {
+                                        c.onlySimilar = value;
+                                        c.selected.clear();
+                                        c.changed();
+                                      },
+                                    ),
+                                    const SizedBox(width: 8),
+                                    DropdownButton<String>(
+                                      value: c.sort,
+                                      underline: const SizedBox.shrink(),
+                                      items: const [
+                                        DropdownMenuItem(
+                                          value: 'newest',
+                                          child: Text('الأحدث استيراداً'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'oldest',
+                                          child: Text('الأقدم استيراداً'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'name',
+                                          child: Text('الاسم'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'type',
+                                          child: Text('النوع'),
+                                        ),
+                                      ],
+                                      onChanged: (value) {
+                                        if (value != null) {
+                                          c.sort = value;
+                                          c.changed();
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    TextButton(
+                                      onPressed: () {
+                                        c.album = null;
+                                        c.selected.clear();
+                                        c.changed();
+                                      },
+                                      child: Text(
+                                        c.album == null
+                                            ? '✓ جميع الألبومات'
+                                            : 'جميع الألبومات',
+                                      ),
+                                    ),
+                                    for (final album in c.albums)
+                                      Padding(
+                                        padding:
+                                            const EdgeInsetsDirectional.only(
+                                              end: 6,
+                                            ),
+                                        child: ChoiceChip(
+                                          label: Text(album),
+                                          selected: c.album == album,
+                                          onSelected: (_) {
+                                            c.album = album;
+                                            c.selected.clear();
+                                            c.changed();
+                                          },
+                                        ),
+                                      ),
+                                    if (c.album != null)
+                                      TextButton(
+                                        onPressed: c.busy
+                                            ? null
+                                            : () async {
+                                                final album = c.album!;
+                                                if (await _confirm(
+                                                      'حذف ألبوم $album؟',
+                                                      'تبقى الصور في المعرض وتُزال تسمية الألبوم فقط.',
+                                                      'حذف الألبوم',
+                                                    ) &&
+                                                    mounted) {
+                                                  await c.run(() async {
+                                                    await c.store.removeAlbum(
+                                                      album,
+                                                    );
+                                                    c.album = null;
+                                                  });
+                                                }
+                                              },
+                                        child: const Text('حذف الألبوم'),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              if (c.onlySimilar)
+                                const Text(
+                                  'تشابه تقريبي للمراجعة؛ لا تُحذف صور تلقائياً.',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (c.busy) const LinearProgressIndicator(),
+                    if (c.status.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        child: Row(
                           children: [
                             Expanded(
                               child: Text(
-                                '${c.items.length} ملف • محفوظ على هذا الهاتف',
-                                style: Theme.of(context).textTheme.bodySmall,
+                                c.status,
+                                maxLines: layout.maxHeight < 300 ? 1 : 3,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 12),
                               ),
                             ),
-                            TextButton(
-                              onPressed: c.busy ? null : _createAlbum,
-                              child: const Text('ألبوم جديد'),
-                            ),
-                          ],
-                        ),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 6,
-                          children: [
-                            FilledButton.icon(
-                              onPressed: c.busy ? null : c.importPhone,
-                              icon: const Icon(Icons.photo_library_rounded),
-                              label: const Text('معرض الهاتف'),
-                            ),
-                            OutlinedButton(
-                              onPressed: c.busy ? null : c.importGoogle,
-                              child: const Text('استيراد من Google Photos'),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        TextField(
-                          onChanged: (text) {
-                            c.query = text;
-                            c.changed();
-                          },
-                          decoration: const InputDecoration(
-                            hintText: 'ابحث بالاسم أو الوصف أو النص أو الوسوم',
-                            prefixIcon: Icon(Icons.search),
-                            isDense: true,
-                            border: OutlineInputBorder(),
-                          ),
-                        ),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              for (final option in [
-                                ('all', 'الكل'),
-                                ('photo', 'صور'),
-                                ('video', 'فيديو'),
-                              ])
-                                Padding(
-                                  padding: const EdgeInsetsDirectional.only(
-                                    end: 6,
-                                  ),
-                                  child: ChoiceChip(
-                                    label: Text(option.$2),
-                                    selected: c.filter == option.$1,
-                                    onSelected: (_) {
-                                      c.filter = option.$1;
-                                      c.selected.clear();
-                                      c.changed();
-                                    },
-                                  ),
-                                ),
-                              FilterChip(
-                                label: Text('متشابهة (${c.similar.length})'),
-                                selected: c.onlySimilar,
-                                onSelected: (value) {
-                                  c.onlySimilar = value;
-                                  c.selected.clear();
-                                  c.changed();
-                                },
-                              ),
-                              const SizedBox(width: 8),
-                              DropdownButton<String>(
-                                value: c.sort,
-                                underline: const SizedBox.shrink(),
-                                items: const [
-                                  DropdownMenuItem(
-                                    value: 'newest',
-                                    child: Text('الأحدث استيراداً'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'oldest',
-                                    child: Text('الأقدم استيراداً'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'name',
-                                    child: Text('الاسم'),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 'type',
-                                    child: Text('النوع'),
-                                  ),
-                                ],
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    c.sort = value;
-                                    c.changed();
-                                  }
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
+                            if (c.busy)
                               TextButton(
-                                onPressed: () {
-                                  c.album = null;
-                                  c.selected.clear();
-                                  c.changed();
-                                },
-                                child: Text(
-                                  c.album == null
-                                      ? '✓ جميع الألبومات'
-                                      : 'جميع الألبومات',
-                                ),
+                                onPressed: c.cancel,
+                                child: const Text('إيقاف'),
                               ),
-                              for (final album in c.albums)
-                                Padding(
-                                  padding: const EdgeInsetsDirectional.only(
-                                    end: 6,
-                                  ),
-                                  child: ChoiceChip(
-                                    label: Text(album),
-                                    selected: c.album == album,
-                                    onSelected: (_) {
-                                      c.album = album;
-                                      c.selected.clear();
-                                      c.changed();
-                                    },
-                                  ),
-                                ),
-                              if (c.album != null)
-                                TextButton(
-                                  onPressed: c.busy
-                                      ? null
-                                      : () async {
-                                          final album = c.album!;
-                                          if (await _confirm(
-                                                'حذف ألبوم $album؟',
-                                                'تبقى الصور في المعرض وتُزال تسمية الألبوم فقط.',
-                                                'حذف الألبوم',
-                                              ) &&
-                                              mounted) {
-                                            await c.run(() async {
-                                              await c.store.removeAlbum(album);
-                                              c.album = null;
-                                            });
-                                          }
-                                        },
-                                  child: const Text('حذف الألبوم'),
-                                ),
-                            ],
-                          ),
+                          ],
                         ),
-                        if (c.onlySimilar)
-                          const Text(
-                            'تشابه تقريبي للمراجعة؛ لا تُحذف صور تلقائياً.',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (c.busy) const LinearProgressIndicator(),
-                  if (c.status.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
                       ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              c.status,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12),
-                            ),
-                          ),
-                          if (c.busy)
-                            TextButton(
-                              onPressed: c.cancel,
-                              child: const Text('إيقاف'),
-                            ),
-                        ],
-                      ),
-                    ),
-                  Expanded(
-                    child: visible.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Text(
-                                c.items.isEmpty
-                                    ? 'ابدأ باستيراد صورك وفيديوهاتك.\nستظهر هنا مع أسمائها وألبوماتها.'
-                                    : 'لا توجد ملفات تطابق البحث.',
-                                textAlign: TextAlign.center,
+                    Expanded(
+                      child: visible.isEmpty
+                          ? Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Text(
+                                  c.items.isEmpty
+                                      ? 'ابدأ باستيراد صورك وفيديوهاتك.\nستظهر هنا مع أسمائها وألبوماتها.'
+                                      : 'لا توجد ملفات تطابق البحث.',
+                                  textAlign: TextAlign.center,
+                                ),
                               ),
-                            ),
-                          )
-                        : LayoutBuilder(
-                            builder: (context, constraints) => GridView.builder(
-                              padding: const EdgeInsets.all(12),
-                              itemCount: visible.length,
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: (constraints.maxWidth / 160)
-                                        .floor()
-                                        .clamp(2, 6),
-                                    crossAxisSpacing: 10,
-                                    mainAxisSpacing: 10,
-                                    childAspectRatio: 0.8,
-                                  ),
-                              itemBuilder: (context, index) {
-                                final item = visible[index];
-                                final selected = c.selected.contains(item.id);
-                                return Semantics(
-                                  label: item.name,
-                                  selected: selected,
-                                  child: InkWell(
-                                    onLongPress: c.busy
-                                        ? null
-                                        : () => c.toggle(item),
-                                    onTap: c.busy
-                                        ? null
-                                        : () async {
-                                            if (c.selected.isNotEmpty) {
-                                              c.toggle(item);
-                                              return;
-                                            }
-                                            await Navigator.push(
-                                              context,
-                                              MaterialPageRoute<void>(
-                                                builder: (_) => _GalleryDetail(
-                                                  item: item,
-                                                  controller: c,
-                                                  analyze: () =>
-                                                      _analyze([item]),
-                                                  rename: () => _rename([item]),
-                                                  export: () => _export([item]),
+                            )
+                          : LayoutBuilder(
+                              builder: (context, constraints) => GridView.builder(
+                                padding: const EdgeInsets.all(12),
+                                itemCount: visible.length,
+                                gridDelegate:
+                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount:
+                                          (constraints.maxWidth / 160)
+                                              .floor()
+                                              .clamp(2, 6),
+                                      crossAxisSpacing: 10,
+                                      mainAxisSpacing: 10,
+                                      childAspectRatio: 0.8,
+                                    ),
+                                itemBuilder: (context, index) {
+                                  final item = visible[index];
+                                  final selected = c.selected.contains(item.id);
+                                  return Semantics(
+                                    label: item.name,
+                                    selected: selected,
+                                    child: InkWell(
+                                      onLongPress: c.busy
+                                          ? null
+                                          : () => c.toggle(item),
+                                      onTap: c.busy
+                                          ? null
+                                          : () async {
+                                              if (c.selected.isNotEmpty) {
+                                                c.toggle(item);
+                                                return;
+                                              }
+                                              await Navigator.push(
+                                                context,
+                                                MaterialPageRoute<void>(
+                                                  builder: (_) =>
+                                                      _GalleryDetail(
+                                                        item: item,
+                                                        controller: c,
+                                                        analyze: () => _analyze(
+                                                          [_current(item)],
+                                                        ),
+                                                        rename: () => _rename([
+                                                          _current(item),
+                                                        ]),
+                                                        export: () => _export([
+                                                          _current(item),
+                                                        ]),
+                                                      ),
                                                 ),
+                                              );
+                                              if (mounted) await c.refresh();
+                                            },
+                                      child: Container(
+                                        clipBehavior: Clip.antiAlias,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(
+                                            14,
+                                          ),
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.surfaceContainerHighest,
+                                          border: Border.all(
+                                            color: selected
+                                                ? Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary
+                                                : Colors.transparent,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            Expanded(
+                                              child: Stack(
+                                                fit: StackFit.expand,
+                                                children: [
+                                                  Image.file(
+                                                    c.store.thumbnailFile(item),
+                                                    fit: BoxFit.cover,
+                                                    cacheWidth: 480,
+                                                    errorBuilder:
+                                                        (_, __, ___) =>
+                                                            const Icon(
+                                                              Icons.image,
+                                                            ),
+                                                  ),
+                                                  if (item.isVideo)
+                                                    const Center(
+                                                      child: Icon(
+                                                        Icons.play_arrow,
+                                                        color: Colors.white,
+                                                        size: 40,
+                                                      ),
+                                                    ),
+                                                  Align(
+                                                    alignment:
+                                                        Alignment.topLeft,
+                                                    child: IconButton(
+                                                      tooltip: selected
+                                                          ? 'إلغاء التحديد'
+                                                          : 'تحديد',
+                                                      onPressed: c.busy
+                                                          ? null
+                                                          : () =>
+                                                                c.toggle(item),
+                                                      icon: Icon(
+                                                        Icons.check_circle,
+                                                        color: selected
+                                                            ? Colors.tealAccent
+                                                            : Colors.black38,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                            );
-                                            if (mounted) await c.refresh();
-                                          },
-                                    child: Container(
-                                      clipBehavior: Clip.antiAlias,
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(14),
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.surfaceContainerHighest,
-                                        border: Border.all(
-                                          color: selected
-                                              ? Theme.of(
-                                                  context,
-                                                ).colorScheme.primary
-                                              : Colors.transparent,
-                                          width: 2,
+                                            ),
+                                            Padding(
+                                              padding: const EdgeInsets.all(8),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    item.name,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                  Text(
+                                                    item
+                                                                .analysis
+                                                                ?.category
+                                                                .isNotEmpty ==
+                                                            true
+                                                        ? item
+                                                              .analysis!
+                                                              .category
+                                                        : (item.isVideo
+                                                              ? 'فيديو'
+                                                              : 'صورة'),
+                                                    maxLines: 1,
+                                                    style: Theme.of(
+                                                      context,
+                                                    ).textTheme.bodySmall,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.stretch,
-                                        children: [
-                                          Expanded(
-                                            child: Stack(
-                                              fit: StackFit.expand,
-                                              children: [
-                                                Image.file(
-                                                  c.store.thumbnailFile(item),
-                                                  fit: BoxFit.cover,
-                                                  cacheWidth: 480,
-                                                  errorBuilder: (_, __, ___) =>
-                                                      const Icon(Icons.image),
-                                                ),
-                                                if (item.isVideo)
-                                                  const Center(
-                                                    child: Icon(
-                                                      Icons.play_arrow,
-                                                      color: Colors.white,
-                                                      size: 40,
-                                                    ),
-                                                  ),
-                                                Align(
-                                                  alignment: Alignment.topLeft,
-                                                  child: IconButton(
-                                                    tooltip: selected
-                                                        ? 'إلغاء التحديد'
-                                                        : 'تحديد',
-                                                    onPressed: c.busy
-                                                        ? null
-                                                        : () => c.toggle(item),
-                                                    icon: Icon(
-                                                      Icons.check_circle,
-                                                      color: selected
-                                                          ? Colors.tealAccent
-                                                          : Colors.black38,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsets.all(8),
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  item.name,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                                Text(
-                                                  item
-                                                              .analysis
-                                                              ?.category
-                                                              .isNotEmpty ==
-                                                          true
-                                                      ? item.analysis!.category
-                                                      : (item.isVideo
-                                                            ? 'فيديو'
-                                                            : 'صورة'),
-                                                  maxLines: 1,
-                                                  style: Theme.of(
-                                                    context,
-                                                  ).textTheme.bodySmall,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
                                     ),
-                                  ),
-                                );
-                              },
+                                  );
+                                },
+                              ),
                             ),
-                          ),
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
         bottomNavigationBar: c == null || c.locked || c.selected.isEmpty
             ? null
@@ -756,13 +801,14 @@ class _RenameDialogState extends State<_RenameDialog> {
                   ),
                   TextButton(
                     onPressed: () {
-                      if (prefix.text.trim().isNotEmpty)
+                      if (prefix.text.trim().isNotEmpty) {
                         setState(() {
                           for (var i = 0; i < widget.items.length; i++) {
                             fields[widget.items[i].id]!.text =
                                 '${prefix.text.trim()}_${(i + 1).toString().padLeft(2, '0')}';
                           }
                         });
+                      }
                     },
                     child: const Text('ترقيم'),
                   ),
@@ -772,8 +818,9 @@ class _RenameDialogState extends State<_RenameDialog> {
               onPressed: widget.items.any((x) => x.analysis != null)
                   ? () => setState(() {
                       for (final item in widget.items) {
-                        if (item.analysis != null)
+                        if (item.analysis != null) {
                           fields[item.id]!.text = item.analysis!.suggestedName;
+                        }
                       }
                     })
                   : null,
@@ -860,6 +907,7 @@ class _GalleryDetailState extends State<_GalleryDetail> {
   }
 
   void _changed() {
+    if (widget.controller.locked) unawaited(_video?.pause());
     if (mounted) setState(() {});
   }
 

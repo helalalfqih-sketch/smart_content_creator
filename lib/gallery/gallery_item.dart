@@ -16,8 +16,9 @@ String galleryFileName(String input, String extension) {
   );
   final ext = extension.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   if (ext.isEmpty) throw const GalleryFailure('صيغة الملف غير معروفة.');
-  if (name.toLowerCase().endsWith('.$ext'))
+  if (name.toLowerCase().endsWith('.$ext')) {
     name = name.substring(0, name.length - ext.length - 1);
+  }
   name = name
       .replaceAll(RegExp(r'^\.+|[.\s]+$'), '')
       .replaceAll(RegExp(r'\s+'), '_');
@@ -26,8 +27,9 @@ String galleryFileName(String input, String extension) {
   if (RegExp(
     r'^(con|prn|aux|nul|com[1-9]|lpt[1-9])$',
     caseSensitive: false,
-  ).hasMatch(name))
+  ).hasMatch(name)) {
     name = 'ملف_$name';
+  }
   return '$name.$ext';
 }
 
@@ -59,8 +61,9 @@ class GalleryAnalysis {
   });
 
   factory GalleryAnalysis.parse(String response) {
-    if (response.length > 40000)
+    if (response.length > 40000) {
       throw const GalleryFailure('نتيجة التحليل أكبر من الحد المسموح.');
+    }
     var raw = response.trim();
     if (raw.startsWith('```')) {
       raw = raw
@@ -87,8 +90,9 @@ class GalleryAnalysis {
     }
 
     final tags = data['tags'];
-    if (tags is! List || tags.any((tag) => tag is! String))
+    if (tags is! List || tags.any((tag) => tag is! String)) {
       throw const GalleryFailure('وسوم التحليل غير صالحة.');
+    }
     return GalleryAnalysis(
       description: field('description', 2400, required: true),
       category: field('category', 80),
@@ -178,8 +182,9 @@ Map<String, String> planGalleryRename(
 
 int galleryHashDistance(String a, String b) {
   if (!RegExp(r'^[0-9a-f]{16}$').hasMatch(a) ||
-      !RegExp(r'^[0-9a-f]{16}$').hasMatch(b))
+      !RegExp(r'^[0-9a-f]{16}$').hasMatch(b)) {
     return 65;
+  }
   var bits = BigInt.parse(a, radix: 16) ^ BigInt.parse(b, radix: 16);
   var count = 0;
   while (bits != BigInt.zero) {
