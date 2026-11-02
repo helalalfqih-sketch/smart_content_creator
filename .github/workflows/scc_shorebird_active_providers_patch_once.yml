@@ -1,0 +1,283 @@
+name: Publish SCC active chat providers once
+
+on:
+  push:
+    branches: [codex/active-chat-providers-20261102]
+    paths:
+      - .github/workflows/scc_shorebird_active_providers_patch_once.yml
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: scc-shorebird-lens-1.3.1-rc.2-8
+  cancel-in-progress: false
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    env:
+      CI: "true"
+      RELEASE_VERSION: 1.3.1-rc.2+8
+      BASELINE_APK_SHA256: 8dfa9616b50fd4b7ee33a3d040344258f95a7c765583a2f9f579251d89843686
+      APP_SOURCE_COMMIT: 407eb3b15e8acfc707a77928446a0834ce0fb628
+      EXPECTED_CERT_SHA256: 421cd80d80141ef72cc26235e415277e1af862ffe369234f7d04538f74ba2636
+    steps:
+      - name: Check out the exact patch source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Lock the validated Dart-only application source
+        shell: bash
+        run: |
+          set -euo pipefail
+          unexpected="$(
+            git diff --name-only 252ac4135f92f3920d45c8cb8596ffbde0186e22 "$GITHUB_SHA" -- . |
+              grep -Ev '^(\.github/workflows/scc_release_validation\.yml|lib/services/ai_backend_router\.dart|lib/widgets/chat/chat_input_area\.dart|test/(chat_provider_selection|ai_backend_router|firebase_prompt_wave1a|manus_ai_provider)_test\.dart|\.github/workflows/scc_shorebird_active_providers_patch_once\.yml)$' || true
+          )"
+          test -z "$unexpected"
+          changed="$(git diff --name-only "$APP_SOURCE_COMMIT" "$GITHUB_SHA" -- . ':(exclude).github/workflows/scc_shorebird_active_providers_patch_once.yml')"
+          test -z "$changed"
+          grep -F "https://waha.indexesstore.com/api/catalog" lib/core/repositories/vps_shopify_catalog_repository.dart
+          grep -F "defaultModel: 'anthropic/claude-opus-5.5'" lib/services/ai_provider.dart
+          grep -F "providerOnly: const ['google-vertex']" lib/services/ai_provider.dart
+
+      - name: Require successful validation of the exact application source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          node <<'NODE'
+          async function check() {
+            const url = 'https://api.github.com/repos/helalalfqih-sketch/smart_content_creator/actions/runs?head_sha=' + process.env.APP_SOURCE_COMMIT;
+            const response = await fetch(url, {headers: {
+              Authorization: 'Bearer ' + process.env.GH_TOKEN,
+              'User-Agent': 'scc-active-providers-release',
+              Accept: 'application/vnd.github+json'
+            }, signal: AbortSignal.timeout(30000)});
+            if (!response.ok) throw new Error('Cannot verify source validation');
+            const runs = (await response.json()).workflow_runs;
+            const run = runs.find(r => r.name === 'SCC release validation' && r.event === 'push' && r.head_branch === 'codex/active-chat-providers-20261102');
+            if (!run || run.status !== 'completed' || run.conclusion !== 'success') throw new Error('Application source has not passed validation');
+            console.log('Validated application source: ' + process.env.APP_SOURCE_COMMIT);
+          }
+          check().catch(error => { console.error(error.message); process.exit(1); });
+          NODE
+
+      - name: Require a populated production catalog
+        shell: bash
+        run: |
+          node <<'NODE'
+          async function check() {
+            const health = await fetch('https://waha.indexesstore.com/healthz', {signal: AbortSignal.timeout(15000)});
+            if (!health.ok || (await health.json()).status !== 'ready') throw new Error('Catalog health is not ready');
+            const response = await fetch('https://waha.indexesstore.com/api/catalog?page=1&limit=1', {signal: AbortSignal.timeout(15000)});
+            if (!response.ok) throw new Error('Catalog API failed');
+            const data = await response.json();
+            if (data.success !== true || data.total < 1 || data.data.length !== 1 || !data.snapshotVersion) throw new Error('Catalog snapshot is incomplete');
+            console.log(JSON.stringify({status: 'ready', total: data.total, snapshotVersion: data.snapshotVersion}));
+          }
+          check().catch(error => { console.error(error.message); process.exit(1); });
+          NODE
+
+      - name: Set up Java
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+
+      - name: Verify and prepare Android signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: python3 scripts/ci/android_candidate.py prepare
+
+      - name: Lock the signing certificate
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(tr -d ':[:space:]' < "$RUNNER_TEMP/scc-android-signing/certificate-sha256.txt" | tr '[:upper:]' '[:lower:]')"
+          test "$actual" = "$EXPECTED_CERT_SHA256"
+
+      - name: Install Shorebird
+        uses: shorebirdtech/setup-shorebird@8b1059ddb56a926f0146edf4133cc647775c162f # v1
+        with:
+          cache: "true"
+
+      - name: Confirm the target baseline exists
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        run: shorebird releases info --release-version "$RELEASE_VERSION"
+
+      - name: Prepare the locked installed-APK asset audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 2 --max-time 300 \
+            'https://github.com/helalalfqih-sketch/smart_content_creator/releases/download/v1.3.1-rc.2/app-release.apk' \
+            --output "$RUNNER_TEMP/installed-baseline.apk"
+          echo "$BASELINE_APK_SHA256  $RUNNER_TEMP/installed-baseline.apk" | sha256sum --check --strict
+          python3 -m venv "$RUNNER_TEMP/asset-audit-venv"
+          echo 'fonttools==4.59.2 --hash=sha256:8bd0f759020e87bb5d323e6283914d9bf4ae35a7307dafb2cbd1e379e720ad37' > "$RUNNER_TEMP/font-audit-requirements.txt"
+          "$RUNNER_TEMP/asset-audit-venv/bin/pip" install --disable-pip-version-check --only-binary=:all: --require-hashes -r "$RUNNER_TEMP/font-audit-requirements.txt"
+
+      - name: Build and validate without publishing
+        uses: shorebirdtech/shorebird-patch@06df73215dc3fafdef1d949fe4866a6822d145f9 # v1
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        with:
+          platform: android
+          release-version: ${{ env.RELEASE_VERSION }}
+          track: stable
+          args: >-
+            --target lib/main.dart
+            --dry-run
+            --allow-asset-diffs
+
+      - name: Require all patch assets and glyphs to exist in the installed APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/asset-audit-venv/bin/python" - \
+            "$RUNNER_TEMP/installed-baseline.apk" \
+            build/app/outputs/bundle/release/app-release.aab \
+            "$BASELINE_APK_SHA256" \
+            "$RUNNER_TEMP/active-providers-asset-compatibility.json" <<'PY'
+          """Permit only removal of unused Material icon glyphs in this OTA patch."""
+          import hashlib
+          import io
+          import json
+          import sys
+          import zipfile
+          from pathlib import Path
+          
+          from fontTools.pens.recordingPen import DecomposingRecordingPen
+          from fontTools.ttLib import TTFont
+          
+          
+          def verify_assets(baseline_path, candidate_path, expected_sha):
+              baseline_bytes = Path(baseline_path).read_bytes()
+              if hashlib.sha256(baseline_bytes).hexdigest() != expected_sha:
+                  raise ValueError("Baseline APK checksum mismatch")
+          
+              def assets(archive, prefix):
+                  with zipfile.ZipFile(archive) as package:
+                      return {
+                          name[len(prefix):]: package.read(name)
+                          for name in package.namelist()
+                          if name.startswith(prefix) and not name.endswith("/")
+                      }
+          
+              baseline = assets(io.BytesIO(baseline_bytes), "assets/")
+              candidate = assets(candidate_path, "base/assets/")
+              # bundletool adds these ART optimization profiles when producing an APK.
+              # In an AAB the same metadata lives outside base/assets, not in app assets.
+              packaging_profiles = {"dexopt/baseline.prof", "dexopt/baseline.profm"}
+              ignored_profiles = sorted(packaging_profiles & baseline.keys())
+              baseline = {name: data for name, data in baseline.items() if name not in packaging_profiles}
+              if not baseline or baseline.keys() != candidate.keys():
+                  raise ValueError(
+                      f"Packaged assets differ: added={sorted(candidate.keys() - baseline.keys())}; "
+                      f"removed={sorted(baseline.keys() - candidate.keys())}"
+                  )
+              changed = {name for name in baseline if baseline[name] != candidate[name]}
+              icon = "flutter_assets/fonts/MaterialIcons-Regular.otf"
+              if not changed.issubset({icon}) or icon not in baseline:
+                  raise ValueError(f"Unexpected changed assets: {sorted(changed)}")
+          
+              old_font = TTFont(io.BytesIO(baseline[icon]))
+              new_font = TTFont(io.BytesIO(candidate[icon]))
+              old_map = old_font.getBestCmap()
+              new_map = new_font.getBestCmap()
+              if not old_map or not new_map or not new_map.keys() <= old_map.keys():
+                  raise ValueError("Patch requires icon codepoints absent from installed APK")
+              if old_font["head"].unitsPerEm != new_font["head"].unitsPerEm:
+                  raise ValueError("Icon font scale changed")
+              old_glyphs = old_font.getGlyphSet()
+              new_glyphs = new_font.getGlyphSet()
+              for codepoint, new_name in new_map.items():
+                  old_name = old_map[codepoint]
+                  old_pen = DecomposingRecordingPen(old_glyphs)
+                  new_pen = DecomposingRecordingPen(new_glyphs)
+                  old_glyphs[old_name].draw(old_pen)
+                  new_glyphs[new_name].draw(new_pen)
+                  if old_pen.value != new_pen.value:
+                      raise ValueError(f"Icon outline changed: U+{codepoint:04X}")
+                  if old_font["hmtx"][old_name] != new_font["hmtx"][new_name]:
+                      raise ValueError(f"Icon metrics changed: U+{codepoint:04X}")
+              return {
+                  "status": "compatible",
+                  "baseline_sha256": expected_sha,
+                  "asset_count": len(baseline),
+                  "changed_assets": sorted(changed),
+                  "apk_packaging_profiles": ignored_profiles,
+                  "baseline_icon_count": len(old_map),
+                  "candidate_icon_count": len(new_map),
+                  "removed_unused_icon_count": len(old_map.keys() - new_map.keys()),
+              }
+          
+          
+          if __name__ == "__main__":
+              report = verify_assets(*sys.argv[1:4])
+              Path(sys.argv[4]).write_text(json.dumps(report, indent=2) + "\n")
+              print(json.dumps(report))
+          PY
+
+      - name: Confirm the lockfile stayed unchanged
+        run: git diff --exit-code -- pubspec.lock
+
+      # Only unused Material icon removals are allowed by the preceding artifact audit.
+      # Native-code differences remain blocked by Shorebird.
+      - name: Require the deployed Google Lens gateway before publishing
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 15 https://waha.indexesstore.com/serpapi/healthz | python3 -c 'import sys,json; x=json.load(sys.stdin); assert x["status"] == "ok" and "mobile_google_lens" in x.get("capabilities",[])'
+          status="$(curl --silent --show-error --max-time 15 -o /dev/null -w '%{http_code}' https://waha.indexesstore.com/serpapi/mobile/lens)"
+          test "$status" = 401
+
+      - name: Publish the validated Dart patch
+        id: shorebird-patch
+        uses: shorebirdtech/shorebird-patch@06df73215dc3fafdef1d949fe4866a6822d145f9 # v1
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        with:
+          platform: android
+          release-version: ${{ env.RELEASE_VERSION }}
+          track: stable
+          args: >-
+            --target lib/main.dart
+            --allow-asset-diffs
+
+      - name: Confirm the published patch
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          patch_number="${{ steps.shorebird-patch.outputs.patch-number }}"
+          test -n "$patch_number"
+          shorebird patches list --release-version "$RELEASE_VERSION"
+          echo "Published stable Shorebird patch $patch_number for $RELEASE_VERSION."
+
+      - name: Retain the built provider picker bundle for diagnosis
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: scc-active-providers-patch-bundle
+          path: |
+            build/app/outputs/bundle/release/app-release.aab
+            ${{ runner.temp }}/active-providers-asset-compatibility.json
+          if-no-files-found: ignore
+          retention-days: 3
+
+      - name: Remove signing material
+        if: always()
+        run: python3 scripts/ci/android_candidate.py cleanup
