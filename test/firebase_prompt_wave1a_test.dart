@@ -157,7 +157,7 @@ void main() {
       expect(AIBackendRouter.validBackends, contains('firebase_ai'));
       expect(AIBackendRouter.validBackends, contains('backend'));
       expect(AIBackendRouter.validBackends, contains('openrouter'));
-      expect(AIBackendRouter.defaultBackend, equals('firebase_ai'));
+      expect(AIBackendRouter.defaultBackend, equals('unselected'));
     });
 
     test('Backend route is unaffected by Firebase template configuration', () {

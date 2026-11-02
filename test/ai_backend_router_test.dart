@@ -85,8 +85,8 @@ class TestableAIBackendRouter extends AIBackendRouter {
 
 void main() {
   group('AIBackendRouter Contract & Configuration Tests', () {
-    test('Default backend should be firebase_ai', () {
-      expect(AIBackendRouter.defaultBackend, equals('firebase_ai'));
+    test('A missing selection does not choose a paid or hidden backend', () {
+      expect(AIBackendRouter.defaultBackend, equals('unselected'));
     });
 
     test('Valid backends include the local OpenRouter text route', () {

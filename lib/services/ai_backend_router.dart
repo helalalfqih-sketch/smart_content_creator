@@ -38,7 +38,12 @@ class AIBackendRouter extends GetxService {
         _openRouterKeyReader = openRouterKeyReader;
 
   /// القيمة الافتراضية لمسار الذكاء الاصطناعي
-  static const String defaultBackend = 'firebase_ai';
+  // A removed saved provider must require an explicit selection, never silently
+  // move a user onto a paid provider or reactivate a hidden one.
+  static const String defaultBackend = 'unselected';
+  static const List<String> chatBackends = ['openrouter', 'serpapi'];
+  static String normalizeChatBackend(String? value) =>
+      chatBackends.contains(value) ? value! : defaultBackend;
 
   /// القيم المسموحة
   static const List<String> validBackends = [
@@ -80,7 +85,7 @@ class AIBackendRouter extends GetxService {
     if (!Get.isRegistered<AppStorageService>()) return null;
     final stored = Get.find<AppStorageService>()
         .readString(_localBackendStorageKey);
-    return validBackends.contains(stored) ? stored : null;
+    return stored == null ? null : normalizeChatBackend(stored);
   }
 
   bool _hasUsableOpenRouterKey() {
@@ -101,7 +106,7 @@ class AIBackendRouter extends GetxService {
 
   /// 🔄 تبديل مسار الذكاء الاصطناعي وتحديثه في Firestore
   Future<bool> switchBackend(String newBackend) async {
-    if (!validBackends.contains(newBackend)) return false;
+    if (!chatBackends.contains(newBackend)) return false;
     if (newBackend == 'openrouter' && !_hasUsableOpenRouterKey()) return false;
     if (newBackend == 'serpapi') {
       if (!Get.isRegistered<SerpApiGatewayService>() ||
@@ -168,12 +173,10 @@ class AIBackendRouter extends GetxService {
         if (snapshot.exists) {
           final data = snapshot.data() as Map<String, dynamic>?;
           final backend = data?['ai_backend']?.toString() ?? defaultBackend;
-          if (validBackends.contains(backend)) {
-            currentBackend.value = backend;
-            if (kDebugMode) {
-              debugPrint(
-                  '🎯 AIBackendRouter: User backend updated to: $backend');
-            }
+          currentBackend.value = normalizeChatBackend(backend);
+          if (kDebugMode) {
+            debugPrint(
+                '🎯 AIBackendRouter: User backend updated to: ${currentBackend.value}');
           }
         }
       }, onError: (e) {
@@ -218,10 +221,10 @@ class AIBackendRouter extends GetxService {
       final rawValue = doc.data()?['ai_backend']?.toString();
       final backend = rawValue ?? defaultBackend;
       final resolved =
-          validBackends.contains(backend) ? backend : defaultBackend;
+          normalizeChatBackend(backend);
       final reason = rawValue == null
           ? 'field_missing_using_default'
-          : (validBackends.contains(backend)
+          : (chatBackends.contains(backend)
               ? 'firestore_user_pref'
               : 'invalid_value_using_default');
 
@@ -232,7 +235,7 @@ class AIBackendRouter extends GetxService {
     } catch (e) {
       debugPrint(
           '[AI_ROUTER_DIAG] resolveBackend: error=$e resolved=${currentBackend.value} reason=exception_fallback');
-      return currentBackend.value;
+      return normalizeChatBackend(currentBackend.value);
     }
   }
 
@@ -381,26 +384,7 @@ class AIBackendRouter extends GetxService {
 
   /// 🔍 البحث عن محرك بديل من حوض حصة (Quota Pool) مستقل غير متأثر بالضغط
   String? findFailoverBackend(String failedBackend) {
-    // Never enter or leave a paid user-selected provider silently.
-    if (failedBackend == 'openrouter' || failedBackend == 'serpapi') return null;
-
-    final failedPool = quotaPools[failedBackend] ?? failedBackend;
-    // 1. محاولة اختيار محرك من حوض حصة مختلف أولاً
-    for (final candidate in validBackends) {
-      if (candidate == failedBackend) continue;
-      if (candidate == 'openrouter' || candidate == 'serpapi') continue;
-      final candidatePool = quotaPools[candidate] ?? candidate;
-      if (candidatePool != failedPool && !isBackendCoolingDown(candidate)) {
-        return candidate;
-      }
-    }
-    // 2. إذا لم يتوفر، اختيار أي محرك متاح ليس في فترة تهدئة
-    for (final candidate in validBackends) {
-      if (candidate == 'openrouter' || candidate == 'serpapi') continue;
-      if (candidate != failedBackend && !isBackendCoolingDown(candidate)) {
-        return candidate;
-      }
-    }
+    // Both visible providers are paid. Hidden adapters must not be fallback targets.
     return null;
   }
 
@@ -432,6 +416,7 @@ class AIBackendRouter extends GetxService {
     String? templateId,
     Map<String, Object?>? templateInputs,
   }) {
+    if (backend == defaultBackend) return Future.value(_chatProviderRequired());
     if (backend == 'serpapi') {
       if (image != null) return Future.value(_serpApiImageUnsupported());
       return _routeToSerpApi(prompt);
@@ -484,6 +469,7 @@ class AIBackendRouter extends GetxService {
     String? systemPersona,
     dio.CancelToken? cancelToken,
   }) {
+    if (backend == defaultBackend) return Future.value(_chatProviderRequired());
     if (backend == 'serpapi') return Future.value(_serpApiImageUnsupported());
     if (backend == 'openrouter') {
       return _routeToOpenRouter(
@@ -524,11 +510,19 @@ class AIBackendRouter extends GetxService {
   }
 
   /// 💬 توليد نص (نقطة الدخول الرئيسية مع التبديل التلقائي الذكي)
-  static Map<String, dynamic> _serpApiImageUnsupported() => {
-    'success': false,
-    'error': 'مسار SerpApi الحالي للبحث النصي. اختر مزود تحليل الصور لإرسال صورة.',
-    'meta': {'provider': 'serpapi', 'status': 'unsupported_media'},
-  };
+  static Map<String, dynamic> _chatProviderRequired() {
+    const error = AiRequestException('provider_selection_required',
+        'اختر OpenRouter أو SerpApi من قائمة المحركات أولاً.');
+    return {'success': false, 'error': error.message, 'request_failure': error,
+      'meta': {'provider': 'unselected', 'status': 'selection_required'}};
+  }
+
+  static Map<String, dynamic> _serpApiImageUnsupported() {
+    const error = AiRequestException('unsupported_media',
+        'للبحث بالصورة افتح الأدوات الذكية ← عدسة Google. لتحليل محتوى الصورة اختر OpenRouter.');
+    return {'success': false, 'error': error.message, 'request_failure': error,
+      'meta': {'provider': 'serpapi', 'status': 'unsupported_media'}};
+  }
 
   Future<Map<String, dynamic>> _routeToSerpApi(String prompt) async {
     try {

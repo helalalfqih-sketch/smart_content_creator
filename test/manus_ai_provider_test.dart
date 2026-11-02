@@ -60,16 +60,16 @@ void main() {
       expect(AIBackendRouter.quotaPools['manus'], isNot(equals(AIBackendRouter.quotaPools['firebase_ai'])));
     });
 
-    test('Test D: Gemini quota pool in cooldown selects independent pool (Manus)', () {
+    test('Hidden providers are never selected as automatic fallback', () {
       final router = AIBackendRouter();
       
       // Put firebase_ai in cooldown
       router.recordCooldown('firebase_ai', const Duration(seconds: 30));
       expect(router.isBackendCoolingDown('firebase_ai'), isTrue);
 
-      // When firebase_ai fails due to quota, findFailoverBackend must prioritize a different quota pool (manus)
+      // The retired chat providers must not return through automatic fallback.
       final fallback = router.findFailoverBackend('firebase_ai');
-      expect(fallback, equals('manus'));
+      expect(fallback, isNull);
     });
 
     test('Paid OpenRouter route is never entered or left by auto-failover', () {

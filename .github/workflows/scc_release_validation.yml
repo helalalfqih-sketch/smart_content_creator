@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
   push:
-    branches: [codex/shorebird-recovery-20261030, codex/shopify-vps-catalog-ota-20261031, codex/openrouter-vision-fix-20261101, codex/openrouter-image-generation-fix-20261101, codex/vision-transport-fix-20261102, codex/serpapi-mobile-link-20261102, codex/serpapi-lens-20261102]
+    branches: [codex/shorebird-recovery-20261030, codex/shopify-vps-catalog-ota-20261031, codex/openrouter-vision-fix-20261101, codex/openrouter-image-generation-fix-20261101, codex/vision-transport-fix-20261102, codex/serpapi-mobile-link-20261102, codex/serpapi-lens-20261102, codex/active-chat-providers-20261102]
 
 permissions:
   contents: read

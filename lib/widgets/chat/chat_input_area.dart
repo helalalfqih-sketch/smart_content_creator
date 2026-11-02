@@ -531,21 +531,15 @@ class ChatInputArea extends StatelessWidget {
       final Color chipColor;
       final String chipLabel;
 
-      if (backend == 'firebase_ai') {
-        chipColor = const Color(0xFF8B5CF6);
-        chipLabel = "Firebase AI 🟣";
-      } else if (backend == 'openrouter') {
+      if (backend == 'openrouter') {
         chipColor = const Color(0xFFFF8A65);
         chipLabel = "Opus 5.5 • Vertex 🟠";
-      } else if (backend == 'manus') {
-        chipColor = const Color(0xFF10B981);
-        chipLabel = "Manus AI 🤖";
       } else if (backend == 'serpapi') {
         chipColor = const Color(0xFF00BFA5);
         chipLabel = "Google AI • SerpApi";
       } else {
         chipColor = const Color(0xFF00E5FF);
-        chipLabel = "Back4App ☁️";
+        chipLabel = "اختر مزودًا";
       }
 
       return GestureDetector(
@@ -591,17 +585,9 @@ class ChatInputArea extends StatelessWidget {
         ? Get.find<AIBackendRouter>()
         : null;
     final backend = router?.currentBackend.value;
-    if (backend == 'firebase_ai') {
-      return "اسأل Firebase AI...";
-    } else if (backend == 'openrouter') {
-      return "اسأل Claude Opus 5.5...";
-    } else if (backend == 'manus') {
-      return "اسأل Manus AI (v2)...";
-    } else if (backend == 'serpapi') {
-      return "ابحث مع Google AI Mode...";
-    } else {
-      return "اسأل Back4App Gateway...";
-    }
+    if (backend == 'openrouter') return "اسأل Claude Opus 5.5...";
+    if (backend == 'serpapi') return "ابحث مع Google AI Mode...";
+    return "اختر مزودًا للمتابعة...";
   }
 
   void _showModelSwitcherSheet() {
@@ -654,25 +640,16 @@ class ChatInputArea extends StatelessWidget {
                     ),
                   ),
 
-                  // 1. Firebase AI Logic (Gemini SDK)
-                  Obx(() => _buildBackendMenuItem(
-                    label: "Firebase AI Logic (Vertex) 🟣",
-                    sublabel: "smart ai",
-                    icon: Icons.auto_awesome_rounded,
-                    backendKey: 'firebase_ai',
-                    aiRouter: aiRouter,
-                  )),
 
                   // 2. Claude Opus 5.5 through OpenRouter on Google Vertex
                   Obx(() => _buildBackendMenuItem(
                     label: "Claude Opus 5.5 • Google Vertex 🟠",
-                    sublabel: "عبر OpenRouter • نص فقط • دون مزود احتياطي",
+                    sublabel: "عبر OpenRouter • نص وتحليل صور",
                     icon: Icons.auto_awesome_rounded,
                     backendKey: 'openrouter',
                     aiRouter: aiRouter,
                   )),
 
-                  // 3. Back4App Gateway (Multi-Key)
                   Obx(() => _buildBackendMenuItem(
                     label: "Google AI Mode • SerpApi",
                     sublabel: "بحث نصي مدعوم بالمصادر",
@@ -681,22 +658,7 @@ class ChatInputArea extends StatelessWidget {
                     aiRouter: aiRouter,
                   )),
 
-                  Obx(() => _buildBackendMenuItem(
-                    label: "Back4App Gateway ☁️",
-                    sublabel: "بوابة ai )",
-                    icon: Icons.hub_rounded,
-                    backendKey: 'backend',
-                    aiRouter: aiRouter,
-                  )),
 
-                  // 4. Manus AI Engine (v2 Agent)
-                  Obx(() => _buildBackendMenuItem(
-                    label: "Manus AI (v2 Agent) 🤖",
-                    sublabel: "محرك Manus v2 المستقل",
-                    icon: Icons.psychology_rounded,
-                    backendKey: 'manus',
-                    aiRouter: aiRouter,
-                  )),
 
                   const Divider(color: Colors.white10, height: 30),
 
@@ -707,27 +669,18 @@ class ChatInputArea extends StatelessWidget {
                     final IconData statusIcon;
                     final String statusText;
 
-                    if (current == 'firebase_ai') {
-                      statusColor = const Color(0xFF8B5CF6);
-                      statusIcon = Icons.verified_rounded;
-                      statusText = "المحرك النشط الآن: Firebase AI Logic SDK";
-                    } else if (current == 'openrouter') {
+                    if (current == 'openrouter') {
                       statusColor = const Color(0xFFFF8A65);
                       statusIcon = Icons.auto_awesome_rounded;
-                      statusText =
-                          "المحرك النشط: Claude Opus 5.5 عبر Google Vertex";
-                    } else if (current == 'manus') {
-                      statusColor = const Color(0xFF10B981);
-                      statusIcon = Icons.psychology_rounded;
-                      statusText = "المحرك النشط الآن: Manus API v2 Gateway";
+                      statusText = "المحرك النشط: Claude Opus 5.5 عبر Google Vertex";
                     } else if (current == 'serpapi') {
                       statusColor = const Color(0xFF00BFA5);
                       statusIcon = Icons.auto_awesome_rounded;
                       statusText = "المحرك النشط: Google AI Mode عبر SerpApi";
                     } else {
                       statusColor = const Color(0xFF00E5FF);
-                      statusIcon = Icons.cloud_sync_rounded;
-                      statusText = "المحرك النشط الآن: Back4App Cloud Proxy";
+                      statusIcon = Icons.auto_awesome_rounded;
+                      statusText = "اختر OpenRouter أو SerpApi للمتابعة";
                     }
 
                     return Container(
@@ -810,19 +763,9 @@ class ChatInputArea extends StatelessWidget {
             return;
           }
           Get.back();
-          final String switchMsg;
-          if (backendKey == 'firebase_ai') {
-            switchMsg = "تم التبديل إلى Firebase AI Logic 🟣";
-          } else if (backendKey == 'openrouter') {
-            switchMsg =
-                "تم التبديل إلى Claude Opus 5.5 عبر Google Vertex 🟠";
-          } else if (backendKey == 'manus') {
-            switchMsg = "تم التبديل إلى Manus AI (v2) 🤖";
-          } else if (backendKey == 'serpapi') {
-            switchMsg = "تم التبديل إلى Google AI Mode عبر SerpApi";
-          } else {
-            switchMsg = "تم التبديل إلى Back4App Gateway ☁️";
-          }
+          final switchMsg = backendKey == 'openrouter'
+              ? "تم التبديل إلى Claude Opus 5.5 عبر Google Vertex 🟠"
+              : "تم التبديل إلى Google AI Mode عبر SerpApi";
           SnackBarUtils.showSuccess("تم تبديل المحرك", switchMsg);
         },
         leading: Container(
