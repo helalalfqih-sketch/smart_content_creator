@@ -330,7 +330,7 @@ class _SmartGalleryScreenState extends State<SmartGalleryScreen> {
                                 decoration: const InputDecoration(
                                   hintText:
                                       'ابحث بالاسم أو الوصف أو النص أو الوسوم',
-                                  prefixIcon: Icon(Icons.search),
+                                  prefixIcon: Icon(Icons.search_rounded),
                                   isDense: true,
                                   border: OutlineInputBorder(),
                                 ),
@@ -598,7 +598,7 @@ class _SmartGalleryScreenState extends State<SmartGalleryScreen> {
                                                   if (item.isVideo)
                                                     const Center(
                                                       child: Icon(
-                                                        Icons.play_arrow,
+                                                        Icons.play_arrow_rounded,
                                                         color: Colors.white,
                                                         size: 40,
                                                       ),
