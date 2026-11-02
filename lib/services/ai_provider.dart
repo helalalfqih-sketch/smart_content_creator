@@ -161,6 +161,12 @@ class AIProviderFactory {
         ? settingsController.getActiveVideoProvider()
         : settingsController.getActiveProvider();
 
+    // Explicit managed selection never falls back to another paid provider.
+    // The gateway validates the current user's Firebase token on every request.
+    if (!isVideo && activeProvider == ProviderType.serpapi) {
+      return (getServiceByType(ProviderType.serpapi), '', ProviderType.serpapi);
+    }
+
     final activeKey = settingsController.getApiKey(activeProvider);
 
     String effectiveKey = activeKey;
@@ -226,6 +232,11 @@ class AIProviderFactory {
   }) async {
     final effectivePersona = systemPersona ??
         '''أنت خبير محتوى وتسويق متخصص. يجب أن تكون جميع الردود باللغة العربية حصراً وبشكل قطعي. ابدأ بالرد فوراً دون مقدمات.''';
+
+    if (primaryType == ProviderType.serpapi) {
+      return getServiceByType(primaryType).generateText(prompt,
+          apiKey: primaryKey, cancelToken: cancelToken);
+    }
 
     // 🗝️ Hexa-Key Rotation for GitHub
     if (primaryType == ProviderType.github) {
@@ -308,6 +319,7 @@ class AIProviderFactory {
         }
 
         for (final (type, key) in fallbackProviders) {
+          if (type == ProviderType.serpapi) continue;
           try {
             if (_isBlackedOut(type)) continue;
 

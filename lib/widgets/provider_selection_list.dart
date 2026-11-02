@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/settings_controller.dart';
 import '../core/models/api_provider.dart';
+import '../services/serpapi_gateway_service.dart';
 
 class ProviderSelectionList extends StatelessWidget {
   const ProviderSelectionList({super.key});
@@ -179,14 +180,17 @@ class ProviderSelectionList extends StatelessWidget {
       String statusText = "";
 
       // 👇 المنطق الذكي لتحديد الحالة بناءً على نوع الخدمة
-      bool isConfigured = controller.hasKey(providerKey);
+      final gatewayConnected = providerKey == 'serpapi' &&
+          Get.isRegistered<SerpApiGatewayService>() &&
+          Get.find<SerpApiGatewayService>().connected.value;
+      bool isConfigured = controller.hasKey(providerKey) || gatewayConnected;
 
       if (role == 'text') {
         // للنصوص: يجب أن يكون هو المختار في activeTextProvider
         try {
           final type =
               ProviderType.values.firstWhere((e) => e.name == providerKey);
-          bool isConnected = controller.getConnectionStatus(type);
+          bool isConnected = gatewayConnected || controller.getConnectionStatus(type);
 
           if (controller.activeTextProvider.value == type) {
             isActive = true;
@@ -242,7 +246,7 @@ class ProviderSelectionList extends StatelessWidget {
       }
 
       if (!isConfigured && statusText.isEmpty) {
-        statusText = "غير مهيأ - مفقود 🔑";
+        statusText = providerKey == 'serpapi' ? "اضغط لربط حسابك بالخدمة" : "غير مهيأ - مفقود 🔑";
       }
 
       // هل العنصر مضغوط عليه حالياً للتعديل؟
@@ -283,7 +287,7 @@ class ProviderSelectionList extends StatelessWidget {
                               : Colors.orange)
                           : (providerKey == 'facebook'
                               ? Colors.green
-                              : (controller.getConnectionStatus(ProviderType.values
+                              : (gatewayConnected || controller.getConnectionStatus(ProviderType.values
                                       .firstWhere((e) => e.name == providerKey,
                                           orElse: () => ProviderType.custom))
                                   ? Colors.green

@@ -540,6 +540,9 @@ class ChatInputArea extends StatelessWidget {
       } else if (backend == 'manus') {
         chipColor = const Color(0xFF10B981);
         chipLabel = "Manus AI 🤖";
+      } else if (backend == 'serpapi') {
+        chipColor = const Color(0xFF00BFA5);
+        chipLabel = "Google AI • SerpApi";
       } else {
         chipColor = const Color(0xFF00E5FF);
         chipLabel = "Back4App ☁️";
@@ -594,6 +597,8 @@ class ChatInputArea extends StatelessWidget {
       return "اسأل Claude Opus 5.5...";
     } else if (backend == 'manus') {
       return "اسأل Manus AI (v2)...";
+    } else if (backend == 'serpapi') {
+      return "ابحث مع Google AI Mode...";
     } else {
       return "اسأل Back4App Gateway...";
     }
@@ -669,6 +674,14 @@ class ChatInputArea extends StatelessWidget {
 
                   // 3. Back4App Gateway (Multi-Key)
                   Obx(() => _buildBackendMenuItem(
+                    label: "Google AI Mode • SerpApi",
+                    sublabel: "بحث نصي مدعوم بالمصادر",
+                    icon: Icons.auto_awesome_rounded,
+                    backendKey: 'serpapi',
+                    aiRouter: aiRouter,
+                  )),
+
+                  Obx(() => _buildBackendMenuItem(
                     label: "Back4App Gateway ☁️",
                     sublabel: "بوابة ai )",
                     icon: Icons.hub_rounded,
@@ -707,6 +720,10 @@ class ChatInputArea extends StatelessWidget {
                       statusColor = const Color(0xFF10B981);
                       statusIcon = Icons.psychology_rounded;
                       statusText = "المحرك النشط الآن: Manus API v2 Gateway";
+                    } else if (current == 'serpapi') {
+                      statusColor = const Color(0xFF00BFA5);
+                      statusIcon = Icons.auto_awesome_rounded;
+                      statusText = "المحرك النشط: Google AI Mode عبر SerpApi";
                     } else {
                       statusColor = const Color(0xFF00E5FF);
                       statusIcon = Icons.cloud_sync_rounded;
@@ -766,6 +783,8 @@ class ChatInputArea extends StatelessWidget {
       accentColor = const Color(0xFFFF8A65);
     } else if (backendKey == 'manus') {
       accentColor = const Color(0xFF10B981);
+    } else if (backendKey == 'serpapi') {
+      accentColor = const Color(0xFF00BFA5);
     } else {
       accentColor = const Color(0xFF00E5FF);
     }
@@ -785,8 +804,8 @@ class ChatInputArea extends StatelessWidget {
           if (!switched) {
             Get.back();
             SnackBarUtils.showWarning(
-              "مفتاح OpenRouter مطلوب",
-              "أضف مفتاح sk-or-v1-... من الإعدادات أولاً، ثم اختر Claude Opus 5.5.",
+              backendKey == 'serpapi' ? "لم يكتمل ربط SerpApi" : "مفتاح OpenRouter مطلوب",
+              backendKey == 'serpapi' ? "افتح إعدادات الخدمات ← Google AI Mode لعرض حالة الحساب والاتصال." : "أضف مفتاح sk-or-v1-... من الإعدادات أولاً، ثم اختر Claude Opus 5.5.",
             );
             return;
           }
@@ -799,6 +818,8 @@ class ChatInputArea extends StatelessWidget {
                 "تم التبديل إلى Claude Opus 5.5 عبر Google Vertex 🟠";
           } else if (backendKey == 'manus') {
             switchMsg = "تم التبديل إلى Manus AI (v2) 🤖";
+          } else if (backendKey == 'serpapi') {
+            switchMsg = "تم التبديل إلى Google AI Mode عبر SerpApi";
           } else {
             switchMsg = "تم التبديل إلى Back4App Gateway ☁️";
           }

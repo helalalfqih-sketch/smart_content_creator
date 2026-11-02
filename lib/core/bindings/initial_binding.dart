@@ -33,6 +33,7 @@ import '../../services/ai/model_capability_service.dart';
 import '../../services/ai/intent_classifier_service.dart';
 import '../../services/serpapi_services.dart';
 import '../../services/serpapi_master_service.dart';
+import '../../services/serpapi_gateway_service.dart';
 import '../../services/tiktok_service.dart';
 import '../../services/video_pipeline_service.dart';
 import '../../services/media/youtube_stream_service.dart';
@@ -164,6 +165,7 @@ class InitialBinding extends Bindings {
     Get.lazyPut(() => BingImagesService(), fenix: true);
     Get.lazyPut(() => GoogleSearchService(), fenix: true);
     Get.lazyPut(() => VisualExpansionService(), fenix: true);
+    Get.lazyPut(() => SerpApiGatewayService(), fenix: true);
     Get.lazyPut(() => GoogleAiModeService(), fenix: true); // 🧠 Added AI Mode
 
     // 📱 Social & Pipeline Services

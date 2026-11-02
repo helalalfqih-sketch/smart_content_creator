@@ -14,6 +14,7 @@ import '../core/models/api_provider.dart';
 // Widgets المستوردة
 import '../widgets/provider_selection_list.dart';
 import '../widgets/standard_provider_form.dart';
+import '../widgets/serpapi_gateway_form.dart';
 import '../widgets/tiktok_settings_form.dart';
 import '../widgets/youtube_settings_form.dart';
 import '../widgets/facebook_settings_form.dart';
@@ -58,7 +59,7 @@ class SettingsScreen extends StatelessWidget {
                 // 💳 SerpApi Quota Monitoring Widget
                 Obx(() {
                   if (settingsController.selectedProvider.value ==
-                      ProviderType.serpapi.name) {
+                      ProviderType.serpapi.name && settingsController.getApiKey(ProviderType.serpapi).isNotEmpty) {
                     return _SerpApiQuotaWidget(
                       settingsController: settingsController,
                       isDark: isDark,
@@ -210,6 +211,7 @@ class SettingsScreen extends StatelessWidget {
 
   /// 🛠️ دالة المصنع التي تقرر أي نموذج يتم عرضه
   Widget _buildDynamicForm(String selected) {
+    if (selected == 'serpapi') return const SerpApiGatewayForm();
     // حالة خاصة لتيك توك
     if (selected == 'tiktok') {
       return const TikTokSettingsForm();

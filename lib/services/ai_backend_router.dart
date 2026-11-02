@@ -18,6 +18,7 @@ import '../controllers/chat_history_controller.dart';
 import '../controllers/settings_controller.dart';
 import '../core/utils/vision_image.dart';
 import '../core/utils/ai_request_exception.dart';
+import 'serpapi_gateway_service.dart';
 
 /// 🎯 AIBackendRouter - نقطة الدخول الموحدة لجميع طلبات الذكاء الاصطناعي
 ///
@@ -28,10 +29,12 @@ import '../core/utils/ai_request_exception.dart';
 /// - `"openrouter"` → Claude Opus 5.5 on Google Vertex using a local user key
 class AIBackendRouter extends GetxService {
   final AIProvider? _openRouterService;
+  final AIProvider? _serpApiService;
   final String Function()? _openRouterKeyReader;
 
-  AIBackendRouter({AIProvider? openRouterService, String Function()? openRouterKeyReader})
+  AIBackendRouter({AIProvider? openRouterService, AIProvider? serpApiService, String Function()? openRouterKeyReader})
       : _openRouterService = openRouterService,
+        _serpApiService = serpApiService,
         _openRouterKeyReader = openRouterKeyReader;
 
   /// القيمة الافتراضية لمسار الذكاء الاصطناعي
@@ -43,6 +46,7 @@ class AIBackendRouter extends GetxService {
     'backend',
     'manus',
     'openrouter',
+    'serpapi',
   ];
 
   static const String _localBackendStorageKey = 'chat_ai_backend';
@@ -54,6 +58,7 @@ class AIBackendRouter extends GetxService {
     'backend': 'gemini_primary',
     'manus': 'manus',
     'openrouter': 'openrouter_paid',
+    'serpapi': 'serpapi_paid',
   };
 
   /// مسار المستخدم الحالي (يُحدَّث لحظياً من Firestore)
@@ -98,11 +103,15 @@ class AIBackendRouter extends GetxService {
   Future<bool> switchBackend(String newBackend) async {
     if (!validBackends.contains(newBackend)) return false;
     if (newBackend == 'openrouter' && !_hasUsableOpenRouterKey()) return false;
+    if (newBackend == 'serpapi') {
+      if (!Get.isRegistered<SerpApiGatewayService>() ||
+          !await Get.find<SerpApiGatewayService>().connect()) return false;
+    }
 
     currentBackend.value = newBackend;
     if (Get.isRegistered<AppStorageService>()) {
       final storage = Get.find<AppStorageService>();
-      if (newBackend == 'openrouter') {
+      if (newBackend == 'openrouter' || newBackend == 'serpapi') {
         await storage.writeString(_localBackendStorageKey, newBackend);
       } else {
         await storage.remove(_localBackendStorageKey);
@@ -112,7 +121,7 @@ class AIBackendRouter extends GetxService {
     final uid = currentUserId;
     // OpenRouter is intentionally local: Firestore rules do not accept this
     // backend value, and the paid API key never belongs in the user document.
-    if (uid != null && newBackend != 'openrouter') {
+    if (uid != null && newBackend != 'openrouter' && newBackend != 'serpapi') {
       try {
         await FirebaseFirestore.instance.collection('users').doc(uid).update({
           'ai_backend': newBackend,
@@ -371,13 +380,13 @@ class AIBackendRouter extends GetxService {
   /// 🔍 البحث عن محرك بديل من حوض حصة (Quota Pool) مستقل غير متأثر بالضغط
   String? findFailoverBackend(String failedBackend) {
     // Never enter or leave a paid user-selected provider silently.
-    if (failedBackend == 'openrouter') return null;
+    if (failedBackend == 'openrouter' || failedBackend == 'serpapi') return null;
 
     final failedPool = quotaPools[failedBackend] ?? failedBackend;
     // 1. محاولة اختيار محرك من حوض حصة مختلف أولاً
     for (final candidate in validBackends) {
       if (candidate == failedBackend) continue;
-      if (candidate == 'openrouter') continue;
+      if (candidate == 'openrouter' || candidate == 'serpapi') continue;
       final candidatePool = quotaPools[candidate] ?? candidate;
       if (candidatePool != failedPool && !isBackendCoolingDown(candidate)) {
         return candidate;
@@ -385,7 +394,7 @@ class AIBackendRouter extends GetxService {
     }
     // 2. إذا لم يتوفر، اختيار أي محرك متاح ليس في فترة تهدئة
     for (final candidate in validBackends) {
-      if (candidate == 'openrouter') continue;
+      if (candidate == 'openrouter' || candidate == 'serpapi') continue;
       if (candidate != failedBackend && !isBackendCoolingDown(candidate)) {
         return candidate;
       }
@@ -421,6 +430,10 @@ class AIBackendRouter extends GetxService {
     String? templateId,
     Map<String, Object?>? templateInputs,
   }) {
+    if (backend == 'serpapi') {
+      if (image != null) return Future.value(_serpApiImageUnsupported());
+      return _routeToSerpApi(prompt);
+    }
     if (backend == 'firebase_ai') {
       return _routeToFirebaseAi(
         prompt: prompt,
@@ -469,6 +482,7 @@ class AIBackendRouter extends GetxService {
     String? systemPersona,
     dio.CancelToken? cancelToken,
   }) {
+    if (backend == 'serpapi') return Future.value(_serpApiImageUnsupported());
     if (backend == 'openrouter') {
       return _routeToOpenRouter(
         prompt: prompt,
@@ -508,6 +522,35 @@ class AIBackendRouter extends GetxService {
   }
 
   /// 💬 توليد نص (نقطة الدخول الرئيسية مع التبديل التلقائي الذكي)
+  static Map<String, dynamic> _serpApiImageUnsupported() => {
+    'success': false,
+    'error': 'مسار SerpApi الحالي للبحث النصي. اختر مزود تحليل الصور لإرسال صورة.',
+    'meta': {'provider': 'serpapi', 'status': 'unsupported_media'},
+  };
+
+  Future<Map<String, dynamic>> _routeToSerpApi(String prompt) async {
+    try {
+      final service = _serpApiService ??
+          AIProviderFactory.getServiceByType(ProviderType.serpapi);
+      final result = await service.generateText(prompt, apiKey: '');
+      if (result.description.trim().isEmpty) throw AiRequestException.invalidResponse;
+      return {
+        'success': true,
+        'data': result.description,
+        'meta': {'provider': 'serpapi', 'model': 'google_ai_mode', 'status': 'active'},
+      };
+    } catch (error) {
+      final failure = error is AiRequestException ? error :
+          const AiRequestException('serpapi_failed', 'تعذر إتمام بحث SerpApi. راجع حالة الاتصال في الإعدادات.');
+      return {
+        'success': false,
+        'error': failure.message,
+        'request_failure': failure,
+        'meta': {'provider': 'serpapi', 'status': 'error'},
+      };
+    }
+  }
+
   Future<Map<String, dynamic>> generateText({
     required String prompt,
     List<Map<String, String>>? history,
@@ -534,7 +577,7 @@ class AIBackendRouter extends GetxService {
 
     final result = await _executeWithRateLimitGuard(
       backend: backend,
-      autoRetry: autoRetry,
+      autoRetry: autoRetry && backend != 'serpapi',
       requestAction: () => _executeTextRoute(
         backend: backend,
         prompt: prompt,
