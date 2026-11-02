@@ -20,7 +20,7 @@ void main() {
 
   test('saved hidden choices require user selection and never activate another paid provider', () async {
     for (final hidden in ['firebase_ai', 'backend', 'manus']) {
-      await Get.reset();
+      Get.reset();
       final storage = Get.put<AppStorageService>(SelectionStorage(hidden));
       final router = Get.put(AIBackendRouter());
       expect(router.currentBackend.value, 'unselected');
@@ -37,7 +37,7 @@ void main() {
   test('existing OpenRouter and SerpApi choices survive the update', () async {
     expect(AIBackendRouter.chatBackends, ['openrouter', 'serpapi']);
     for (final active in AIBackendRouter.chatBackends) {
-      await Get.reset();
+      Get.reset();
       Get.put<AppStorageService>(SelectionStorage(active));
       final router = Get.put(AIBackendRouter());
       expect(router.currentBackend.value, active);
