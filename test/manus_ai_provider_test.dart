@@ -48,7 +48,8 @@ void main() {
       expect(AIBackendRouter.validBackends, contains('firebase_ai'));
       expect(AIBackendRouter.validBackends, contains('backend'));
       expect(AIBackendRouter.validBackends, contains('openrouter'));
-      expect(AIBackendRouter.validBackends.length, equals(4));
+      expect(AIBackendRouter.validBackends, contains('serpapi'));
+      expect(AIBackendRouter.validBackends.length, equals(5));
     });
 
     test('Test C: Quota Pools explicitly separate Gemini from Manus', () {

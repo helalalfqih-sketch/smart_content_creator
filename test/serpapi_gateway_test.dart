@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:smart_content_creator/core/utils/ai_request_exception.dart';
+import 'package:smart_content_creator/core/models/api_provider.dart';
 import 'package:smart_content_creator/services/serpapi_gateway_service.dart';
 import 'package:smart_content_creator/services/ai_backend_router.dart';
 import 'package:smart_content_creator/services/ai_provider.dart';

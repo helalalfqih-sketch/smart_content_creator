@@ -105,7 +105,9 @@ class AIBackendRouter extends GetxService {
     if (newBackend == 'openrouter' && !_hasUsableOpenRouterKey()) return false;
     if (newBackend == 'serpapi') {
       if (!Get.isRegistered<SerpApiGatewayService>() ||
-          !await Get.find<SerpApiGatewayService>().connect()) return false;
+          !await Get.find<SerpApiGatewayService>().connect()) {
+        return false;
+      }
     }
 
     currentBackend.value = newBackend;

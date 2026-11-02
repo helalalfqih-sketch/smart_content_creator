@@ -94,7 +94,8 @@ void main() {
       expect(AIBackendRouter.validBackends, contains('backend'));
       expect(AIBackendRouter.validBackends, contains('manus'));
       expect(AIBackendRouter.validBackends, contains('openrouter'));
-      expect(AIBackendRouter.validBackends.length, equals(4));
+      expect(AIBackendRouter.validBackends, contains('serpapi'));
+      expect(AIBackendRouter.validBackends.length, equals(5));
     });
   });
 
