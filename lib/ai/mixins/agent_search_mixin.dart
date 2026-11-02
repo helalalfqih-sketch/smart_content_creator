@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import '../../core/models/chat_message.dart';
 import '../core/agent_models.dart';
 import '../../core/utils/error_handler.dart';
+import '../../core/utils/ai_request_exception.dart';
 import '../../core/utils/log_service.dart';
 import '../chat_smart_agent.dart';
 import '../../utils/logger.dart';
@@ -29,7 +30,7 @@ mixin AgentSearchMixin on GetxService {
       // 🛡️ Usage Limit Check
       if (!await agent.checkVisualLimit()) return;
 
-      // 🚀 BYPASS: We now use direct file upload to SerpApi to avoid Firebase Storage 404 issues
+      // The gateway uploads the prepared image using the official SerpApi Image API.
       final String imageInput = effectiveImage.path;
 
       agent.updateStage(2, 4, "جاري مطابقة المنتج تقنياً (Visual Match)... 👁️");
@@ -67,12 +68,12 @@ mixin AgentSearchMixin on GetxService {
         data: ImageGalleryData(
           images: galleryImages,
           query: "Google Lens",
-          title: "🎯 مطابقات بصرية دقيقة (100%)",
+          title: "🎯 نتائج Google Lens",
         ),
         executionTimestamp: DateTime.now().millisecondsSinceEpoch,
       );
 
-      final response = "🎯 لقد وجدت $count مطابقة بصرية دقيقة لهذا المنتج عبر Google Lens. هذه صور لنفس الموديل والعلامة التجارية من مصادر مختلفة.";
+      final response = "🎯 وجدت $count نتيجة مشابهة بصريًا عبر Google Lens. راجع الصور والمصادر للتأكد من الموديل والمواصفات.";
       
       agent.history.add(ChatMessage.assistant(
         content: response,
@@ -80,13 +81,17 @@ mixin AgentSearchMixin on GetxService {
       ).copyWith(state: MessageState.completed));
 
       await agent.saveToDb("Google Lens", response, messageType: 'image_gallery');
+    } on AiRequestException catch (error) {
+      await agent.addAndSaveMessage(ChatMessage.assistant(
+        content: '⚠️ تعذر البحث بعدسة Google: ${error.message}',
+      ).copyWith(state: MessageState.error, isError: true));
     } catch (e) {
       ErrorHandler.logError('Google Lens Gallery', e);
       // 🔥 NEW: Clarification message for the user when a technical failure occurs
       agent.addAndSaveMessage(
         ChatMessage.assistant(
-          content: "عذراً، لم أستطع التعرف على الصورة. هل يمكنك إرسالها لي مرة أخرى؟ 📸",
-        ).copyWith(state: MessageState.completed),
+          content: "⚠️ تعذر إكمال بحث Google Lens. حاول لاحقًا.",
+        ).copyWith(state: MessageState.error, isError: true),
       );
     } finally {
       agent.isLoading.value = false;

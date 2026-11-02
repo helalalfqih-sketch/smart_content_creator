@@ -1,15 +1,18 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import '../core/utils/ai_request_exception.dart';
+import 'lens_image_preparer.dart';
 
 /// The provider key stays on the VPS; requests use this user's Firebase session.
 class SerpApiGatewayService extends GetxService {
   static const baseUrl = 'https://waha.indexesstore.com/serpapi/mobile';
   final Dio _http;
   final Future<String?> Function() _tokenReader;
+  final Future<Uint8List> Function(String) _imagePreparer;
   final connected = false.obs;
   final checking = false.obs;
   final statusMessage = 'اربط حساب التطبيق بخدمة البحث.'.obs;
@@ -17,9 +20,11 @@ class SerpApiGatewayService extends GetxService {
   final dailyLimit = 0.obs;
   StreamSubscription<User?>? _authSubscription;
 
-  SerpApiGatewayService({Dio? client, Future<String?> Function()? tokenReader})
+  SerpApiGatewayService({Dio? client, Future<String?> Function()? tokenReader,
+      Future<Uint8List> Function(String)? imagePreparer})
       : _http = client ?? Dio(BaseOptions(connectTimeout: const Duration(seconds: 15))),
-        _tokenReader = tokenReader ?? _firebaseToken;
+        _tokenReader = tokenReader ?? _firebaseToken,
+        _imagePreparer = imagePreparer ?? prepareLensImage;
 
   static Future<String?> _firebaseToken() async =>
       FirebaseAuth.instance.currentUser?.getIdToken();
@@ -58,7 +63,7 @@ class SerpApiGatewayService extends GetxService {
           responseType: ResponseType.plain,
           followRedirects: false,
           validateStatus: (_) => true,
-          sendTimeout: const Duration(seconds: 15),
+          sendTimeout: const Duration(seconds: 30),
           receiveTimeout: const Duration(seconds: 75),
         ),
       );
@@ -85,12 +90,14 @@ class SerpApiGatewayService extends GetxService {
   }
 
   static AiRequestException _safeError(String? code, int? status) {
+    if (code == 'invalid_image' || status == 413) return const AiRequestException('invalid_image', 'تعذر قبول الصورة. اختر صورة أصغر أو بصيغة JPEG أو PNG.');
+    if (code == 'lens_provider_failed') return const AiRequestException('lens_provider_failed', 'تعذر إكمال بحث Google Lens لدى المزود. لم تُعد المحاولة تلقائيًا.');
     if (status == 401) return const AiRequestException('sign_in_required', 'انتهت جلسة الدخول. سجّل الدخول مجددًا.');
     if (status == 403) return const AiRequestException('account_not_authorized', 'هذا الحساب غير مخوّل للخدمة. استخدم حساب المدير ببريد موثّق أو اطلب تفعيل حسابك.');
     if (status == 404) return const AiRequestException('gateway_not_ready', 'ربط SerpApi لم يُفعّل على الخادم بعد.');
     if (status == 429) return const AiRequestException('serpapi_quota', 'بلغت حد البحث المتاح. انتظر تجدد الحد أو راجع رصيد SerpApi.');
     if (code == 'provider_credentials') return const AiRequestException('provider_credentials', 'الخادم يحتاج إلى مراجعة مفتاح SerpApi.');
-    if (code == 'provider_timeout') return const AiRequestException('provider_timeout', 'تأخر رد Google AI Mode. لم تُعد المحاولة تلقائيًا.');
+    if (code == 'provider_timeout') return const AiRequestException('provider_timeout', 'تأخر رد SerpApi. لم تُعد المحاولة تلقائيًا.');
     if (code == 'provider_empty_answer' || code == 'provider_search_failed') return const AiRequestException('provider_empty_answer', 'لم يرجع Google AI Mode إجابة لهذا البحث. جرّب صياغة أخرى.');
     if (status == 400) return const AiRequestException('invalid_search', 'صيغة البحث غير صالحة أو النص طويل جدًا.');
     return const AiRequestException('serpapi_unavailable', 'تعذر الاتصال بخدمة البحث حاليًا.');
@@ -108,7 +115,7 @@ class SerpApiGatewayService extends GetxService {
         hourlyLimit.value = (limits['hourly'] as num?)?.toInt() ?? 0;
         dailyLimit.value = (limits['daily'] as num?)?.toInt() ?? 0;
       }
-      statusMessage.value = 'تم ربط الحساب بالخادم. أصبح البحث متاحًا من المحادثة.';
+      statusMessage.value = 'تم ربط الحساب بالخادم. البحث النصي وعدسة Google يستخدمان حسابك.';
       return true;
     } on AiRequestException catch (error) {
       connected.value = false;
@@ -130,5 +137,27 @@ class SerpApiGatewayService extends GetxService {
       if (gl != null) 'gl': gl,
       if (subsequentRequestToken != null) 'subsequent_request_token': subsequentRequestToken,
     }, cancelToken: cancelToken);
+  }
+
+  /// Smart Tools Lens is independent of the selected conversational AI provider.
+  Future<Map<String, dynamic>> searchLens(String imageInput,
+      {String hl = 'ar', CancelToken? cancelToken}) async {
+    if (cancelToken?.isCancelled == true) throw const AiRequestException('cancelled', 'أُلغي طلب البحث.');
+    final input = imageInput.trim();
+    if (input.isEmpty) throw const AiRequestException('invalid_image', 'اختر صورة أولاً.');
+    final uri = Uri.tryParse(input);
+    final Map<String, dynamic> payload = {'hl': hl};
+    if (uri?.scheme == 'https') {
+      payload['url'] = input;
+    } else {
+      if (uri?.scheme == 'http') throw const AiRequestException('invalid_image', 'رابط الصورة يجب أن يستخدم HTTPS.');
+      final bytes = await _imagePreparer(input);
+      if (bytes.isEmpty || bytes.length > 480000) throw const AiRequestException('invalid_image', 'الصورة كبيرة للبحث بعدسة Google.');
+      payload['image_base64'] = base64Encode(bytes);
+    }
+    if (cancelToken?.isCancelled == true) throw const AiRequestException('cancelled', 'أُلغي طلب البحث.');
+    final result = await _request('lens', data: payload, cancelToken: cancelToken);
+    if (result['visual_matches'] is! List) throw AiRequestException.invalidResponse;
+    return result;
   }
 }

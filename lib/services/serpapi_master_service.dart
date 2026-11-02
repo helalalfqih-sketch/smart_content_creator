@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import '../controllers/settings_controller.dart';
 import '../core/models/api_provider.dart';
 import '../services/global_config_service.dart';
+import 'serpapi_gateway_service.dart';
 
 /// Unified engine for SerpApi requests to fetch real data from Google, YouTube, Amazon, etc.
 class SerpApiMasterService {
@@ -95,6 +96,12 @@ class SerpApiMasterService {
   /// Core fetch method for any SerpApi engine
   /// Supports both GET (standard) and POST (for file uploads)
   Future<Map<String, dynamic>> fetch(String engine, Map<String, dynamic> parameters, {dio.CancelToken? cancelToken}) async {
+    if (engine == 'google_lens') {
+      return Get.find<SerpApiGatewayService>().searchLens(
+        (parameters['file'] ?? parameters['url'] ?? '').toString(),
+        hl: parameters['hl']?.toString() ?? 'ar', cancelToken: cancelToken,
+      );
+    }
     if (!await _checkInternetConnection()) {
       throw const SocketException('لا يوجد اتصال بالإنترنت');
     }

@@ -38,18 +38,13 @@ class GoogleLensService {
   /// 🔍 Structured Similarity Search
   /// Supports both URL and Local File Path
   Future<Map<String, dynamic>> searchByImage(String imageInput, {dio.CancelToken? cancelToken}) async {
-    try {
       final bool isUrl = imageInput.startsWith('http');
       final parameters = isUrl 
           ? {'url': imageInput} 
-          : {'file': imageInput}; // Master service now handles POST for 'file'
+          : {'file': imageInput};
           
       final data = await _master.fetch('google_lens', parameters, cancelToken: cancelToken);
       return data;
-    } catch (e) {
-      debugPrint("❌ Google Lens Search Error: $e");
-      return {'error': e.toString()};
-    }
   }
 }
 

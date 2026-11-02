@@ -37,9 +37,11 @@ class _SerpApiGatewayFormState extends State<SerpApiGatewayForm> {
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Obx(() => Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          const Text('Google AI Mode عبر SerpApi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
+          const Text('Google AI Mode وGoogle Lens', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
           const SizedBox(height: 12),
           const Text('بحث مدعوم بالمصادر باستخدام حسابك في التطبيق. مفتاح الخدمة محفوظ على الخادم.'),
+          const SizedBox(height: 8),
+          const Text('للبحث عن صورة: افتح الأدوات الذكية واختر Google Lens. تُرسل الصورة إلى SerpApi لإيجاد الصور والمنتجات المشابهة، دون الحاجة لإدخال مفتاح هنا.'),
           const SizedBox(height: 12),
           Text(service.statusMessage.value),
           const SizedBox(height: 16),
