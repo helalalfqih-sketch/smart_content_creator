@@ -159,6 +159,7 @@ class ChatDrawer extends StatelessWidget {
                     children: [
                       topSection,
                       Expanded(child: buildHistoryList(scrollable: true)),
+                      _buildGalleryButton(),
                       _buildCatalogButton(),
                       _buildAdminButton(),
                       // تم نقل الفوتر إلى الملف الشخصي
@@ -173,6 +174,7 @@ class ChatDrawer extends StatelessWidget {
                     children: [
                       topSection,
                       buildHistoryList(scrollable: false),
+                      _buildGalleryButton(),
                       _buildCatalogButton(),
                       _buildAdminButton(),
                       // تم نقل الفوتر إلى الملف الشخصي
@@ -610,6 +612,15 @@ class ChatDrawer extends StatelessWidget {
       return '';
     }
   }
+
+  Widget _buildGalleryButton() => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+    child: ListTile(
+      leading: const Icon(Icons.photo_library_rounded, color: Colors.tealAccent),
+      title: const Text('معرض الصور الذكي'),
+      subtitle: const Text('استيراد • تنظيم • تحليل • إعادة تسمية'),
+      onTap: () { Get.back(); Get.toNamed('/smart-gallery'); },
+    ));
 
   // 🛍️ زر كتالوج المنتجات لـ Meta
   Widget _buildCatalogButton() {

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   pull_request:
   push:
-    branches: [codex/shorebird-recovery-20261030, codex/shopify-vps-catalog-ota-20261031, codex/openrouter-vision-fix-20261101, codex/openrouter-image-generation-fix-20261101, codex/vision-transport-fix-20261102, codex/serpapi-mobile-link-20261102, codex/serpapi-lens-20261102, codex/active-chat-providers-20261102]
+    branches: [codex/shorebird-recovery-20261030, codex/shopify-vps-catalog-ota-20261031, codex/openrouter-vision-fix-20261101, codex/openrouter-image-generation-fix-20261101, codex/vision-transport-fix-20261102, codex/serpapi-mobile-link-20261102, codex/serpapi-lens-20261102, codex/active-chat-providers-20261102, codex/smart-gallery-20261102]
 
 permissions:
   contents: read
@@ -60,3 +60,39 @@ jobs:
       - name: Run offline Flutter tests
         if: ${{ !cancelled() && steps.dependencies.outcome == 'success' }}
         run: flutter test --no-pub
+
+  gallery-android:
+    if: github.ref == 'refs/heads/codex/smart-gallery-20261102'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.44.6'
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Real Android SQLite, media files and gallery UI
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-boot-timeout: 600
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -camera-back none
+          script: flutter test integration_test/gallery_smoke_test.dart --no-pub -d emulator-5554

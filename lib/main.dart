@@ -28,6 +28,7 @@ import 'screens/subscription_screen.dart'; // شاشة الاشتراكات وا
 import 'screens/product_photography_screen.dart'; // شاشة تصوير المنتجات بالـ AI
 import 'screens/catalog/product_catalog_screen.dart'; // شاشة كتالوج المنتجات لـ Meta
 import 'screens/main_wrapper.dart'; // الملف الرئيسي الذي يحتوي على شريط التنقل الديناميكي
+import 'gallery/smart_gallery_screen.dart';
 
 // --- استيراد المتحكمات والخدمات (Controllers & Services) ---
 import 'controllers/api_controller.dart'; // متحكم التعامل مع الواجهات البرمجية
@@ -239,6 +240,7 @@ class SmartContentCreatorApp extends StatelessWidget {
                 name: '/catalog',
                 page: () =>
                     const ProductCatalogScreen()), // كتالوج المنتجات لـ Meta
+            GetPage(name: '/smart-gallery', page: () => const SmartGalleryScreen()),
           ],
         );
       },
