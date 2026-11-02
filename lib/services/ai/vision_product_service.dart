@@ -10,6 +10,7 @@ import '../firestore_user_service.dart';
 import '../../models/brand_identity_model.dart';
 import '../../controllers/settings_controller.dart';
 import '../../core/utils/json_utils.dart';
+import '../../core/utils/ai_request_exception.dart';
 
 class VisionProductService extends GetxService {
   AIBackendRouter get _router => Get.find<AIBackendRouter>();
@@ -70,6 +71,8 @@ NO MARKDOWN. NO EXTRA TEXT.
       );
 
       if (visionResponse['success'] != true) {
+        final failure = visionResponse['request_failure'];
+        if (failure is AiRequestException) throw failure;
         throw Exception(visionResponse['error'] ?? '❌ تعذر تحليل الصورة. أعد المحاولة.');
       }
       final rawText = visionResponse['data']?.toString() ?? '';

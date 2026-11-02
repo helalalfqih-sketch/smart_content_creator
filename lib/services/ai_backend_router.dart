@@ -17,6 +17,7 @@ import '../core/storage/app_storage_service.dart';
 import '../controllers/chat_history_controller.dart';
 import '../controllers/settings_controller.dart';
 import '../core/utils/vision_image.dart';
+import '../core/utils/ai_request_exception.dart';
 
 /// 🎯 AIBackendRouter - نقطة الدخول الموحدة لجميع طلبات الذكاء الاصطناعي
 ///
@@ -867,6 +868,8 @@ class AIBackendRouter extends GetxService {
       return {
         'success': false,
         'error': e.toString(),
+        // This local-only field keeps the typed failure through the UI route.
+        if (e is AiRequestException) 'request_failure': e,
         'meta': {
           'provider': 'openrouter',
           'model': 'anthropic/claude-opus-5.5',

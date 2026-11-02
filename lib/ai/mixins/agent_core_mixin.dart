@@ -9,6 +9,7 @@ import '../../core/models/chat_message.dart';
 import '../core/agent_models.dart';
 import '../../core/utils/json_utils.dart';
 import '../../core/utils/error_handler.dart';
+import '../../core/utils/ai_request_exception.dart';
 import '../../core/utils/snackbar_utils.dart';
 import '../../core/utils/log_service.dart';
 import '../chat_smart_agent.dart';
@@ -750,6 +751,8 @@ $productDescSection
           cancelToken: cancelToken,
         );
         if (result['success'] != true) {
+          final failure = result['request_failure'];
+          if (failure is AiRequestException) throw failure;
           throw Exception(result['error'] ?? 'Vision analysis failed');
         }
         response = result['data']?.toString() ?? '';
@@ -761,6 +764,8 @@ $productDescSection
           history: chatHistory,
         );
         if (result['success'] != true) {
+          final failure = result['request_failure'];
+          if (failure is AiRequestException) throw failure;
           throw Exception(result['error'] ?? 'Text generation failed');
         }
         response = result['data']?.toString() ?? '';

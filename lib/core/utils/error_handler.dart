@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:developer' as developer;
 import 'dart:io' as dart_io;
 import 'snackbar_utils.dart';
+import 'ai_request_exception.dart';
 
 class ErrorHandler {
   // 🔹 تسجيل الخطأ للمطور فقط (دون إزعاج المستخدم)
@@ -71,18 +72,26 @@ class ErrorHandler {
   static SmartException mapError(Object e) {
     // If it's already a SmartException, return it
     if (e is SmartException) return e;
+    if (e is AiRequestException) {
+      return SmartException(e.toString(),
+          technicalDetails: e.code, canRetry: e.canRetry);
+    }
 
-    final msg = e.toString().toLowerCase();
+    // Older routes may already have added more than one Exception wrapper.
+    final display = e.toString().replaceFirst(
+        RegExp(r'^(?:Exception:\s*)+', caseSensitive: false), '');
+    final msg = display.toLowerCase();
 
     // 1. Connection & Network Errors
-    if (msg.contains('connection closed') || 
+    if (msg.contains('connection_error') ||
+        msg.contains('connection closed') ||
         msg.contains('clientexception') || 
         msg.contains('socketexception') || 
         msg.contains('connection refused') ||
         msg.contains('network is unreachable') ||
         msg.contains('sem_timeout')) {
       return SmartException(
-        "⚠️ ضعف في الاتصال، جاري إعادة المحاولة...",
+        "تعذر الاتصال بالخدمة. جرّب شبكة أخرى ثم أعد المحاولة.",
         technicalDetails: msg,
         canRetry: true,
       );
@@ -125,9 +134,9 @@ class ErrorHandler {
     }
     
     // 6. Custom "Smart" Errors (from our own code)
-    if (e.toString().startsWith('Exception: ❌')) {
+    if (display.startsWith('❌')) {
       return SmartException(
-        e.toString().replaceAll('Exception: ', ''),
+        display,
         technicalDetails: msg,
         canRetry: false,
       );

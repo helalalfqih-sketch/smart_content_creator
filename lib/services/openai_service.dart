@@ -4,6 +4,7 @@ import 'package:dio/dio.dart' as dio;
 import 'ai_provider.dart';
 import '../core/models/api_provider.dart';
 import '../core/utils/vision_image.dart';
+import '../core/utils/ai_request_exception.dart';
 
 /// OpenAI-compatible text and vision requests, including OpenRouter.
 class OpenAIService extends AIProvider {
@@ -39,7 +40,7 @@ class OpenAIService extends AIProvider {
     String? customEndpoint,
   }) async {
     if (apiKey.trim().isEmpty) {
-      throw Exception('❌ 401: أضف مفتاح الخدمة من الإعدادات أولاً.');
+      throw AiRequestException.http(401);
     }
     final endpoint = (customEndpoint ?? baseUrl ?? 'https://api.openai.com/v1')
         .replaceFirst(RegExp(r'/+$'), '');
@@ -65,6 +66,10 @@ class OpenAIService extends AIProvider {
             },
         },
         options: dio.Options(
+          // Decode after reading HTTP status, so an HTML gateway error cannot
+          // become a response-less Dio FormatException / "connection_error".
+          responseType: dio.ResponseType.plain,
+          validateStatus: (_) => true,
           headers: {
             'Authorization': 'Bearer ${apiKey.trim()}',
             'Content-Type': 'application/json',
@@ -76,13 +81,22 @@ class OpenAIService extends AIProvider {
         ),
         cancelToken: cancelToken,
       );
-      final data = response.data;
-      if (response.statusCode != 200 || data is! Map || data['error'] != null) {
-        final error = data is Map ? data['error'] : null;
-        throw _requestError(
-          error is Map
-              ? int.tryParse('${error['code']}') ?? response.statusCode
-              : response.statusCode,
+      if (response.statusCode != 200) {
+        throw AiRequestException.http(response.statusCode);
+      }
+      Object? data = response.data;
+      if (data is String) {
+        try {
+          data = jsonDecode(data);
+        } on FormatException {
+          throw AiRequestException.invalidResponse;
+        }
+      }
+      if (data is! Map) throw AiRequestException.invalidResponse;
+      if (data['error'] != null) {
+        final error = data['error'];
+        throw AiRequestException.http(
+          error is Map ? int.tryParse('${error['code']}') : null,
         );
       }
       final choices = data['choices'];
@@ -92,7 +106,7 @@ class OpenAIService extends AIProvider {
           : null;
       final answer = message is Map ? message['content'] : null;
       if (answer is! String || answer.trim().isEmpty) {
-        throw Exception('❌ لم يُرجع النموذج إجابة صالحة. أعد المحاولة.');
+        throw AiRequestException.invalidResponse;
       }
       return AiResult(
         description: answer,
@@ -102,30 +116,9 @@ class OpenAIService extends AIProvider {
       );
     } on dio.DioException catch (e) {
       if (dio.CancelToken.isCancel(e)) rethrow;
-      if (e.type == dio.DioExceptionType.connectionTimeout ||
-          e.type == dio.DioExceptionType.receiveTimeout ||
-          e.type == dio.DioExceptionType.sendTimeout) {
-        throw Exception(
-          '❌ timeout: استغرق التحليل وقتاً طويلاً. أعد المحاولة.',
-        );
-      }
       // Never include headers, image bytes, or provider response bodies in logs/UI.
-      throw _requestError(e.response?.statusCode);
+      throw AiRequestException.transport(e);
     }
-  }
-
-  Exception _requestError(int? status) {
-    final message = switch (status) {
-      401 || 403 => 'تحقق من مفتاح الخدمة وصلاحياته في الإعدادات.',
-      402 => 'رصيد الخدمة غير كافٍ لإتمام الطلب.',
-      404 => 'النموذج أو مزود الصور المختار غير متاح حالياً.',
-      413 => 'الصورة كبيرة جداً. اختر صورة أصغر.',
-      429 => 'تم تجاوز حد الطلبات. انتظر قليلاً ثم أعد المحاولة.',
-      400 || 422 => 'رفض المزود الطلب. تحقق من دعم النموذج لصيغة الصورة.',
-      null => 'تعذر الاتصال بالخدمة. تحقق من الإنترنت وأعد المحاولة.',
-      _ => 'تعذر إتمام الطلب لدى المزود. أعد المحاولة لاحقاً.',
-    };
-    return Exception('❌ ${status ?? 'connection_error'}: $message');
   }
 
   @override
