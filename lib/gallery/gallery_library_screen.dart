@@ -94,6 +94,7 @@ class _GalleryLibraryScreenState extends State<GalleryLibraryScreen> {
 
   void _toggle(GalleryItem item) {
     if (_attaching || !_accountCurrent) return;
+    FocusScope.of(context).unfocus();
     setState(() {
       _error = null;
       if (_selected.remove(item.id)) return;
@@ -107,6 +108,7 @@ class _GalleryLibraryScreenState extends State<GalleryLibraryScreen> {
 
   Future<void> _attach() async {
     if (_attaching || _selected.isEmpty || _store == null) return;
+    FocusScope.of(context).unfocus();
     setState(() {
       _attaching = true;
       _error = null;
@@ -185,12 +187,13 @@ class _GalleryLibraryScreenState extends State<GalleryLibraryScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'اختر صورًا من معرض الصور الذكي لإضافتها إلى الرسالة. لن تُرسل حتى تضغط إرسال في الدردشة.',
+              if (MediaQuery.viewInsetsOf(context).bottom == 0)
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'اختر صورًا من معرض الصور الذكي لإضافتها إلى الرسالة. لن تُرسل حتى تضغط إرسال في الدردشة.',
+                  ),
                 ),
-              ),
               if (!_loading && !_locked && _photos.isNotEmpty) ...[
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -258,6 +261,8 @@ class _GalleryLibraryScreenState extends State<GalleryLibraryScreen> {
                       )
                     : GridView.builder(
                         padding: const EdgeInsets.all(12),
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
                         gridDelegate:
                             const SliverGridDelegateWithMaxCrossAxisExtent(
                               maxCrossAxisExtent: 180,
