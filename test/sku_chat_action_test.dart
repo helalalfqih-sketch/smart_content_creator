@@ -25,7 +25,7 @@ const reading = SkuReading('found', [
 
 class _Service extends SkuImageService {
   final started = Completer<void>();
-  final result = Completer<SkuReading>();
+  var result = Completer<SkuReading>();
   int calls = 0;
   List<File> images = [];
   CancelToken? cancel;
@@ -47,6 +47,7 @@ class _Service extends SkuImageService {
 class _Agent extends ChatSmartAgent {
   _Agent(_Service service) : super(skuImageService: service);
   @override
+  // ignore: must_call_super
   void onInit() {} // Offline harness: no auth, database or cloud services.
   @override
   final history = <ChatMessage>[].obs;
@@ -196,6 +197,8 @@ void main() {
   testWidgets(
     'smart tools SKU button carries the visible bubble identity to the handler',
     (tester) async {
+      // This completion must belong to the widget test's FakeAsync zone.
+      service.result = Completer<SkuReading>();
       await tester.pumpWidget(
         GetMaterialApp(
           home: Scaffold(
@@ -210,14 +213,26 @@ void main() {
         ),
       );
       await tester.tap(find.text('الأدوات الذكية ⚡'));
-      await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 5));
+      await tester.pumpAndSettle(
+        const Duration(milliseconds: 100),
+        EnginePhase.sendSemanticsUpdate,
+        const Duration(seconds: 5),
+      );
       expect(find.text('استخراج SKU'), findsOneWidget);
       await tester.tap(find.text('استخراج SKU'));
       await tester.pump();
-      expect(service.calls, 1, reason: 'The visible SKU button must start extraction');
+      expect(
+        service.calls,
+        1,
+        reason: 'The visible SKU button must start extraction',
+      );
       expect(service.images.single.path, '/old-label.jpg');
       service.result.complete(reading);
-      await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 5));
+      await tester.pumpAndSettle(
+        const Duration(milliseconds: 100),
+        EnginePhase.sendSemanticsUpdate,
+        const Duration(seconds: 5),
+      );
       expect(agent.history.last.content, contains('N/A-001'));
     },
   );
@@ -229,8 +244,9 @@ void main() {
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         SystemChannels.platform,
         (call) async {
-          if (call.method == 'Clipboard.setData')
+          if (call.method == 'Clipboard.setData') {
             copied = call.arguments['text'] as String;
+          }
           return null;
         },
       );
@@ -247,8 +263,14 @@ void main() {
         ),
       );
       await tester.tap(find.text('نسخ'));
-      await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 5));
+      await tester.pumpAndSettle(
+        const Duration(milliseconds: 100),
+        EnginePhase.sendSemanticsUpdate,
+        const Duration(seconds: 5),
+      );
       expect(copied, contains('N/A-001'));
+      await tester.pump(const Duration(seconds: 5));
+      await tester.pumpAndSettle();
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         SystemChannels.platform,
         null,
