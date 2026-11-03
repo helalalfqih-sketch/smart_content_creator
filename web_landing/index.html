@@ -447,82 +447,38 @@
 
     <header>
         <div class="logo-container">
-            <img src="assets/images/logoapp.jpg" alt="Logo">
+            <img src="assets/images/logoapp.jpg" alt="Smart Content Creator AI">
         </div>
         <h1>SMART CONTENT</h1>
         <div class="tagline">CREATOR AI 2026</div>
         <p style="max-width: 600px; margin: 0 auto; line-height: 1.8; color: var(--text-dim);">
-            المساعد الذكي لإنتاج المحتوى الإعلاني الاحترافي. دمج الذكاء الاصطناعي مع معالجة الفيديو القوية لإنشاء ريلز وتصاميم مذهلة في ثوانٍ.
+            Smart Content Creator AI — صانع المحتوى الذكي. تطبيق أندرويد للمحادثة والبحث، والعمل على نسخ من الصور والفيديوهات التي تختارها: وصف الصور، قراءة النص، مراجعة الأسماء، وتصدير النسخ.
         </p>
     </header>
 
     <section class="features">
         <div class="feature-card">
-            <h3>🎬 مونتاج سينمائي</h3>
-            <p>تحسين الفيديوهات آلياً، تعديل الأبعاد، وإضافة تأثيرات بصرية ذكية بنقرة واحدة.</p>
+            <h3>🖼️ العمل على الصور المختارة</h3>
+            <p>استورد ملفات تختارها من الهاتف، أو استخدم Google Photos Picker بعد منح الإذن. يمكنك معاينة النسخ وتنظيمها ومراجعة أسمائها وتصديرها؛ تبقى الأصول كما هي.</p>
         </div>
         <div class="feature-card">
             <h3>🤖 ذكاء اصطناعي</h3>
-            <p>دمج منتجاتك داخل الفيديوهات باستخدام تحليل الموضع الذكي من Google Gemini.</p>
+            <p>اطلب وصف الصورة وقراءة النص والوسوم واسمًا مقترحًا عبر OpenRouter بمفتاحك. تُرسل الصور التي توافق على تحليلها إلى OpenRouter ومزود النموذج، وقد تترتب تكلفة على حسابك.</p>
         </div>
         <div class="feature-card">
-            <h3>🚀 سرعة فائقة</h3>
-            <p>معالجة محلية للفيديوهات لضمان الخصوصية والسرعة دون الحاجة لرفعها للسحاب.</p>
+            <h3>📱 نسخ محفوظة على الهاتف</h3>
+            <p>تُحفظ مكتبة المعرض ونتائجها داخل التطبيق على الهاتف. لا تعمل مزامنة سحابية تلقائية للمعرض. استيراد Google Photos والتحليل والبحث تتطلب اتصالًا بخدمات خارجية.</p>
         </div>
     </section>
 
-    <section class="download-section">
-        <h2 class="download-title">تنزيل التطبيق لجهازك (الإصدار <span id="app-version">2.1.0</span>)</h2>
-
+    <section class="download-section" id="download">
+        <h2 class="download-title">تنزيل التطبيق لأندرويد — <span id="app-version">1.3.1-rc.2</span></h2>
         <div class="qa-download-card">
-            <h3>نسخة Android تجريبية موقّعة — 1.3.1-rc.1</h3>
-            <p>ملف APK موحّد للتثبيت المباشر على الهاتف، وقد اجتاز فحص التوقيع واختبار التثبيت والتشغيل.</p>
-            <a href="https://github.com/helalalfqih-sketch/smart_content_creator/releases/download/v1.3.1-rc.1/app-release.apk" class="btn-download" download>تنزيل النسخة التجريبية مباشرة (86 MB)</a>
-            <p class="qa-download-note">نسخة اختبار وليست بديلًا عن الإصدار المستقر 2.1.0.</p>
-        </div>
-        
-        <div class="download-grid">
-            <!-- ARM 64 -->
-            <div class="dl-card recommended">
-                <h4>Android 64-bit</h4>
-                <div class="badge">الأجهزة الحديثة</div>
-                <p style="margin-bottom: 25px; font-size: 0.9rem; color: var(--text-dim);">
-                    تعمل على جميع هواتف أندرويد الحديثة (S20+, Pixel 5+, etc.)
-                </p>
-                <a href="https://github.com/helalalfqih-sketch/smart_content_creator/releases/latest/download/app-arm64-v8a-release.apk" class="btn-download" download>تنزيل APK</a>
-                <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/smart_content_creator/releases/latest/download/app-arm64-v8a-release.apk')">
-                    <span>فتح أو تحديث التطبيق ⚡</span>
-                </button>
-                <div class="file-size" id="size-arm64">الحجم: 102.0 ميجابايت</div>
-            </div>
-
-            <!-- ARM v7 -->
-            <div class="dl-card">
-                <h4>Android 32-bit</h4>
-                <div class="badge">الأجهزة القديمة</div>
-                <p style="margin-bottom: 25px; font-size: 0.9rem; color: var(--text-dim);">
-                    للإصدارات الأقدم من الهواتف التي لا تدعم 64-bit.
-                </p>
-                <a href="https://github.com/helalalfqih-sketch/smart_content_creator/releases/latest/download/app-armeabi-v7a-release.apk" class="btn-download" download>تنزيل APK</a>
-                <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/smart_content_creator/releases/latest/download/app-armeabi-v7a-release.apk')">
-                    <span>فتح أو تحديث التطبيق ⚡</span>
-                </button>
-                <div class="file-size" id="size-arm32">الحجم: 130.8 ميجابايت</div>
-            </div>
-
-            <!-- x86_64 -->
-            <div class="dl-card">
-                <h4>System PC / Sim</h4>
-                <div class="badge">المحاكيات</div>
-                <p style="margin-bottom: 25px; font-size: 0.9rem; color: var(--text-dim);">
-                    مخصصة لأجهزة الكمبيوتر والمحاكيات (BlueStacks, Windows).
-                </p>
-                <a href="https://github.com/helalalfqih-sketch/smart_content_creator/releases/latest/download/app-x86_64-release.apk" class="btn-download" download>تنزيل APK</a>
-                <button class="btn-smart-action" onclick="launchOrDownload('https://github.com/helalalfqih-sketch/smart_content_creator/releases/latest/download/app-x86_64-release.apk')">
-                    <span>فتح أو تحديث التطبيق ⚡</span>
-                </button>
-                <div class="file-size" id="size-x86">الحجم: 112.6 ميجابايت</div>
-            </div>
+            <h3>نسخة تدعم التحديثات الهوائية</h3>
+            <p>تتوفر لهذه النسخة تحديثات الكتالوج والبحث بعدسة Google ومعرض الصور الذكي. ربط Google Photos ما زال بانتظار استكمال مراجعة OAuth من Google. إذا كان هاتفك على الإصدار 1.3.0، حدّث النسخة الحالية مرة واحدة.</p>
+            <a href="https://github.com/helalalfqih-sketch/smart_content_creator/releases/download/v1.3.1-rc.2/app-release.apk" class="btn-download" download>تنزيل APK مباشر — 92.4 MB</a>
+            <p>لا تحذف تطبيقك الحالي. افتح الملف واختر «تحديث». لتنزيل التحديث الهوائي: أوقف التطبيق إجباريًا، وافتحه بالإنترنت دقيقتين، ثم أوقفه إجباريًا مرة ثانية وأعد فتحه.</p>
+            <p class="qa-download-note">الإصدار 1.3.1-rc.2 مرشح للإصدار النهائي. ملف واحد للهواتف والأجهزة المتوافقة، دون فك ضغط.</p>
         </div>
     </section>
 
@@ -535,7 +491,7 @@
                     <span class="faq-icon">+</span>
                 </button>
                 <div class="faq-answer">
-                    <p>هو تطبيق متقدم يستخدم الذكاء الاصطناعي (مثل Google Gemini) لمساعدة منشئي المحتوى على إنتاج فيديوهات وتصاميم إعلانية احترافية، وتحليل المنتجات، وكتابة نصوص تسويقية جذابة بسرعة وسهولة.</p>
+                    <p>تطبيق أندرويد يضم المحادثة عبر OpenRouter والبحث عبر SerpApi وكتالوج المنتجات، ومساحة للصور المختارة تتيح الوصف وقراءة النص وإعادة تسمية النسخ وتصديرها. راجع نتائج الذكاء الاصطناعي قبل استخدامها.</p>
                 </div>
             </div>
             <div class="faq-item">
@@ -553,7 +509,7 @@
                     <span class="faq-icon">+</span>
                 </button>
                 <div class="faq-answer">
-                    <p>نعم، خصوصيتك هي أولويتنا. تتم معظم عمليات معالجة الفيديو والصور محلياً على جهازك لضمان أقصى درجات الأمان والسرعة. لا يتم رفع ملفاتك إلى خوادمنا.</p>
+                    <p>تبقى نسخ المعرض محلية حتى تختار تحليلها أو تصديرها. التحليل يرسل الصور المحددة إلى OpenRouter ومزود النموذج بعد موافقتك؛ والبحث بعدسة Google يرسل الصورة إلى خدمة البحث. راجع سياسة الخصوصية لتفاصيل الوصول والحفظ والحذف.</p>
                 </div>
             </div>
             <div class="faq-item">
@@ -562,10 +518,17 @@
                     <span class="faq-icon">+</span>
                 </button>
                 <div class="faq-answer">
-                    <p>يدعم التطبيق حالياً أجهزة أندرويد. نوفر إصدارات مختلفة (64-bit للأجهزة الحديثة، 32-bit للأجهزة القديمة، ونسخة للمحاكيات على الكمبيوتر) لضمان التوافق مع أكبر عدد ممكن من الأجهزة.</p>
+                    <p>يتوفر ملف APK واحد لأجهزة أندرويد المتوافقة. قد تختلف صيغ الصور والفيديو القابلة للعرض بحسب الجهاز. لا تتوفر نسخة iPhone في رابط التنزيل الحالي.</p>
                 </div>
             </div>
         </div>
+    </section>
+
+    <section aria-label="About the app" lang="en" dir="ltr" style="max-width:900px;margin:24px auto;padding:24px;line-height:1.8;">
+        <h2>Smart Content Creator AI</h2>
+        <p>An Android app for chat, search and working with selected media. Smart Gallery imports user-selected copies, supports image descriptions and OCR through OpenRouter after explicit consent, and lets users review filenames and export copies. Google Photos integration uses the Picker API for explicitly selected files; it does not synchronize an entire Google Photos library.</p>
+        <p>Google Photos OAuth verification is not complete. Analysis sends selected image copies to OpenRouter and the configured model provider. Local gallery storage is separate from optional cloud services. See our <a href="privacy.html">Privacy Policy</a> and <a href="terms.html">Terms of Service</a>.</p>
+        <p>Developer contact: <a href="mailto:helalalfqih@gmail.com">helalalfqih@gmail.com</a></p>
     </section>
 
     <footer>
@@ -596,81 +559,6 @@
             });
         });
 
-        // 🚀 Deep Linking & Smart App Launch Logic
-        function launchOrDownload(downloadUrl) {
-            const customScheme = "smartcreator://open";
-            const appStoreUrl = downloadUrl;
-            
-            // محاولة فتح التطبيق عبر الـ Custom Scheme
-            const now = Date.now();
-            window.location.href = customScheme;
-
-            // إذا لم يفتح التطبيق خلال 2 ثانية، يوجهه للتحميل
-            setTimeout(() => {
-                if (Date.now() - now < 2500) {
-                    window.location.href = appStoreUrl;
-                }
-            }, 2000);
-        }
-
-        // Check if page loaded from inside App (Webview/AppLink)
-        window.addEventListener('DOMContentLoaded', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const isInstalled = urlParams.get('installed') === 'true' || navigator.userAgent.includes('SmartCreatorApp');
-
-            if (isInstalled) {
-                const smartButtons = document.querySelectorAll('.btn-smart-action');
-                smartButtons.forEach(btn => {
-                    btn.innerHTML = '<span>✅ مثبت بالفعل (افتح التطبيق)</span>';
-                    btn.style.background = 'rgba(0, 255, 136, 0.15)';
-                    btn.style.color = '#00FF88';
-                });
-            }
-
-            // 🌐 Fetch latest version and file sizes from GitHub Releases
-            const repoUrl = "https://api.github.com/repos/helalalfqih-sketch/smart_content_creator/releases/latest";
-            
-            // Fallback default values
-            const defaultSizes = {
-                "smart-content-creator-arm64.apk": "101.9 ميجابايت",
-                "smart-content-creator-arm32.apk": "130.6 ميجابايت",
-                "smart-content-creator-x86.apk": "112.5 ميجابايت"
-            };
-            const defaultVersion = "1.3.0";
-
-            fetch(repoUrl)
-                .then(response => {
-                    if (!response.ok) throw new Error("API call failed");
-                    return response.json();
-                })
-                .then(data => {
-                    // Update version tag
-                    const version = data.tag_name ? data.tag_name.replace('v', '') : defaultVersion;
-                    document.getElementById('app-version').innerText = version;
-
-                    // تحديث حجم الملفات بنمط مرن (ARM64 / ARM32 / x86)
-                    const assets = data.assets || [];
-                    assets.forEach(asset => {
-                        const sizeMB = (asset.size / (1024 * 1024)).toFixed(1) + " ميجابايت";
-                        const name = asset.name.toLowerCase();
-                        if (name.includes('arm64') || name.includes('arm64-v8a')) {
-                            document.getElementById('size-arm64').innerText = "الحجم: " + sizeMB;
-                        } else if (name.includes('armeabi-v7a') || name.includes('arm32') || name.includes('armv7')) {
-                            document.getElementById('size-arm32').innerText = "الحجم: " + sizeMB;
-                        } else if (name.includes('x86_64') || name.includes('x86')) {
-                            document.getElementById('size-x86').innerText = "الحجم: " + sizeMB;
-                        }
-                    });
-                })
-                .catch(error => {
-                    console.log("Error loading latest release stats: ", error);
-                    // Load fallbacks on error (e.g. offline or API rate limits)
-                    document.getElementById('app-version').innerText = defaultVersion;
-                    document.getElementById('size-arm64').innerText = "الحجم: " + defaultSizes["smart-content-creator-arm64.apk"];
-                    document.getElementById('size-arm32').innerText = "الحجم: " + defaultSizes["smart-content-creator-arm32.apk"];
-                    document.getElementById('size-x86').innerText = "الحجم: " + defaultSizes["smart-content-creator-x86.apk"];
-                });
-        });
     </script>
 </body>
 </html>
