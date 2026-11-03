@@ -559,6 +559,8 @@ class ChatSmartAgent extends GetxService
         ? 'البحث عن ترشيحات مشابهة عبر عدسة Google…'
         : 'قراءة موديل المنتج من الصورة عبر OpenRouter…';
     final images = productImagesForMessage(List.of(history), messageId);
+    final sourceImages = visualSearch && visualImageNumber >= 1 && visualImageNumber <= images.length
+        ? [images[visualImageNumber - 1]] : images;
     bool isCurrent() => !token.isCancelled && modelRequestContext == context &&
         history.any((message) => message.id == messageId);
     try {
@@ -577,7 +579,6 @@ class ChatSmartAgent extends GetxService
       }
       if (!await checkVisualLimit() || !isCurrent()) return;
       final service = _productModelImageService ?? ProductModelImageService();
-      final sourceImages = visualSearch ? [images[visualImageNumber - 1]] : images;
       String content;
       AgentResult? agentResult;
       if (visualSearch) {
@@ -630,6 +631,9 @@ class ChatSmartAgent extends GetxService
       await addAndSaveMessage(ChatMessage.assistant(
         content: '⚠️ $message', provider: visualSearch ? 'serpapi' : 'openrouter',
         type: 'model_result', state: MessageState.error, isError: true,
+        attachments: sourceImages.map((image) => ChatAttachment.fromLocalFile(
+          file: image, source: 'model_source',
+        )).toList(),
       ));
     } finally {
       if (identical(_modelOperation, token)) {

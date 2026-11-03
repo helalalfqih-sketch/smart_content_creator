@@ -279,6 +279,33 @@ void main() {
   });
 
   test(
+    'retry from a failed old-photo Lens result keeps that photo instead of the newest upload',
+    () async {
+      final failed = agent.identifyProductModelForMessage(
+        answer.id,
+        visualImageNumber: 1,
+      );
+      await service.started.future;
+      service.lensResult.completeError(AiRequestException.http(502));
+      await failed;
+      final error = agent.history.last;
+      expect(error.state, MessageState.error);
+      expect(error.attachments.single.localPath, '/old-label.jpg');
+      service.lensResult = Completer<List<ProductModelCandidate>>();
+      final retry = agent.identifyProductModelForMessage(
+        error.id,
+        visualImageNumber: 1,
+      );
+      // The async allowance is the only yield before invoking the test transport.
+      await Future<void>.delayed(Duration.zero);
+      expect(service.lensCalls, 2);
+      expect(service.images.single.path, '/old-label.jpg');
+      service.lensResult.complete([]);
+      await retry;
+    },
+  );
+
+  test(
     'saved SKU action delegates to model reading for compatibility',
     () async {
       final work = agent.handleAction(
@@ -329,6 +356,7 @@ void main() {
     await work;
     expect(agent.history.last.state, MessageState.error);
     expect(agent.history.last.content, contains('http_402'));
+    expect(agent.history.last.attachments.single.localPath, '/old-label.jpg');
     expect(agent.counted, 0);
     expect(agent.isLoading.value, isFalse);
   });
