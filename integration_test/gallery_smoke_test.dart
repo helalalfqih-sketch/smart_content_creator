@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:smart_content_creator/gallery/gallery_item.dart';
 import 'package:smart_content_creator/gallery/gallery_store.dart';
 import 'package:smart_content_creator/gallery/smart_gallery_screen.dart';
+import 'package:smart_content_creator/gallery/gallery_library_screen.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -94,6 +95,156 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
       // Original fixture is inside this test's unique temporary directory only.
+      await temp.delete(recursive: true);
+    },
+  );
+
+  testWidgets(
+    'chat library searches local photos, preserves selections, handles cancellation and missing files, and rejects account changes',
+    (tester) async {
+      final temp = await Directory(
+        '${(await getTemporaryDirectory()).path}/chat-library-test-${DateTime.now().microsecondsSinceEpoch}',
+      ).create();
+      var store = await GalleryStore.open('owner-one', documents: temp);
+      Future<GalleryImportResult> addPhoto(String name, img.Color color) async {
+        final picture = img.Image(width: 80, height: 60);
+        img.fill(picture, color: color);
+        final original = File('${temp.path}/$name');
+        await original.writeAsBytes(img.encodeJpg(picture));
+        return store.importFile(
+          original,
+          name: name,
+          source: 'phone',
+          cancelled: () => false,
+        );
+      }
+
+      final red = await addPhoto('red.jpg', img.ColorRgb8(240, 30, 30));
+      final blue = await addPhoto('blue.jpg', img.ColorRgb8(30, 30, 240));
+      await store.createAlbum('منتجاتي');
+      await store.moveToAlbum([red.id], 'منتجاتي');
+      // A video metadata fixture must never become an image attachment.
+      await store.db.insert('media', {
+        'id': 'video-fixture',
+        'name': 'video.mp4',
+        'original_name': 'video.mp4',
+        'extension': 'mp4',
+        'mime_type': 'video/mp4',
+        'source': 'phone',
+        'digest': 'video-fixture',
+        'imported_at': 1,
+        'bytes': 1,
+      });
+      final rows = await store.list();
+      final redFile = store.mediaFile(rows.firstWhere((x) => x.id == red.id));
+      final redBytes = await redFile.readAsBytes();
+      await store.close();
+      var owner = 'owner-one';
+      final selections = <GalleryChatSelection>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark(),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => Center(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final opened = await GalleryStore.open(
+                      owner,
+                      documents: temp,
+                    );
+                    if (!context.mounted) {
+                      await opened.close();
+                      return;
+                    }
+                    final result = await Navigator.of(context)
+                        .push<GalleryChatSelection>(
+                          MaterialPageRoute(
+                            builder: (_) => GalleryLibraryScreen(
+                              store: opened,
+                              ownerReader: () => owner,
+                            ),
+                          ),
+                        );
+                    if (result != null) selections.add(result);
+                  },
+                  child: const Text('افتح المكتبة'),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      Future<void> openLibrary() async {
+        await tester.tap(find.text('افتح المكتبة'));
+        await tester.pumpAndSettle();
+        expect(find.text('المكتبة'), findsOneWidget);
+      }
+
+      await openLibrary();
+      expect(find.text('video.mp4'), findsNothing);
+      expect(find.text('red.jpg'), findsOneWidget);
+      expect(find.text('blue.jpg'), findsOneWidget);
+      await tester.tap(find.text('منتجاتي'));
+      await tester.pumpAndSettle();
+      expect(find.text('blue.jpg'), findsNothing);
+      await tester.tap(find.byKey(ValueKey('library-photo-${red.id}')));
+      await tester.tap(find.text('الكل'));
+      await tester.enterText(
+        find.byKey(const ValueKey('library-search')),
+        'blue',
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('red.jpg'), findsNothing);
+      await tester.tap(find.byKey(ValueKey('library-photo-${blue.id}')));
+      expect(selections, isEmpty);
+      await tester.tap(find.byKey(const ValueKey('library-attach')));
+      await tester.pumpAndSettle();
+      expect(selections.single.owner, 'owner-one');
+      expect(selections.single.files.length, 2);
+      expect(
+        selections.single.files.map((f) => f.path),
+        contains(redFile.path),
+      );
+      expect(await redFile.readAsBytes(), redBytes);
+
+      await openLibrary();
+      await tester.tap(find.byKey(ValueKey('library-photo-${red.id}')));
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(selections.length, 1, reason: 'Back cancels without attaching');
+
+      await openLibrary();
+      await tester.tap(find.byKey(ValueKey('library-photo-${red.id}')));
+      await redFile.delete();
+      await tester.tap(find.byKey(const ValueKey('library-attach')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('لم تعد موجودة'), findsOneWidget);
+      expect(selections.length, 1);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await redFile.writeAsBytes(redBytes);
+
+      await openLibrary();
+      await tester.tap(find.byKey(ValueKey('library-photo-${blue.id}')));
+      owner = 'owner-two';
+      await tester.tap(find.byKey(const ValueKey('library-attach')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('تغير الحساب'), findsOneWidget);
+      expect(selections.length, 1);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await openLibrary();
+      expect(find.textContaining('لا توجد صور في المكتبة بعد'), findsOneWidget);
+      expect(find.text('red.jpg'), findsNothing);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      store = await GalleryStore.open('owner-one', documents: temp);
+      expect((await store.list()).length, 3);
+      expect(await redFile.readAsBytes(), redBytes);
+      await store.close();
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
       await temp.delete(recursive: true);
     },
   );

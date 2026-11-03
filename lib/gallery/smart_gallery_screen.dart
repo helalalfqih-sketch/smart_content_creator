@@ -9,6 +9,7 @@ import '../core/models/api_provider.dart';
 import 'gallery_controller.dart';
 import 'gallery_item.dart';
 import 'gallery_store.dart';
+import 'gallery_owner.dart';
 
 class SmartGalleryScreen extends StatefulWidget {
   final String Function()? ownerReader;
@@ -30,9 +31,7 @@ class _SmartGalleryScreenState extends State<SmartGalleryScreen> {
   String? _error;
   String _owner() {
     if (widget.ownerReader != null) return widget.ownerReader!();
-    final auth = Get.find<AuthController>();
-    if (!auth.isLoggedIn) return 'guest';
-    return 'account:${auth.user?['firestore_uid'] ?? auth.user?['id'] ?? auth.userEmail ?? 'guest'}';
+    return currentGalleryOwner();
   }
 
   String _key() =>

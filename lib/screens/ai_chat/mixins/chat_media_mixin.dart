@@ -10,6 +10,9 @@ import '../../../core/utils/image_utils.dart';
 import '../../../core/utils/error_handler.dart';
 import '../../../ai/chat_smart_agent.dart';
 import '../../../ai/core/agent_models.dart';
+import '../../../controllers/auth_controller.dart';
+import '../../../gallery/gallery_library_screen.dart';
+import '../../../gallery/gallery_owner.dart';
 import '../../ai_chat_screen.dart';
 
 mixin ChatMediaMixin on State<AiChatScreen> {
@@ -23,8 +26,62 @@ mixin ChatMediaMixin on State<AiChatScreen> {
   Timer? progressTimer;
   ProcessedInput? preAnalysisResult;
   File? selectedVideo;
+  int _imagePreparation = 0;
+  String? _libraryOwner;
+  Worker? _libraryAccountWatcher;
 
   void scrollToBottom({bool force = false});
+
+  String galleryAccountOwner() => currentGalleryOwner();
+
+  bool mediaAccountIsCurrent() {
+    if (_libraryOwner == null || _libraryOwner == galleryAccountOwner()) return true;
+    clearPickedMedia();
+    return false;
+  }
+
+  Future<void> pickGalleryLibrary() async {
+    if (!mounted || isCompressingImage) return;
+    try {
+      _libraryAccountWatcher ??= ever(Get.find<AuthController>().rxUser, (_) {
+        if (mounted) mediaAccountIsCurrent();
+      });
+      final selection = await Navigator.of(context).push<GalleryChatSelection>(
+        MaterialPageRoute(builder: (_) => const GalleryLibraryScreen()),
+      );
+      if (!mounted || selection == null) return;
+      await attachGallerySelection(selection);
+    } catch (_) {
+      if (mounted) ErrorHandler.showFileError();
+    }
+  }
+
+  Future<void> attachGallerySelection(GalleryChatSelection selection) async {
+    if (!mounted || selection.owner != galleryAccountOwner()) return;
+    _libraryOwner = selection.owner;
+    await handlePickedImages(selection.files);
+  }
+
+  void clearPickedMedia() {
+    _imagePreparation++;
+    progressTimer?.cancel();
+    _libraryOwner = null;
+    if (!mounted) return;
+    setState(() {
+      selectedImages = [];
+      compressedImages = [];
+      selectedVideo = null;
+      isCompressingImage = false;
+      processingProgress = 0;
+      preAnalysisResult = null;
+    });
+  }
+
+  void disposeMedia() {
+    _imagePreparation++;
+    progressTimer?.cancel();
+    _libraryAccountWatcher?.dispose();
+  }
 
   Future<void> pickAnyMediaFile() async {
     try {
@@ -67,10 +124,13 @@ mixin ChatMediaMixin on State<AiChatScreen> {
   }
 
   Future<void> handlePickedImages(List<File> images) async {
+    if (!mounted || !mediaAccountIsCurrent()) return;
     progressTimer?.cancel();
     setState(() {
-      selectedImages.addAll(images);
+      final paths = selectedImages.map((f) => f.path).toSet();
+      selectedImages = [...selectedImages, ...images.where((f) => paths.add(f.path))];
       selectedVideo = null;
+      compressedImages = [];
       isCompressingImage = true;
       processingProgress = 0.0;
       preAnalysisResult = null;
@@ -79,17 +139,20 @@ mixin ChatMediaMixin on State<AiChatScreen> {
     startSimulatedProgress();
 
     await compressImages(selectedImages);
-    if (processingProgress < 0.4) setState(() => processingProgress = 0.4);
+  }
 
-    if (selectedImages.isNotEmpty) {
-      if (mounted) {
-        progressTimer?.cancel();
-        setState(() {
-          processingProgress = 1.0;
-          preAnalysisResult =
-              null; // Analysis will be done properly by AIOrchestrator on send
-        });
-      }
+  Future<void> removePickedImage(int index) async {
+    if (!mounted || index < 0 || index >= selectedImages.length) return;
+    setState(() {
+      selectedImages = [...selectedImages]..removeAt(index);
+      compressedImages = [];
+      preAnalysisResult = null;
+      isCompressingImage = selectedImages.isNotEmpty;
+    });
+    if (selectedImages.isEmpty) {
+      clearPickedMedia();
+    } else {
+      await compressImages(selectedImages);
     }
   }
 
@@ -114,6 +177,8 @@ mixin ChatMediaMixin on State<AiChatScreen> {
   }
 
   void handlePickedVideo(File video) {
+    clearPickedMedia();
+    if (!mounted) return;
     setState(() {
       selectedVideo = video;
       selectedImages = [];
@@ -124,29 +189,39 @@ mixin ChatMediaMixin on State<AiChatScreen> {
   }
 
   void handlePickedAudio(File audio) {
+    clearPickedMedia();
+    if (!mounted) return;
     setState(() {
       selectedVideo = audio;
     });
     // This will trigger enhancement flow in the screen or another mixin
   }
 
+  Future<List<File>> prepareImagesForChat(List<File> files) =>
+      compute(ImageUtils.batchCompressAndRead, files);
+
   Future<void> compressImages(List<File> files) async {
+    final revision = ++_imagePreparation;
+    final snapshot = List<File>.of(files);
     try {
-      final List<File> compressedList =
-          await compute(ImageUtils.batchCompressAndRead, files);
-      if (!mounted) return;
+      final compressedList = await prepareImagesForChat(snapshot);
+      if (!mounted || revision != _imagePreparation || !mediaAccountIsCurrent()) return;
       setState(() {
         compressedImages = compressedList;
         isCompressingImage = false;
+        processingProgress = 1;
       });
     } catch (e) {
       debugPrint("Compression failed: $e");
-      if (mounted) {
+      if (mounted && revision == _imagePreparation && mediaAccountIsCurrent()) {
         setState(() {
           isCompressingImage = false;
-          compressedImages = files;
+          compressedImages = snapshot;
+          processingProgress = 1;
         });
       }
+    } finally {
+      if (revision == _imagePreparation) progressTimer?.cancel();
     }
   }
 
@@ -154,7 +229,7 @@ mixin ChatMediaMixin on State<AiChatScreen> {
     final XFile? video = await picker.pickVideo(source: ImageSource.gallery);
     if (video != null) {
       if (mounted) {
-        setState(() => selectedVideo = File(video.path));
+        handlePickedVideo(File(video.path));
         // Note: The screen will usually call handleAudioEnhancement right after
       }
     }
@@ -167,12 +242,12 @@ mixin ChatMediaMixin on State<AiChatScreen> {
         if (pickedFiles.isNotEmpty) {
           final List<File> files =
               pickedFiles.map((x) => File(x.path)).toList();
-          handlePickedImages(files);
+          await handlePickedImages(files);
         }
       } else {
         final XFile? pickedFile = await picker.pickImage(source: source);
         if (pickedFile != null) {
-          handlePickedImages([File(pickedFile.path)]);
+          await handlePickedImages([File(pickedFile.path)]);
         }
       }
     } catch (e) {

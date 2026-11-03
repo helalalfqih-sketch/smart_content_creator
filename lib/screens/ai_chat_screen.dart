@@ -146,7 +146,7 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     _controller.dispose();
-    progressTimer?.cancel();
+    disposeMedia();
     super.dispose();
   }
 
@@ -202,6 +202,14 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
                       Icons.image, 'صورة', AppTheme.primary, () {
                     Navigator.pop(context);
                     pickImage(ImageSource.gallery);
+                  }),
+                ),
+                VisibilityControlled(
+                  controlName: 'chat_image_attach',
+                  child: _buildAttachmentItem(
+                      Icons.photo_library_rounded, 'المكتبة', AppTheme.accent, () {
+                    Navigator.pop(context);
+                    pickGalleryLibrary();
                   }),
                 ),
                 VisibilityControlled(
@@ -396,11 +404,7 @@ class _AiChatScreenState extends State<AiChatScreen> with ChatMediaMixin, ChatAc
                           onCancel: _agent.cancelCurrentOperation,
                           onShowAttachmentMenu: _showAttachmentMenu,
                           onAudioEnhance: handleAudioEnhancement,
-                          onRemoveImage: (index) {
-                            setState(() {
-                              selectedImages.removeAt(index);
-                            });
-                          },
+                          onRemoveImage: removePickedImage,
                           onClearVideo: () => setState(() => selectedVideo = null),
                         )),
                     ],

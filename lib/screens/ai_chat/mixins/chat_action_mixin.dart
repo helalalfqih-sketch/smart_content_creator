@@ -21,11 +21,13 @@ mixin ChatActionMixin on State<AiChatScreen> {
     final text = controller.text.trim();
     final media = this as ChatMediaMixin;
 
+    if (!media.mediaAccountIsCurrent()) return;
+
     if (media.isCompressingImage) return;
 
-    final imgs = media.compressedImages.isNotEmpty
+    final imgs = List.of(media.compressedImages.isNotEmpty
         ? media.compressedImages
-        : media.selectedImages;
+        : media.selectedImages);
     final video = media.selectedVideo;
 
     if (text.isEmpty && imgs.isEmpty && video == null) return;
