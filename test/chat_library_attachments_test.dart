@@ -162,6 +162,24 @@ void main() {
     },
   );
 
+  testWidgets(
+    'new-account selection cannot inherit a previous-account draft before the auth stream arrives',
+    (tester) async {
+      final state = await mount(tester);
+      await state.attachGallerySelection(
+        GalleryChatSelection('account:one', [File('/private.jpg')]),
+      );
+      state.owner = 'account:two';
+      await state.attachGallerySelection(
+        GalleryChatSelection('account:two', [File('/current.jpg')]),
+      );
+      await state.sendMessage();
+      expect(orchestrator.calls.single.images.map((x) => x.path), [
+        '/current.jpg',
+      ]);
+    },
+  );
+
   testWidgets('selecting a video removes stale prepared images', (
     tester,
   ) async {
