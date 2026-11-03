@@ -27,6 +27,12 @@ mixin AgentCoreMixin on GetxService {
     LogService.info("🧩 Routing action to: $id (Payload: $payload)", tag: 'CoreMixin');
 
     switch (id) {
+      case 'extract_sku':
+        await agent.extractSkuForMessage(
+          payload is Map && payload['messageId'] is String
+              ? payload['messageId'] as String : '',
+        );
+        return;
       case 'tiktok_link':
         final String tiktokQuery = getPlatformQuery('tiktok', payload);
         if (tiktokQuery.isEmpty) {

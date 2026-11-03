@@ -249,6 +249,8 @@ class _ChatBubbleState extends State<ChatBubble> {
 
   String _cleanText() {
     var s = widget.text;
+    // Printed identifiers are literal data; legacy cleanup can corrupt a SKU.
+    if (widget.type == 'sku_result') return s;
     if (s.isEmpty) return s;
     s = s.replaceAll(RegExp(r'\[(SYSTEM|DEBUG|INTERNAL|STAGE|LOG).*?\]'), '');
     s = s.replaceAll(RegExp(r'\[ACTIONS\].*?$', dotAll: true), '');
@@ -913,6 +915,14 @@ class _ChatBubbleState extends State<ChatBubble> {
       ];
     }
 
+    // Bind SKU extraction to the clicked message, never a global product name.
+    effectiveActions.removeWhere((a) => a is Map && a['action'] == 'extract_sku');
+    effectiveActions.insert(0, {
+      'label': 'استخراج SKU',
+      'action': 'extract_sku',
+      'payload': {'messageId': widget.id},
+    });
+
     // ✂️ Inject Background Removal for images
     final bool hasImage = widget.image != null ||
         widget.responseImageUrl != null ||
@@ -1180,6 +1190,8 @@ class _ChatBubbleState extends State<ChatBubble> {
 
   Color _getActionColor(String? id) {
     switch (id) {
+      case 'extract_sku':
+        return Colors.tealAccent;
       case 'open_tiktok_search':
       case 'tiktok_link':
         return Colors.pinkAccent;
@@ -1246,6 +1258,8 @@ class _ChatBubbleState extends State<ChatBubble> {
 
   IconData _getIconForAction(String? action) {
     switch (action) {
+      case 'extract_sku':
+        return Icons.tag_rounded;
       case 'open_tiktok_search':
       case 'tiktok_link':
         return Icons.video_collection_rounded;

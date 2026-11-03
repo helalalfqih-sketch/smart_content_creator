@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -8,10 +10,50 @@ import 'package:smart_content_creator/gallery/gallery_item.dart';
 import 'package:smart_content_creator/gallery/gallery_store.dart';
 import 'package:smart_content_creator/gallery/smart_gallery_screen.dart';
 import 'package:smart_content_creator/gallery/gallery_library_screen.dart';
+import 'package:smart_content_creator/services/ai/sku_image_service.dart';
+import 'package:smart_content_creator/services/openai_service.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   WidgetController.hitTestWarningShouldBeFatal = true;
+  testWidgets('Android prepares real label photos for SKU extraction without a live paid request', (tester) async {
+    final temp = await Directory('${(await getTemporaryDirectory()).path}/sku-native-${DateTime.now().microsecondsSinceEpoch}').create();
+    final client = Dio();
+    try {
+      final picture = img.Image(width: 640, height: 240);
+      img.fill(picture, color: img.ColorRgb8(255, 255, 255));
+      img.drawString(picture, 'SKU: 001-Ab-09', font: img.arial24,
+        x: 30, y: 60, color: img.ColorRgb8(0, 0, 0));
+      final photo = await File('${temp.path}/sku-label.png').writeAsBytes(img.encodePng(picture));
+      final original = await photo.readAsBytes();
+      var calls = 0;
+      client.interceptors.add(InterceptorsWrapper(onRequest: (request, handler) {
+        calls++;
+        final parts = request.data['messages'].last['content'] as List;
+        final dataUrl = parts[1]['image_url']['url'] as String;
+        expect(dataUrl, startsWith('data:image/jpeg;base64,'));
+        final sentImage = img.decodeJpg(base64Decode(dataUrl.split(',').last));
+        expect(sentImage, isNotNull);
+        expect(sentImage!.width, greaterThanOrEqualTo(640));
+        handler.resolve(Response(requestOptions: request, statusCode: 200, data: {
+          'choices': [{'message': {'content': jsonEncode({'status': 'found', 'codes': [
+            {'kind': 'sku', 'value': '001-Ab-09', 'label': 'SKU',
+              'evidence': 'SKU: 001-Ab-09', 'image_number': 1}
+          ]})}}]
+        }));
+      }));
+      final service = SkuImageService(provider: OpenAIService(client: client,
+        baseUrl: 'https://openrouter.ai/api/v1', defaultModel: 'anthropic/claude-opus-5.5',
+        providerOnly: const ['google-vertex'], allowProviderFallbacks: false));
+      final result = await service.extract(images: [photo], apiKey: 'offline-native-fixture', cancelToken: CancelToken());
+      expect(calls, 1);
+      expect(result.codes.single.value, '001-Ab-09');
+      expect(await photo.readAsBytes(), original);
+    } finally {
+      client.close(force: true);
+      await temp.delete(recursive: true);
+    }
+  });
   testWidgets(
     'Android gallery persists copies, thumbnails, analysis, albums and renames across restart',
     (tester) async {

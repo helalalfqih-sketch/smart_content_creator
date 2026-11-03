@@ -8,6 +8,8 @@ import 'package:flutter/foundation.dart';
 // Controllers
 import '../controllers/chat_history_controller.dart';
 import '../controllers/auth_controller.dart';
+import '../controllers/settings_controller.dart';
+import '../core/models/api_provider.dart';
 
 // Core & Repository
 import '../core/data/chat_repository.dart';
@@ -22,6 +24,8 @@ import '../services/product_memory_service.dart';
 import '../services/ai_backend_router.dart';
 import '../services/unified_ai_service.dart';
 import '../services/ai/vision_product_service.dart';
+import '../services/ai/sku_image_service.dart';
+import '../core/utils/ai_request_exception.dart';
 import '../services/ai/background_removal_service.dart';
 import '../services/ai_image_generation_service.dart';
 import '../services/ai/openrouter_image_service.dart';
@@ -38,6 +42,7 @@ import 'mixins/agent_media_mixin.dart';
 import 'mixins/agent_core_mixin.dart';
 import 'core/ai_helpers_mixin.dart';
 import 'core/image_generation_request.dart';
+import 'core/sku_image_source.dart';
 import '../core/utils/error_handler.dart';
 import '../ai/core/agent_models.dart';
 import '../core/services/log_service.dart';
@@ -46,6 +51,18 @@ import '../utils/logger.dart';
 /// 🤖 ChatSmartAgent: The modular, mixin-based AI agent.
 class ChatSmartAgent extends GetxService
     with AIHelpersMixin, AgentSearchMixin, AgentMediaMixin, AgentCoreMixin {
+  ChatSmartAgent({SkuImageService? skuImageService})
+      : _skuImageService = skuImageService;
+  final SkuImageService? _skuImageService;
+  dio.CancelToken? _skuOperation;
+
+  String get skuRequestContext =>
+      '${_authController.firebaseUid ?? _authController.user?['id'] ?? 'guest'}:'
+      '${_historyController.currentSessionId.value}';
+  String get skuApiKey => Get.isRegistered<SettingsController>()
+      ? Get.find<SettingsController>().getApiKey(ProviderType.openrouter)
+      : '';
+
   // 🎯 Core Dependencies
   ChatStateService get _state => Get.find<ChatStateService>();
   ChatRepository get _repo => Get.find<ChatRepository>();
@@ -179,6 +196,7 @@ class ChatSmartAgent extends GetxService
     super.onInit();
     // Watch for session changes
     ever(_historyController.currentSessionId, (int? sessionId) {
+      _skuOperation?.cancel('Chat session changed');
       if (sessionId != null) {
         _loadExistingSession(sessionId);
       } else {
@@ -526,6 +544,68 @@ class ChatSmartAgent extends GetxService
         SuggestedAction(label: "عزل خلفية ✂️", toolId: "remove_background"),
       ];
 
+  /// Read the printed SKU for this message only, with no catalog writes or guesses.
+  Future<void> extractSkuForMessage(String messageId) async {
+    if (isLoading.value || _skuOperation != null) return;
+    final context = skuRequestContext;
+    final token = dio.CancelToken();
+    _skuOperation = token;
+    _cancelToken = token;
+    isLoading.value = true;
+    activeActionId.value = 'extract_sku';
+    pipelineMessage.value = 'قراءة SKU من الملصق عبر OpenRouter…';
+    final images = skuImagesForMessage(List.of(history), messageId);
+    bool isCurrent() => !token.isCancelled && skuRequestContext == context &&
+        history.any((message) => message.id == messageId);
+    try {
+      if (images.isEmpty) {
+        throw const AiRequestException('sku_image_required',
+          'أرفق صورة واضحة للمنتج وملصقه في رسالة، ثم اضغط استخراج SKU تحت الرد.');
+      }
+      final key = skuApiKey;
+      if (key.trim().isEmpty) {
+        throw const AiRequestException('missing_openrouter_key',
+          'أضف مفتاح OpenRouter في إعدادات الخدمات لاستخراج SKU من الصور.');
+      }
+      if (!await checkVisualLimit() || !isCurrent()) return;
+      final reading = await (_skuImageService ?? SkuImageService()).extract(
+        images: images, apiKey: key, cancelToken: token, isCurrent: isCurrent,
+      );
+      if (!isCurrent()) return;
+      await incrementVisualCount();
+      if (!isCurrent()) return;
+      await addAndSaveMessage(ChatMessage.assistant(
+        content: reading.toChatText(), provider: 'openrouter',
+        type: 'sku_result', state: MessageState.completed,
+        // Retain the exact images with the result, also after history reload.
+        attachments: images.map((image) => ChatAttachment.fromLocalFile(
+          file: image, source: 'sku_source',
+        )).toList(),
+      ));
+    } catch (error) {
+      if (!isCurrent() || (error is dio.DioException && dio.CancelToken.isCancel(error))) return;
+      final message = error is AiRequestException
+          ? error.toString()
+          : 'تعذر استخراج SKU. تحقق من اتصال OpenRouter وأعد المحاولة بصورة واضحة للملصق.';
+      await addAndSaveMessage(ChatMessage.assistant(
+        content: '⚠️ $message', provider: 'openrouter',
+        type: 'sku_result', state: MessageState.error,
+      ));
+    } finally {
+      if (identical(_skuOperation, token)) {
+        _skuOperation = null;
+        if (identical(_cancelToken, token)) {
+          _cancelToken = null;
+          if (skuRequestContext == context) {
+            isLoading.value = false;
+            activeActionId.value = '';
+            pipelineMessage.value = '';
+          }
+        }
+      }
+    }
+  }
+
   Future<void> handleSuggestedAction(SuggestedAction action, File? image,
       {List<File>? images}) async {
     AppLogger.info(
@@ -610,6 +690,10 @@ class ChatSmartAgent extends GetxService
 
     isLoading.value = false;
     activeRequests.value = 0;
+    if (_skuOperation != null) {
+      activeActionId.value = '';
+      pipelineMessage.value = '';
+    }
     AppLogger.info('EXITING: cancelCurrentOperation');
   }
 
@@ -669,6 +753,7 @@ class ChatSmartAgent extends GetxService
 
   void clearHistory() {
     AppLogger.info('ENTERING: clearHistory');
+    _skuOperation?.cancel('Chat cleared');
     history.clear();
     _repo.clear();
     _state.resetAll();
