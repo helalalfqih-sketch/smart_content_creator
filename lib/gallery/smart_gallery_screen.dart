@@ -136,7 +136,7 @@ class _SmartGalleryScreenState extends State<SmartGalleryScreen> {
   Future<void> _delete(List<GalleryItem> items) async {
     if (await _confirm(
           'حذف ${items.length} نسخة من المعرض؟',
-          'ستُحذف النسخ المستوردة وتحليلاتها من هذا التطبيق. تبقى الملفات الأصلية في الهاتف وGoogle Photos.',
+          'ستُحذف النسخ المستوردة وتحليلاتها من هذا التطبيق. تبقى الملفات الأصلية في مكانها.',
           'حذف النسخ',
         ) &&
         mounted) {
@@ -248,7 +248,7 @@ class _SmartGalleryScreenState extends State<SmartGalleryScreen> {
                     content: const Text(
                       'تُحفظ النسخ والألبومات والتحليلات على هذا الهاتف لهذا الحساب. '
                       'إزالة التطبيق أو بياناته تزيل المكتبة المحلية؛ صدّر الملفات المهمة أولاً. '
-                      'Google Photos يتيح اختيار ملفات محددة فقط. لا تُرفع الصور للتحليل إلا بعد موافقتك.',
+                      'اختر صور الجهاز من منتقي الهاتف لإضافتها إلى المعرض. لا تُرفع الصور للتحليل إلا بعد موافقتك.',
                     ),
                     actions: [
                       TextButton(
@@ -312,12 +312,6 @@ class _SmartGalleryScreenState extends State<SmartGalleryScreen> {
                                       Icons.photo_library_rounded,
                                     ),
                                     label: const Text('معرض الهاتف'),
-                                  ),
-                                  OutlinedButton(
-                                    onPressed: c.busy ? null : c.importGoogle,
-                                    child: const Text(
-                                      'استيراد من Google Photos',
-                                    ),
                                   ),
                                 ],
                               ),
@@ -501,7 +495,7 @@ class _SmartGalleryScreenState extends State<SmartGalleryScreen> {
                                 padding: const EdgeInsets.all(24),
                                 child: Text(
                                   c.items.isEmpty
-                                      ? 'ابدأ باستيراد صورك وفيديوهاتك.\nستظهر هنا مع أسمائها وألبوماتها.'
+                                      ? 'اضغط «معرض الهاتف» واختر الصور والفيديوهات الموجودة على جهازك.\nستظهر النسخ التي تختارها هنا مع أسمائها وألبوماتها.'
                                       : 'لا توجد ملفات تطابق البحث.',
                                   textAlign: TextAlign.center,
                                 ),
@@ -598,7 +592,8 @@ class _SmartGalleryScreenState extends State<SmartGalleryScreen> {
                                                   if (item.isVideo)
                                                     const Center(
                                                       child: Icon(
-                                                        Icons.play_arrow_rounded,
+                                                        Icons
+                                                            .play_arrow_rounded,
                                                         color: Colors.white,
                                                         size: 40,
                                                       ),
@@ -983,7 +978,7 @@ class _GalleryDetailState extends State<_GalleryDetail> {
                     ),
                   const SizedBox(height: 12),
                   Text(
-                    '${item.source == 'google_photos' ? 'Google Photos' : 'الهاتف'} • ${(item.bytes / 1048576).toStringAsFixed(1)} MB',
+                    'نسخة محفوظة على الهاتف • ${(item.bytes / 1048576).toStringAsFixed(1)} MB',
                   ),
                   Text(
                     'الاسم الأصلي: ${item.originalName}',

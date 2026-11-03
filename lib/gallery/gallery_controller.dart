@@ -8,7 +8,6 @@ import '../core/utils/ai_request_exception.dart';
 import 'gallery_analyzer.dart';
 import 'gallery_item.dart';
 import 'gallery_store.dart';
-import 'google_photos_picker.dart';
 
 class GalleryController extends ChangeNotifier {
   final GalleryStore store;
@@ -228,58 +227,6 @@ class GalleryController extends ChangeNotifier {
       'استُورد $imported • مكرر $duplicates • تعذر $failed${reason == null ? '' : '\n$reason'}',
     );
   }
-
-  Future<void> importGoogle() => run(() async {
-    setStatus('اختر حساب Google واسمح بالوصول إلى الصور التي تحددها فقط.');
-    final token = await GalleryPhotosAuthorization().authorize();
-    _check();
-    if (token == null) {
-      setStatus('أُلغي ربط Google Photos.');
-      return;
-    }
-    final picker = GooglePhotosPicker();
-    var imported = 0, duplicates = 0, failed = 0;
-    String? reason;
-    await picker.pick(
-      token,
-      _cancel!,
-      progress: setStatus,
-      import: (item) async {
-        _check();
-        final temporary = await store.temporaryFile();
-        try {
-          await picker.download(item, token, temporary, _cancel!);
-          _check();
-          // The Picker dv endpoint returns a transcoded video, not the original container.
-          final video = item.mime.startsWith('video/');
-          final result = await store.importFile(
-            temporary,
-            name: video
-                ? '${item.name.replaceFirst(RegExp(r'\.[^.]+$'), '')}.mp4'
-                : item.name,
-            source: 'google_photos',
-            mimeType: video ? 'video/mp4' : item.mime,
-            capturedAt: item.created,
-            cancelled: () => cancelled,
-          );
-          if (result.duplicate) {
-            duplicates++;
-          } else {
-            imported++;
-          }
-        } catch (error) {
-          _check();
-          failed++;
-          reason = safeError(error);
-        } finally {
-          if (await temporary.exists()) await temporary.delete();
-        }
-      },
-    );
-    setStatus(
-      'Google Photos: استُورد $imported • مكرر $duplicates • تعذر $failed${reason == null ? '' : '\n$reason'}',
-    );
-  });
 
   Future<void> analyze(List<GalleryItem> chosen) => run(() async {
     final photos = chosen.where((x) => !x.isVideo).toList();

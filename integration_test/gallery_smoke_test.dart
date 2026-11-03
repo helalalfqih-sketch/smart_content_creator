@@ -77,11 +77,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('معرض الصور الذكي'), findsOneWidget);
       expect(find.text('معرض الهاتف'), findsOneWidget);
-      expect(find.text('استيراد من Google Photos'), findsOneWidget);
+      expect(find.textContaining('Google Photos'), findsNothing);
       expect(find.text('منتج_أخضر.jpg'), findsOneWidget);
       await tester.tap(find.text('منتج_أخضر.jpg'));
       await tester.pumpAndSettle();
       expect(find.text('صورة خضراء'), findsOneWidget);
+      expect(find.textContaining('نسخة محفوظة على الهاتف'), findsOneWidget);
       await tester.pageBack();
       await tester.pumpAndSettle();
       // Real SQL transaction and filesystem deletion, not mocked persistence.
