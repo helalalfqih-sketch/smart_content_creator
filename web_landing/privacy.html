@@ -123,12 +123,12 @@
         </ul>
 
         <h2>3. مشاركة البيانات وأمنها</h2>
-        <p>نحن لا نبيع بياناتك الشخصية أو التجارية. تتطلب الميزات التي تختار تشغيلها مشاركة البيانات اللازمة مع مزوديها: مثل Google لاستيراد الملفات المختارة، وOpenRouter ومزود النموذج لتحليل الصور بعد الموافقة، وSerpApi للبحث، والمنصات المرتبطة بالعمليات التي تطلبها. تُنقل هذه الطلبات عبر HTTPS. لا يعني الحفظ المحلي لنسخ المعرض أن التحليل والبحث يعملان دون إرسال بيانات إلى خدمات خارجية.</p>
+        <p>نحن لا نبيع بياناتك الشخصية أو التجارية. تتطلب الميزات التي تختار تشغيلها مشاركة البيانات اللازمة مع مزوديها: مثل OpenRouter ومزود النموذج لتحليل الصور بعد الموافقة، وSerpApi للبحث، والمنصات المرتبطة بالعمليات التي تطلبها. تُنقل هذه الطلبات عبر HTTPS. لا يعني الحفظ المحلي لنسخ المعرض أن التحليل والبحث يعملان دون إرسال بيانات إلى خدمات خارجية.</p>
 
         <section id="smart-gallery-privacy">
-            <h2>4. الصور المختارة وGoogle Photos وOpenRouter</h2>
+            <h2>4. صور الهاتف والتحليل الاختياري عبر OpenRouter</h2>
             <ul>
-                <li><strong>اختيار الملفات:</strong> عند طلب الاستيراد من Google Photos، يطلب التطبيق إذن <code>photospicker.mediaitems.readonly</code> لاستخدام جلسة اختيار الملفات. ينزّل التطبيق الملفات التي تحددها وبياناتها، مثل اسم الملف ونوعه وتاريخ إنشائه. لا يستخدم هذا المسار صلاحية تعديل صورك الأصلية أو حذفها، ولا يجري نسخ مكتبتك السحابية كاملة في الخلفية.</li>
+                <li><strong>اختيار الملفات:</strong> في تحديث المعرض الأخير، تختار الصور والفيديوهات من منتقي الهاتف. يستورد التطبيق نسخ الملفات المحددة وأسماءها وأنواعها، ويعرض النسخ التي أضفتها. أُزيل ربط Google Photos المباشر وطلب صلاحيته من المعرض؛ لا تُفحص مكتبة الهاتف تلقائيًا ولا تُزامن مكتبة سحابية كاملة. يخضع ما يعرضه منتقي النظام لإعدادات الجهاز ومزودي الوسائط فيه.</li>
                 <li><strong>الحفظ على الهاتف:</strong> تُحفظ نسخ الملفات وأسماؤها وألبوماتها ونتائج التحليل في مساحة التطبيق على الهاتف، ضمن مكتبة مرتبطة بحساب التطبيق. لا توجد مزامنة سحابية تلقائية للمعرض. تغيير اسم نسخة في المعرض لا يعيد تسمية الأصل في الهاتف أو Google Photos.</li>
                 <li><strong>التحليل الاختياري:</strong> بعد اختيار صور والموافقة على رسالة التحليل، تُجهز نسخ JPEG مصغرة دون بيانات EXIF المرفقة وتُرسل إلى OpenRouter ثم مزود النموذج المضبوط في التطبيق، باستخدام مفتاح OpenRouter الموجود في إعداداتك. تتضمن المهمة طلب وصف الصورة وقراءة النص واقتراح وسوم واسم. لا تُرسل بقية مكتبتك أو سجل محادثتك ضمن طلب المعرض. قد تترتب تكلفة على حسابك.</li>
                 <li><strong>نتائج التحليل:</strong> تُحفظ الأوصاف والنصوص والوسوم والأسماء المقترحة محليًا. تحتاج النتائج إلى مراجعتك، ولا تُطبق إعادة التسمية تلقائيًا. راجع <a href="https://openrouter.ai/privacy">سياسة OpenRouter</a> وإعدادات الخصوصية والتسجيل في حسابك لفهم احتفاظ المزودين بالطلبات؛ لا نعد بحذف نسخهم بمجرد حذف النسخة المحلية.</li>
@@ -137,8 +137,8 @@
             </ul>
             <h2>5. إدارة نسخ المعرض وإلغاء وصول Google</h2>
             <p>لحذف بيانات صورة من المعرض، حددها واختر حذف النسخة؛ يحذف التطبيق نسخته وبيانات التحليل المرتبطة بها، ويُبقي الأصل. تُنظَّف الصور المصغرة المؤقتة غير المرتبطة عند صيانة المكتبة. حذف ألبوم لا يحذف ملفاته. صدّر الملفات المهمة قبل مسح بيانات التطبيق أو حذفه.</p>
-            <p>يمكنك إلغاء وصول Google من <a href="https://myaccount.google.com/connections">اتصالات الجهات الخارجية في حساب Google</a>. إلغاء الوصول يوقف الطلبات اللاحقة، لكنه لا يحذف النسخ التي سبق أن استوردتها أو صدّرتها. احذف هذه النسخ من موضع حفظها عند رغبتك بذلك.</p>
-            <p>للاستفسار عن تكامل Google Photos أو بيانات المعرض: <a href="mailto:helalalfqih@gmail.com">helalalfqih@gmail.com</a>. لا ترسل كلمات المرور أو مفاتيح API في طلبات الدعم. لا يستطيع فريق الدعم حذف ملفات محلية من هاتفك عن بُعد.</p>
+            <p>الإصدارات الأقدم تضمنت استيراد ملفات تختارها في Google Photos Picker بصلاحية <code>photospicker.mediaitems.readonly</code>. تبقى النسخ المستوردة سابقًا محفوظة محليًا بعد التحديث. إذا سبق لك منح هذا الوصول، يمكنك مراجعته وإلغاؤه من <a href="https://myaccount.google.com/connections">اتصالات الجهات الخارجية في حساب Google</a>. إلغاء الوصول يوقف الطلبات اللاحقة، لكنه لا يحذف النسخ التي سبق أن استوردتها أو صدّرتها. احذف هذه النسخ من موضع حفظها عند رغبتك بذلك.</p>
+            <p>للاستفسار عن بيانات المعرض أو الوصول الممنوح في إصدار سابق: <a href="mailto:helalalfqih@gmail.com">helalalfqih@gmail.com</a>. لا ترسل كلمات المرور أو مفاتيح API في طلبات الدعم. لا يستطيع فريق الدعم حذف ملفات محلية من هاتفك عن بُعد.</p>
         </section>
 
         <div class="deletion-box" id="data-deletion">
@@ -163,16 +163,16 @@
             <p>We use permissions (such as Meta Catalog, WhatsApp messaging, and Instagram/TikTok content publishing) strictly to publish generated marketing videos and synchronize product catalog details at your direct request.</p>
 
             <section id="smart-gallery-privacy-en">
-                <h2>3. Selected media, Google Photos and OpenRouter</h2>
-                <p>When you choose to import from Google Photos, the app requests <code>photospicker.mediaitems.readonly</code> and downloads the media you explicitly select in a Picker session, together with file metadata such as name, type and creation time. This integration does not edit or delete Google Photos originals, or automatically synchronize your entire cloud library.</p>
+                <h2>3. Phone media and optional OpenRouter analysis</h2>
+                <p>The latest gallery update imports copies of photos and videos you select with the phone media selector, including file names and types. It removes the direct Google Photos Picker integration and its permission request. The gallery displays imported local copies; it does not automatically scan the device or synchronize a cloud library. Media offered by the operating system selector depends on the device settings and its media providers.</p>
                 <p>Imported copies, local filenames, albums and analysis results are stored in the app's private space on your phone, associated with your app account. Smart Gallery has no automatic cloud synchronization. Renaming a gallery copy does not rename the original.</p>
                 <p>Image analysis is optional. After you select images and accept the analysis prompt, the app sends reduced JPEG copies without embedded EXIF metadata to OpenRouter and the configured model provider using your existing OpenRouter key. The request asks for descriptions, visible text, tags and suggested names. It does not include the rest of your gallery or your chat history. Charges may apply to your OpenRouter account. Suggested results require your review before use.</p>
                 <p>We do not sell personal data. Selected features transmit the data needed to their providers over HTTPS. For request retention, consult the <a href="https://openrouter.ai/privacy">OpenRouter Privacy Policy</a> and your account's privacy and logging settings. Deleting a local image does not establish that a provider's copy or your request logs have also been deleted.</p>
                 <p>Google Lens search in Smart Tools is a separate action that sends the chosen image through the app's server gateway to SerpApi. When you export or share media, you choose the receiving app; exported copies are managed by that app or location.</p>
                 <h2>4. Manage and delete gallery data</h2>
                 <p>Use the gallery's delete-copy action to remove an imported file and its analysis metadata while preserving the original. Unreferenced temporary thumbnails are cleaned during library maintenance. Removing an album keeps its files. Export important files before clearing app data or uninstalling.</p>
-                <p>Revoke Google access through <a href="https://myaccount.google.com/connections">your Google Account's third-party connections</a>. Revocation prevents future authorized requests, but does not delete previously imported or exported copies. Remove those separately from their storage locations.</p>
-                <p>For Google Photos and gallery privacy questions, contact <a href="mailto:helalalfqih@gmail.com">helalalfqih@gmail.com</a>. Do not send passwords or API keys. Support cannot remotely delete local files from your phone.</p>
+                <p>Earlier builds offered user-selected Google Photos Picker imports using <code>photospicker.mediaitems.readonly</code>. Previously imported local copies remain after updating. If you granted that access, review or revoke it through <a href="https://myaccount.google.com/connections">your Google Account's third-party connections</a>. Revocation prevents future authorized requests, but does not delete previously imported or exported copies. Remove those separately from their storage locations.</p>
+                <p>For gallery privacy or earlier Google Photos access questions, contact <a href="mailto:helalalfqih@gmail.com">helalalfqih@gmail.com</a>. Do not send passwords or API keys. Support cannot remotely delete local files from your phone.</p>
             </section>
 
             <div class="deletion-box" id="data-deletion-en">
