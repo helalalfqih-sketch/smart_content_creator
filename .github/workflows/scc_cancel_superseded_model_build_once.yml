@@ -16,17 +16,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           node <<'NODE'
-          const base = 'https://api.github.com/repos/helalalfqih-sketch/smart_content_creator/actions/runs/41684695315';
+          const base = 'https://api.github.com/repos/helalalfqih-sketch/smart_content_creator/actions/runs/41686026040';
           const headers = {Authorization: 'Bearer ' + process.env.GH_TOKEN, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'};
           async function main() {
             const response = await fetch(base, {headers});
             if (!response.ok) throw new Error('Cannot inspect target run: ' + response.status);
             const run = await response.json();
-            if (run.head_sha !== '81dbe3649820844c0e2dea24439867a1636917c7' || run.head_branch !== 'codex/product-model-publish-20261103') throw new Error('Target source mismatch');
+            if (run.head_sha !== 'af4dcd88ef821e4b9b1e543ca79e4fb8905c95e8' || run.head_branch !== 'codex/product-model-publish-20261103') throw new Error('Target source mismatch');
             if (run.status === 'completed') { console.log('Target already completed: ' + run.conclusion); return; }
             const cancelled = await fetch(base + '/cancel', {method: 'POST', headers});
             if (cancelled.status !== 202) throw new Error('Cancellation rejected: ' + cancelled.status);
-            console.log('Cancelled superseded publisher 41684695315; no application or credentials changed.');
+            console.log('Cancelled superseded publisher 41686026040; no application or credentials changed.');
           }
           main().catch(error => { console.error(error.message); process.exitCode = 1; });
           NODE
