@@ -27,10 +27,19 @@ mixin AgentCoreMixin on GetxService {
     LogService.info("🧩 Routing action to: $id (Payload: $payload)", tag: 'CoreMixin');
 
     switch (id) {
-      case 'extract_sku':
-        await agent.extractSkuForMessage(
+      case 'extract_sku': // Compatibility with saved patch-13 actions.
+      case 'identify_model':
+        await agent.identifyProductModelForMessage(
           payload is Map && payload['messageId'] is String
               ? payload['messageId'] as String : '',
+        );
+        return;
+      case 'model_lens_search':
+        await agent.identifyProductModelForMessage(
+          payload is Map && payload['messageId'] is String
+              ? payload['messageId'] as String : '',
+          visualImageNumber: payload is Map && payload['imageNumber'] is int
+              ? payload['imageNumber'] as int : 0,
         );
         return;
       case 'tiktok_link':

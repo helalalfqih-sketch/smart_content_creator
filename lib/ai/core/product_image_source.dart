@@ -2,7 +2,10 @@ import 'dart:io';
 import '../../core/models/chat_message.dart';
 
 /// Resolve from the clicked message's turn, never global/latest upload state.
-List<File> skuImagesForMessage(List<ChatMessage> history, String messageId) {
+List<File> productImagesForMessage(
+  List<ChatMessage> history,
+  String messageId,
+) {
   final anchor = history.indexWhere((message) => message.id == messageId);
   if (anchor < 0) return const [];
   for (var i = anchor; i >= 0; i--) {

@@ -250,7 +250,7 @@ class _ChatBubbleState extends State<ChatBubble> {
   String _cleanText() {
     var s = widget.text;
     // Printed identifiers are literal data; legacy cleanup can corrupt a SKU.
-    if (widget.type == 'sku_result') return s;
+    if (['sku_result', 'model_result', 'model_candidates'].contains(widget.type)) return s;
     if (s.isEmpty) return s;
     s = s.replaceAll(RegExp(r'\[(SYSTEM|DEBUG|INTERNAL|STAGE|LOG).*?\]'), '');
     s = s.replaceAll(RegExp(r'\[ACTIONS\].*?$', dotAll: true), '');
@@ -915,13 +915,35 @@ class _ChatBubbleState extends State<ChatBubble> {
       ];
     }
 
-    // Bind SKU extraction to the clicked message, never a global product name.
-    effectiveActions.removeWhere((a) => a is Map && a['action'] == 'extract_sku');
+    // Replace old saved SKU actions and bind model reading to the visible message.
+    effectiveActions.removeWhere((a) => a is Map &&
+        ['extract_sku', 'identify_model', 'model_lens_search'].contains(a['action']));
     effectiveActions.insert(0, {
-      'label': 'استخراج SKU',
-      'action': 'extract_sku',
+      'label': 'تحديد موديل المنتج',
+      'action': 'identify_model',
       'payload': {'messageId': widget.id},
     });
+
+    if (['model_result', 'model_candidates'].contains(widget.type) &&
+        widget.state != MessageState.error && !widget.isError) {
+      // A result retains its exact source photos, including after a history reload.
+      // Never let the generic Lens action silently pick the newest product.
+      effectiveActions.removeWhere((a) => a is Map &&
+          ['google_images', 'google_lens'].contains(a['action'] ?? a['toolId']));
+      final paths = <String>{};
+      for (final attachment in widget.attachments ?? <ChatAttachment>[]) {
+        final path = attachment.localPath;
+        if (attachment.isImage && path != null && path.isNotEmpty) paths.add(path);
+      }
+      if (widget.image != null) paths.add(widget.image!.path);
+      for (var i = 0; i < paths.length; i++) {
+        effectiveActions.insert(i + 1, {
+          'label': 'عدسة Google · الصورة ${i + 1}',
+          'action': 'model_lens_search',
+          'payload': {'messageId': widget.id, 'imageNumber': i + 1},
+        });
+      }
+    }
 
     // ✂️ Inject Background Removal for images
     final bool hasImage = widget.image != null ||
@@ -1190,7 +1212,7 @@ class _ChatBubbleState extends State<ChatBubble> {
 
   Color _getActionColor(String? id) {
     switch (id) {
-      case 'extract_sku':
+      case 'identify_model':
         return Colors.tealAccent;
       case 'open_tiktok_search':
       case 'tiktok_link':
@@ -1231,6 +1253,7 @@ class _ChatBubbleState extends State<ChatBubble> {
         return Colors.blueAccent;
       case 'visual_search':
       case 'google_lens':
+      case 'model_lens_search':
         return Colors.yellowAccent;
       case 'amazon_search':
         return Colors.orange;
@@ -1258,7 +1281,7 @@ class _ChatBubbleState extends State<ChatBubble> {
 
   IconData _getIconForAction(String? action) {
     switch (action) {
-      case 'extract_sku':
+      case 'identify_model':
         return Icons.tag_rounded;
       case 'open_tiktok_search':
       case 'tiktok_link':
@@ -1303,6 +1326,7 @@ class _ChatBubbleState extends State<ChatBubble> {
         return Icons.trending_up_rounded;
       case 'visual_search':
       case 'google_lens':
+      case 'model_lens_search':
         return Icons.center_focus_strong_rounded;
       case 'amazon_search':
         return Icons.shopping_bag_rounded;

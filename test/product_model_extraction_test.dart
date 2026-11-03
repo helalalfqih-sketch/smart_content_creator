@@ -4,18 +4,34 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:smart_content_creator/ai/core/sku_image_source.dart';
+import 'package:smart_content_creator/ai/core/product_image_source.dart';
 import 'package:smart_content_creator/core/models/chat_attachment.dart';
 import 'package:smart_content_creator/core/models/chat_message.dart';
 import 'package:smart_content_creator/core/utils/ai_request_exception.dart';
-import 'package:smart_content_creator/models/sku_reading.dart';
-import 'package:smart_content_creator/services/ai/sku_image_service.dart';
+import 'package:smart_content_creator/models/product_model_reading.dart';
+import 'package:smart_content_creator/services/ai/product_model_image_service.dart';
 import 'package:smart_content_creator/services/openai_service.dart';
+import 'package:smart_content_creator/services/serpapi_services.dart';
+
+class _Lens extends GoogleLensService {
+  int calls = 0;
+  String? path;
+  Map<String, dynamic> reply = {'visual_matches': <dynamic>[]};
+  @override
+  Future<Map<String, dynamic>> searchByImage(
+    String imageInput, {
+    CancelToken? cancelToken,
+  }) async {
+    calls++;
+    path = imageInput;
+    return reply;
+  }
+}
 
 Map<String, dynamic> code({
-  String kind = 'sku',
+  String kind = 'model',
   String value = '001-Ab-09',
-  String label = 'SKU',
+  String label = 'Model',
   int image = 1,
 }) => {
   'kind': kind,
@@ -38,9 +54,9 @@ void main() {
   );
 
   test(
-    'reads a labelled SKU without losing leading zeros, case or separators',
+    'reads a printed model without losing leading zeros, case or separators',
     () {
-      final result = SkuReading.parse(response(), imageCount: 1);
+      final result = ProductModelReading.parse(response(), imageCount: 1);
       expect(result.codes.single.value, '001-Ab-09');
       expect(result.toChatText(), contains('`001-Ab-09`'));
       expect(result.toChatText(), contains('الصورة 1'));
@@ -48,45 +64,109 @@ void main() {
     },
   );
 
-  test('model and printed barcode are shown separately, never as SKU', () {
-    final result = SkuReading.parse(
+  test('SKU and barcode cannot produce a found model', () {
+    final result = ProductModelReading.parse(
       response(
         status: 'not_visible',
         codes: [
-          code(kind: 'model', label: 'Model', value: 'X-100'),
+          code(kind: 'sku', label: 'SKU', value: 'X-100'),
           code(kind: 'barcode', label: 'EAN', value: '0012345678905'),
         ],
       ),
       imageCount: 1,
     );
-    expect(result.toChatText(), contains('لم يظهر SKU'));
-    expect(result.toChatText(), contains('رقم الموديل — ليس SKU'));
+    expect(result.toChatText(), contains('لم يظهر اسم أو رقم موديل'));
+    expect(result.toChatText(), contains('رمز المخزون SKU — ليس رقم الموديل'));
     expect(result.toChatText(), contains('`0012345678905`'));
-    expect(result.codes.any((c) => c.kind == 'sku'), isFalse);
+    expect(result.codes.any((c) => c.kind == 'model'), isFalse);
   });
 
   test('no label and unreadable label each produce a useful honest result', () {
     for (final status in ['not_visible', 'unreadable']) {
-      final reading = SkuReading.parse(
+      final reading = ProductModelReading.parse(
         response(status: status, codes: []),
         imageCount: 1,
       );
       expect(reading.codes, isEmpty);
       expect(
         reading.toChatText(),
-        contains(status == 'unreadable' ? 'غير مقروء' : 'لم يظهر SKU'),
+        contains(
+          status == 'unreadable' ? 'غير مقروء' : 'لم يظهر اسم أو رقم موديل',
+        ),
       );
     }
   });
 
   test(
-    'multiple labels retain their image index and can include Arabic SKU labels',
+    'prints model first even when SKU appears first in the provider result',
     () {
-      final reading = SkuReading.parse(
+      final result = ProductModelReading.parse(
+        response(
+          codes: [
+            code(kind: 'sku', label: 'SKU', value: 'STORE-999'),
+            code(value: 'WH-1000XM5', label: ''),
+          ],
+        ),
+        imageCount: 1,
+      );
+      final text = result.toChatText();
+      expect(text.indexOf('WH-1000XM5'), lessThan(text.indexOf('STORE-999')));
+      expect(text, contains('الموديل المقروء'));
+      expect(text, isNot(contains('لم يظهر')));
+    },
+  );
+
+  test(
+    'no visible model offers explicit Lens search without asserting a model',
+    () {
+      final result = ProductModelReading.parse(
+        response(status: 'not_visible', codes: []),
+        imageCount: 1,
+      );
+      expect(result.toChatText(), contains('عدسة Google'));
+      expect(result.toChatText(), contains('ليست تأكيدًا للموديل'));
+    },
+  );
+
+  test(
+    'Lens candidates preserve sources and exclude non-web or credential URLs',
+    () {
+      final candidates = ProductModelCandidate.parseMatches([
+        {
+          'title': 'Possible X-100',
+          'link': 'https://example.test/model',
+          'thumbnail': 'https://example.test/image.jpg',
+          'source': 'Shop',
+        },
+        {'title': 'Unsafe', 'link': 'javascript:alert(1)'},
+        {'title': 'Credential', 'link': 'https://user:pass@example.test/model'},
+        {'title': '', 'link': 'https://example.test/'},
+        {
+          'title': 'Valid source',
+          'link': 'https://example.test/second',
+          'thumbnail': 'data:text/html,unsafe',
+        },
+      ]);
+      expect(candidates.length, 2);
+      expect(candidates.first.title, 'Possible X-100');
+      expect(candidates.first.link, 'https://example.test/model');
+      expect(candidates.last.thumbnail, isEmpty);
+      expect(ProductModelCandidate.parseMatches([]), isEmpty);
+      expect(
+        () => ProductModelCandidate.parseMatches(null),
+        throwsA(isA<AiRequestException>()),
+      );
+    },
+  );
+
+  test(
+    'multiple labels retain their image index and can include Arabic model labels',
+    () {
+      final reading = ProductModelReading.parse(
         response(
           codes: [
             code(),
-            code(value: '٠٠١-أ', label: 'كود المخزون', image: 2),
+            code(value: '٠٠١-أ', label: 'رقم الموديل', image: 2),
           ],
         ),
         imageCount: 2,
@@ -97,14 +177,19 @@ void main() {
   );
 
   test(
-    'rejects inferred SKU, numeric values, false success, and truncated JSON',
+    'rejects mislabelled model, numeric values, false success, and truncated JSON',
     () {
       final invalid = <String>[
         'A general product description',
         '{"status":"found",',
         response(codes: []),
-        response(codes: [code(label: 'Model')]),
-        response(codes: [code(label: '')]),
+        response(codes: [code(label: 'SKU')]),
+        response(codes: [code(label: 'S/N')]),
+        response(codes: [code(label: 'P/N')]),
+        response(codes: [code(label: 'EAN')]),
+        response(
+          codes: [code(kind: 'sku', label: 'Model')],
+        ),
         response(status: 'not_visible'),
         response(
           codes: [
@@ -122,7 +207,7 @@ void main() {
       ];
       for (final raw in invalid) {
         expect(
-          () => SkuReading.parse(raw, imageCount: 1),
+          () => ProductModelReading.parse(raw, imageCount: 1),
           throwsA(isA<AiRequestException>()),
           reason: raw,
         );
@@ -142,15 +227,19 @@ void main() {
         newer,
         ChatMessage.assistant(content: 'New product'),
       ];
-      expect(skuImagesForMessage(history, answer.id).map((f) => f.path), [
+      expect(productImagesForMessage(history, answer.id).map((f) => f.path), [
         '/a.jpg',
         '/b.png',
       ]);
-      expect(skuImagesForMessage(history, 'deleted-id'), isEmpty);
+      expect(productImagesForMessage(history, 'deleted-id'), isEmpty);
       final textTurn = ChatMessage.user(content: 'A different subject');
       final textAnswer = ChatMessage.assistant(content: 'Text answer');
       expect(
-        skuImagesForMessage([...history, textTurn, textAnswer], textAnswer.id),
+        productImagesForMessage([
+          ...history,
+          textTurn,
+          textAnswer,
+        ], textAnswer.id),
         isEmpty,
       );
     },
@@ -169,10 +258,13 @@ void main() {
         ],
       );
       final answer = ChatMessage.assistant(content: 'Remote image');
-      expect(skuImagesForMessage([old, remote, answer], answer.id), isEmpty);
+      expect(
+        productImagesForMessage([old, remote, answer], answer.id),
+        isEmpty,
+      );
       final missing = ChatMessage.user(image: File('/missing.jpg'));
       expect(
-        skuImagesForMessage([old, missing, answer], answer.id).single.path,
+        productImagesForMessage([old, missing, answer], answer.id).single.path,
         '/missing.jpg',
       );
     },
@@ -183,12 +275,12 @@ void main() {
     late File photo;
     late Dio client;
     late OpenAIService provider;
-    late SkuImageService service;
+    late ProductModelImageService service;
     final calls = <RequestOptions>[];
     var reply = response();
     var status = 200;
     setUp(() async {
-      temp = await Directory.systemTemp.createTemp('sku-test-');
+      temp = await Directory.systemTemp.createTemp('model-test-');
       photo = await File('${temp.path}/label.png').writeAsBytes(png);
       reply = response();
       status = 200;
@@ -221,7 +313,10 @@ void main() {
         providerOnly: const ['google-vertex'],
         allowProviderFallbacks: false,
       );
-      service = SkuImageService(provider: provider, prepare: (_) async => png);
+      service = ProductModelImageService(
+        provider: provider,
+        prepare: (_) async => png,
+      );
     });
     tearDown(() async {
       client.close(force: true);
@@ -249,7 +344,7 @@ void main() {
         expect(messages.length, 2);
         expect(
           messages.first['content'],
-          contains('Never infer or generate a SKU'),
+          contains('Never infer or generate a model'),
         );
         final parts = messages.last['content'] as List;
         expect(parts.length, 3);
@@ -285,6 +380,46 @@ void main() {
       },
     );
 
+    test(
+      'explicit Lens uses the chosen local image and validates before calling',
+      () async {
+        final lens = _Lens()
+          ..reply = {
+            'visual_matches': [
+              {'title': 'Candidate X-100', 'link': 'https://example.test/x100'},
+            ],
+          };
+        final searching = ProductModelImageService(lens: lens);
+        final matches = await searching.searchSimilar(
+          image: photo,
+          cancelToken: CancelToken(),
+        );
+        expect(lens.calls, 1);
+        expect(lens.path, photo.path);
+        expect(matches.single.title, 'Candidate X-100');
+        expect(
+          calls,
+          isEmpty,
+        ); // No OpenRouter call or key is needed for this action.
+        await expectLater(
+          searching.searchSimilar(
+            image: File('${temp.path}/missing.png'),
+            cancelToken: CancelToken(),
+          ),
+          throwsA(isA<AiRequestException>()),
+        );
+        await expectLater(
+          searching.searchSimilar(
+            image: photo,
+            cancelToken: CancelToken(),
+            isCurrent: () => false,
+          ),
+          throwsA(isA<DioException>()),
+        );
+        expect(lens.calls, 1);
+      },
+    );
+
     test('invalid prepared images fail before billing', () async {
       for (final bytes in <Uint8List?>[
         null,
@@ -292,7 +427,7 @@ void main() {
         Uint8List.fromList([1, 2, 3]),
         Uint8List(5 * 1024 * 1024 + 1)..setAll(0, png),
       ]) {
-        final bad = SkuImageService(
+        final bad = ProductModelImageService(
           provider: provider,
           prepare: (_) async => bytes,
         );
@@ -312,7 +447,7 @@ void main() {
       var current = true;
       final waiting = Completer<Uint8List?>();
       final preparing = Completer<void>();
-      service = SkuImageService(
+      service = ProductModelImageService(
         provider: provider,
         prepare: (_) {
           preparing.complete();
@@ -346,7 +481,7 @@ void main() {
     });
 
     test(
-      'provider failures are not retried or converted to a fabricated SKU',
+      'provider failures are not retried or converted to a fabricated model',
       () async {
         status = 402;
         reply = 'private upstream message';
@@ -365,7 +500,7 @@ void main() {
     );
 
     test('malformed response stays an extraction error', () async {
-      reply = 'The product looks like a blender. SKU ABC-123.';
+      reply = 'The product looks like a blender. model ABC-123.';
       await expectLater(
         service.extract(
           images: [photo],
@@ -376,7 +511,7 @@ void main() {
           isA<AiRequestException>().having(
             (e) => e.code,
             'code',
-            'invalid_sku_response',
+            'invalid_model_response',
           ),
         ),
       );

@@ -24,7 +24,7 @@ import '../services/product_memory_service.dart';
 import '../services/ai_backend_router.dart';
 import '../services/unified_ai_service.dart';
 import '../services/ai/vision_product_service.dart';
-import '../services/ai/sku_image_service.dart';
+import '../services/ai/product_model_image_service.dart';
 import '../core/utils/ai_request_exception.dart';
 import '../services/ai/background_removal_service.dart';
 import '../services/ai_image_generation_service.dart';
@@ -42,7 +42,7 @@ import 'mixins/agent_media_mixin.dart';
 import 'mixins/agent_core_mixin.dart';
 import 'core/ai_helpers_mixin.dart';
 import 'core/image_generation_request.dart';
-import 'core/sku_image_source.dart';
+import 'core/product_image_source.dart';
 import '../core/utils/error_handler.dart';
 import '../ai/core/agent_models.dart';
 import '../core/services/log_service.dart';
@@ -51,15 +51,15 @@ import '../utils/logger.dart';
 /// 🤖 ChatSmartAgent: The modular, mixin-based AI agent.
 class ChatSmartAgent extends GetxService
     with AIHelpersMixin, AgentSearchMixin, AgentMediaMixin, AgentCoreMixin {
-  ChatSmartAgent({SkuImageService? skuImageService})
-      : _skuImageService = skuImageService;
-  final SkuImageService? _skuImageService;
-  dio.CancelToken? _skuOperation;
+  ChatSmartAgent({ProductModelImageService? productModelImageService})
+      : _productModelImageService = productModelImageService;
+  final ProductModelImageService? _productModelImageService;
+  dio.CancelToken? _modelOperation;
 
-  String get skuRequestContext =>
+  String get modelRequestContext =>
       '${_authController.firebaseUid ?? _authController.user?['id'] ?? 'guest'}:'
       '${_historyController.currentSessionId.value}';
-  String get skuApiKey => Get.isRegistered<SettingsController>()
+  String get modelApiKey => Get.isRegistered<SettingsController>()
       ? Get.find<SettingsController>().getApiKey(ProviderType.openrouter)
       : '';
 
@@ -196,7 +196,7 @@ class ChatSmartAgent extends GetxService
     super.onInit();
     // Watch for session changes
     ever(_historyController.currentSessionId, (int? sessionId) {
-      _skuOperation?.cancel('Chat session changed');
+      _modelOperation?.cancel('Chat session changed');
       if (sessionId != null) {
         _loadExistingSession(sessionId);
       } else {
@@ -544,59 +544,99 @@ class ChatSmartAgent extends GetxService
         SuggestedAction(label: "عزل خلفية ✂️", toolId: "remove_background"),
       ];
 
-  /// Read the printed SKU for this message only, with no catalog writes or guesses.
-  Future<void> extractSkuForMessage(String messageId) async {
-    if (isLoading.value || _skuOperation != null) return;
-    final context = skuRequestContext;
+  /// Read a printed model, or explicitly search one photo for unconfirmed matches.
+  Future<void> identifyProductModelForMessage(String messageId,
+      {int? visualImageNumber}) async {
+    if (isLoading.value || _modelOperation != null) return;
+    final context = modelRequestContext;
     final token = dio.CancelToken();
-    _skuOperation = token;
+    _modelOperation = token;
     _cancelToken = token;
     isLoading.value = true;
-    activeActionId.value = 'extract_sku';
-    pipelineMessage.value = 'قراءة SKU من الملصق عبر OpenRouter…';
-    final images = skuImagesForMessage(List.of(history), messageId);
-    bool isCurrent() => !token.isCancelled && skuRequestContext == context &&
+    final visualSearch = visualImageNumber != null;
+    activeActionId.value = visualSearch ? 'model_lens_search' : 'identify_model';
+    pipelineMessage.value = visualSearch
+        ? 'البحث عن ترشيحات مشابهة عبر عدسة Google…'
+        : 'قراءة موديل المنتج من الصورة عبر OpenRouter…';
+    final images = productImagesForMessage(List.of(history), messageId);
+    bool isCurrent() => !token.isCancelled && modelRequestContext == context &&
         history.any((message) => message.id == messageId);
     try {
       if (images.isEmpty) {
-        throw const AiRequestException('sku_image_required',
-          'أرفق صورة واضحة للمنتج وملصقه في رسالة، ثم اضغط استخراج SKU تحت الرد.');
+        throw const AiRequestException('model_image_required',
+          'أرفق صورة واضحة للمنتج وملصقه في رسالة، ثم اضغط تحديد موديل المنتج تحت الرد.');
       }
-      final key = skuApiKey;
-      if (key.trim().isEmpty) {
+      if (visualSearch && (visualImageNumber < 1 || visualImageNumber > images.length)) {
+        throw const AiRequestException('model_image_required',
+            'اختر الصورة المطلوبة من أزرار عدسة Google تحت نتيجة الموديل.');
+      }
+      final key = visualSearch ? '' : modelApiKey;
+      if (!visualSearch && key.trim().isEmpty) {
         throw const AiRequestException('missing_openrouter_key',
-          'أضف مفتاح OpenRouter في إعدادات الخدمات لاستخراج SKU من الصور.');
+          'أضف مفتاح OpenRouter في إعدادات الخدمات لتحديد موديل المنتج من الصور.');
       }
       if (!await checkVisualLimit() || !isCurrent()) return;
-      final reading = await (_skuImageService ?? SkuImageService()).extract(
-        images: images, apiKey: key, cancelToken: token, isCurrent: isCurrent,
-      );
+      final service = _productModelImageService ?? ProductModelImageService();
+      final sourceImages = visualSearch ? [images[visualImageNumber - 1]] : images;
+      String content;
+      AgentResult? agentResult;
+      if (visualSearch) {
+        final matches = await service.searchSimilar(
+          image: sourceImages.single, cancelToken: token, isCurrent: isCurrent,
+        );
+        content = matches.isEmpty
+            ? 'لم تظهر ترشيحات مشابهة لهذه الصورة. أرسل صورة أوضح للمنتج أو ملصق الموديل.'
+            : '🔍 ${matches.length} ترشيحًا مشابهًا للصورة $visualImageNumber عبر عدسة Google. '
+              'الموديل غير مؤكد؛ قارن اسم الموديل والمواصفات في المصادر مع منتجك قبل اعتماده.';
+        if (matches.isNotEmpty) {
+          agentResult = AgentResult(
+            type: AgentResultType.imageGallery,
+            data: ImageGalleryData(
+              images: matches.map((match) => ImageItem(
+                title: match.title, link: match.link,
+                thumbnail: match.thumbnail, source: match.source,
+                originalUrl: match.thumbnail,
+              )).toList(),
+              query: 'Google Lens', title: 'ترشيحات للموديل · غير مؤكدة',
+            ),
+            executionTimestamp: DateTime.now().millisecondsSinceEpoch,
+          );
+        }
+      } else {
+        final reading = await service.extract(
+          images: images, apiKey: key, cancelToken: token, isCurrent: isCurrent,
+        );
+        content = reading.toChatText();
+      }
       if (!isCurrent()) return;
       await incrementVisualCount();
       if (!isCurrent()) return;
       await addAndSaveMessage(ChatMessage.assistant(
-        content: reading.toChatText(), provider: 'openrouter',
-        type: 'sku_result', state: MessageState.completed,
+        content: content, provider: visualSearch ? 'serpapi' : 'openrouter',
+        type: visualSearch ? 'model_candidates' : 'model_result',
+        agentResult: agentResult, state: MessageState.completed,
         // Retain the exact images with the result, also after history reload.
-        attachments: images.map((image) => ChatAttachment.fromLocalFile(
-          file: image, source: 'sku_source',
+        attachments: sourceImages.map((image) => ChatAttachment.fromLocalFile(
+          file: image, source: 'model_source',
         )).toList(),
       ));
     } catch (error) {
       if (!isCurrent() || (error is dio.DioException && dio.CancelToken.isCancel(error))) return;
       final message = error is AiRequestException
           ? error.toString()
-          : 'تعذر استخراج SKU. تحقق من اتصال OpenRouter وأعد المحاولة بصورة واضحة للملصق.';
+          : visualSearch
+              ? 'تعذر البحث بعدسة Google. تحقق من ربط SerpApi وأعد المحاولة.'
+              : 'تعذر تحديد موديل المنتج. تحقق من اتصال OpenRouter وأعد المحاولة بصورة واضحة للملصق.';
       await addAndSaveMessage(ChatMessage.assistant(
-        content: '⚠️ $message', provider: 'openrouter',
-        type: 'sku_result', state: MessageState.error,
+        content: '⚠️ $message', provider: visualSearch ? 'serpapi' : 'openrouter',
+        type: 'model_result', state: MessageState.error, isError: true,
       ));
     } finally {
-      if (identical(_skuOperation, token)) {
-        _skuOperation = null;
+      if (identical(_modelOperation, token)) {
+        _modelOperation = null;
         if (identical(_cancelToken, token)) {
           _cancelToken = null;
-          if (skuRequestContext == context) {
+          if (modelRequestContext == context) {
             isLoading.value = false;
             activeActionId.value = '';
             pipelineMessage.value = '';
@@ -690,7 +730,7 @@ class ChatSmartAgent extends GetxService
 
     isLoading.value = false;
     activeRequests.value = 0;
-    if (_skuOperation != null) {
+    if (_modelOperation != null) {
       activeActionId.value = '';
       pipelineMessage.value = '';
     }
@@ -753,7 +793,7 @@ class ChatSmartAgent extends GetxService
 
   void clearHistory() {
     AppLogger.info('ENTERING: clearHistory');
-    _skuOperation?.cancel('Chat cleared');
+    _modelOperation?.cancel('Chat cleared');
     history.clear();
     _repo.clear();
     _state.resetAll();
