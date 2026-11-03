@@ -81,13 +81,14 @@ class _GalleryLibraryScreenState extends State<GalleryLibraryScreen> {
         _loading = false;
       });
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _loading = false;
           _error = error is GalleryFailure
               ? error.message
               : 'تعذر فتح المكتبة. أغلقها وحاول مجددًا.';
         });
+      }
     }
   }
 
@@ -113,13 +114,15 @@ class _GalleryLibraryScreenState extends State<GalleryLibraryScreen> {
     try {
       final files = <File>[];
       for (final item in _photos.where((x) => _selected.contains(x.id))) {
-        if (!_accountCurrent)
+        if (!_accountCurrent) {
           throw const GalleryFailure('تغير الحساب. أعد فتح المكتبة.');
+        }
         final file = _store!.mediaFile(item);
-        if (!await file.exists())
+        if (!await file.exists()) {
           throw const GalleryFailure(
             'إحدى الصور لم تعد موجودة. أعد فتح المكتبة أو استورد الصورة مجددًا.',
           );
+        }
         final size = await file.length();
         if (size <= 0 || size > GalleryStore.maxPhotoBytes) {
           throw const GalleryFailure(
@@ -129,18 +132,21 @@ class _GalleryLibraryScreenState extends State<GalleryLibraryScreen> {
         files.add(file);
       }
       if (!mounted) return;
-      if (!_accountCurrent)
+      if (!_accountCurrent) {
         throw const GalleryFailure('تغير الحساب. أعد فتح المكتبة.');
-      if (files.length != _selected.length)
+      }
+      if (files.length != _selected.length) {
         throw const GalleryFailure('تغيرت الصور المحددة. أعد فتح المكتبة.');
+      }
       Navigator.pop(context, GalleryChatSelection(_owner, files));
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _error = error is GalleryFailure
               ? error.message
               : 'تعذر إرفاق الصور. تحقق من وجودها وحاول مجددًا.';
         });
+      }
     } finally {
       if (mounted) setState(() => _attaching = false);
     }
@@ -291,10 +297,11 @@ class _GalleryLibraryScreenState extends State<GalleryLibraryScreen> {
                                             _store!.thumbnailFile(item),
                                             fit: BoxFit.cover,
                                             cacheWidth: 256,
-                                            errorBuilder: (_, _, _) =>
-                                                const Center(
-                                                  child: Icon(Icons.image),
-                                                ),
+                                            errorBuilder:
+                                                (context, error, stack) =>
+                                                    const Center(
+                                                      child: Icon(Icons.image),
+                                                    ),
                                           ),
                                           if (selected)
                                             const PositionedDirectional(

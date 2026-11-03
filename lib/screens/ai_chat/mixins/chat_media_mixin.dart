@@ -58,6 +58,8 @@ mixin ChatMediaMixin on State<AiChatScreen> {
 
   Future<void> attachGallerySelection(GalleryChatSelection selection) async {
     if (!mounted || selection.owner != galleryAccountOwner()) return;
+    // The account stream may arrive after the picker route returns.
+    mediaAccountIsCurrent();
     _libraryOwner = selection.owner;
     await handlePickedImages(selection.files);
   }
