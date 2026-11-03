@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -381,16 +382,27 @@ void main() {
     tester,
   ) async {
     service.lensResult = Completer<List<ProductModelCandidate>>();
-    final saved = ChatMessage.fromMap(
-      ChatMessage.assistant(
-        content: 'لم يظهر اسم أو رقم موديل',
-        type: 'model_result',
-        attachments: [
-          ChatAttachment.fromLocalFile(file: File('/front.jpg')),
-          ChatAttachment.fromLocalFile(file: File('/back.jpg')),
-        ],
-      ).toMap(),
+    final original = ChatMessage.assistant(
+      content: 'لم يظهر اسم أو رقم موديل',
+      type: 'model_result',
+      attachments: [
+        ChatAttachment.fromLocalFile(file: File('/front.jpg')),
+        ChatAttachment.fromLocalFile(file: File('/back.jpg')),
+      ],
     );
+    // ChatRepository writes the complete photo list in meta_data; toMap alone
+    // intentionally contains only the first legacy media_path.
+    final saved = ChatMessage.fromMap({
+      ...original.toMap(),
+      'meta_data': jsonEncode({
+        'attachments': original.attachments.map((a) => a.toJson()).toList(),
+      }),
+    });
+    expect(saved.type, 'model_result');
+    expect(saved.attachments.map((a) => a.localPath), [
+      '/front.jpg',
+      '/back.jpg',
+    ]);
     agent.history.insert(2, saved);
     await tester.pumpWidget(
       GetMaterialApp(
