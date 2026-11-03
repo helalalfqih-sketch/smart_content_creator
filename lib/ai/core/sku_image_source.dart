@@ -8,6 +8,14 @@ List<File> skuImagesForMessage(List<ChatMessage> history, String messageId) {
   for (var i = anchor; i >= 0; i--) {
     final message = history[i];
     final files = <String, File>{};
+    // Preserve missing paths so validation reports the missing photo instead of
+    // silently dropping it from a multi-image label reading.
+    for (final attachment in message.attachments) {
+      final path = attachment.localPath;
+      if (attachment.isImage && path != null && path.isNotEmpty) {
+        files[path] = File(path);
+      }
+    }
     for (final file in message.images ?? <File>[]) {
       files[file.path] = file;
     }

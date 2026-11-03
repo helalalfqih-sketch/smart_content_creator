@@ -121,7 +121,7 @@ void main() {
       expect(result.provider, 'openrouter');
       expect(result.type, 'sku_result');
       expect(result.content, contains('N/A-001'));
-      expect(result.image!.path, '/old-label.jpg');
+      expect(result.attachments.single.localPath, '/old-label.jpg');
       expect(agent.isLoading.value, isFalse);
       expect(agent.activeActionId.value, isEmpty);
     },
