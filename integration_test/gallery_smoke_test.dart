@@ -175,10 +175,23 @@ void main() {
           ),
         ),
       );
+      Future<void> waitFor(Finder target) async {
+        // The test host opens SQLite before pushing the route. With no spinner
+        // yet visible, pumpAndSettle alone can return before native I/O finishes.
+        for (
+          var attempt = 0;
+          attempt < 100 && target.evaluate().isEmpty;
+          attempt++
+        ) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+        await tester.pumpAndSettle();
+        expect(target, findsOneWidget);
+      }
+
       Future<void> openLibrary() async {
         await tester.tap(find.text('افتح المكتبة'));
-        await tester.pumpAndSettle();
-        expect(find.text('المكتبة'), findsOneWidget);
+        await waitFor(find.text('المكتبة'));
       }
 
       await openLibrary();
@@ -199,7 +212,7 @@ void main() {
       await tester.tap(find.byKey(ValueKey('library-photo-${blue.id}')));
       expect(selections, isEmpty);
       await tester.tap(find.byKey(const ValueKey('library-attach')));
-      await tester.pumpAndSettle();
+      await waitFor(find.text('افتح المكتبة'));
       expect(selections.single.owner, 'owner-one');
       expect(selections.single.files.length, 2);
       expect(
@@ -218,8 +231,7 @@ void main() {
       await tester.tap(find.byKey(ValueKey('library-photo-${red.id}')));
       await redFile.delete();
       await tester.tap(find.byKey(const ValueKey('library-attach')));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('لم تعد موجودة'), findsOneWidget);
+      await waitFor(find.textContaining('لم تعد موجودة'));
       expect(selections.length, 1);
       await tester.pageBack();
       await tester.pumpAndSettle();
@@ -229,8 +241,7 @@ void main() {
       await tester.tap(find.byKey(ValueKey('library-photo-${blue.id}')));
       owner = 'owner-two';
       await tester.tap(find.byKey(const ValueKey('library-attach')));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('تغير الحساب'), findsOneWidget);
+      await waitFor(find.textContaining('تغير الحساب'));
       expect(selections.length, 1);
       await tester.pageBack();
       await tester.pumpAndSettle();
