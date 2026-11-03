@@ -35,11 +35,13 @@ mixin AgentCoreMixin on GetxService {
         );
         return;
       case 'model_lens_search':
+      case 'google_images':
+      case 'google_lens':
         await agent.identifyProductModelForMessage(
           payload is Map && payload['messageId'] is String
               ? payload['messageId'] as String : '',
           visualImageNumber: payload is Map && payload['imageNumber'] is int
-              ? payload['imageNumber'] as int : 0,
+              ? payload['imageNumber'] as int : (id == 'model_lens_search' ? 0 : 1),
         );
         return;
       case 'tiktok_link':
@@ -138,21 +140,6 @@ mixin AgentCoreMixin on GetxService {
       case 'generate_ad':
         final String product = payload is String ? payload : (agent.lastAnalyzedProduct.value ?? "المنتج");
         await agent.respondNormally("اكتب لي وصف تسويقي احترافي لمنتج: $product");
-        break;
-
-      case 'google_images':
-        // 👁️ عدسة Google: يعمل بالصورة فقط — تماماً كـ Google Lens
-        final File? lensImage = _getLastProductImage();
-        if (lensImage != null) {
-          await agent.handleGoogleLens(lensImage);
-        } else {
-          // ❌ لا توجد صورة → اطلب من المستخدم رفعها
-          await agent.addAndSaveMessage(
-            ChatMessage.assistant(
-              content: "📸 **عدسة Google تحتاج إلى صورة المنتج.**\n\nيرجى إرسال صورة المنتج أولاً وسأقوم بالبحث عن مطابقات بصرية دقيقة له تلقائياً.",
-            ).copyWith(state: MessageState.completed),
-          );
-        }
         break;
 
       case 'similar_videos':
@@ -645,7 +632,7 @@ $productDescSection
   }
 
   /// 📸 يجلب آخر صورة منتج متاحة من التاريخ أو الـ global state
-  /// يُستخدم لـ Google Lens وأي action يحتاج الصورة الأصلية
+  /// Legacy helpers for other actions; Lens resolves its explicit message ID.
   File? _getLastProductImage() {
     // 1. أولوية: global latestUploadPath (تم تحديثه عند آخر رفع)
     final path = agent.latestUploadPath.value;

@@ -21,6 +21,7 @@ import 'modern_video_bubble.dart';
 import 'tiktok_video_widget.dart';
 import 'chat/full_screen_viewer.dart';
 import '../ai/chat_smart_agent.dart';
+import '../ai/core/product_image_source.dart';
 import '../core/models/chat_message.dart';
 import '../core/models/chat_attachment.dart';
 import '../core/models/tiktok_video.dart';
@@ -924,21 +925,30 @@ class _ChatBubbleState extends State<ChatBubble> {
       'payload': {'messageId': widget.id},
     });
 
-    if (['model_result', 'model_candidates'].contains(widget.type) &&
-        widget.state != MessageState.error && !widget.isError) {
-      // A result retains its exact source photos, including after a history reload.
-      // Never let the generic Lens action silently pick the newest product.
+    // Bind every Lens button, including legacy/dynamic toolId actions, to this
+    // bubble's photo turn. latestUploadPath can still point at the first product.
+    final hasLens = effectiveActions.any((a) => a is Map &&
+        ['google_images', 'google_lens'].contains(
+            a['action'] ?? a['id'] ?? a['toolId'] ?? a['type']));
+    if (hasLens || ['model_result', 'model_candidates'].contains(widget.type)) {
       effectiveActions.removeWhere((a) => a is Map &&
-          ['google_images', 'google_lens'].contains(a['action'] ?? a['toolId']));
-      final paths = <String>{};
-      for (final attachment in widget.attachments ?? <ChatAttachment>[]) {
-        final path = attachment.localPath;
-        if (attachment.isImage && path != null && path.isNotEmpty) paths.add(path);
-      }
-      if (widget.image != null) paths.add(widget.image!.path);
-      for (var i = 0; i < paths.length; i++) {
+          ['google_images', 'google_lens'].contains(
+              a['action'] ?? a['id'] ?? a['toolId'] ?? a['type']));
+      final paths = Get.isRegistered<ChatSmartAgent>()
+          ? productImagesForMessage(
+              List.of(Get.find<ChatSmartAgent>().history), widget.id)
+              .map((image) => image.path).toSet()
+          : <String>{
+              for (final attachment in widget.attachments ?? <ChatAttachment>[])
+                if (attachment.isImage && attachment.localPath?.isNotEmpty == true)
+                  attachment.localPath!,
+              if (widget.image != null) widget.image!.path,
+            };
+      // Keep a useful missing-image error for text-only or deleted photo turns.
+      final imageCount = paths.isEmpty ? 1 : paths.length;
+      for (var i = 0; i < imageCount; i++) {
         effectiveActions.insert(i + 1, {
-          'label': 'عدسة Google · الصورة ${i + 1}',
+          'label': imageCount == 1 ? 'عدسة Google' : 'عدسة Google · الصورة ${i + 1}',
           'action': 'model_lens_search',
           'payload': {'messageId': widget.id, 'imageNumber': i + 1},
         });

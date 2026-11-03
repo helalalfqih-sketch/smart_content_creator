@@ -72,6 +72,8 @@ class _Agent extends ChatSmartAgent {
   final isLoading = false.obs;
   @override
   final activeRequests = 0.obs;
+  @override
+  final latestUploadPath = RxnString('/old-label.jpg');
   String context = 'account-one:session-one';
   String key = 'local-test-key';
   int counted = 0;
@@ -437,6 +439,75 @@ void main() {
     );
     expect(agent.history.last.content, contains('لم تظهر ترشيحات'));
   });
+
+  test(
+    'unbound or text-only Lens actions never reuse the first global photo',
+    () async {
+      final textAnswer = ChatMessage.assistant(content: 'Text-only answer');
+      agent.history.addAll([
+        ChatMessage.user(content: 'New subject'),
+        textAnswer,
+      ]);
+      await agent.handleAction(
+        'google_images',
+        payload: {'messageId': textAnswer.id},
+      );
+      expect(agent.history.last.content, contains('model_image_required'));
+      await agent.handleAction('google_lens', payload: 'Old product name');
+      expect(agent.history.last.content, contains('model_image_required'));
+      expect(service.lensCalls, 0);
+      expect(agent.latestUploadPath.value, '/old-label.jpg');
+    },
+  );
+
+  for (final schema in ['default', 'legacy_toolId']) {
+    testWidgets(
+      'regular $schema Lens button uses a newly sent photo despite stale first-photo state',
+      (tester) async {
+        service.lensResult = Completer<List<ProductModelCandidate>>();
+        final latestAnswer = ChatMessage.assistant(
+          content: 'Second product answer',
+        );
+        agent.history.add(latestAnswer);
+        await tester.pumpWidget(
+          GetMaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: ChatBubble(
+                  id: latestAnswer.id,
+                  text: latestAnswer.content,
+                  isUser: false,
+                  actions: schema == 'legacy_toolId'
+                      ? const [
+                          {
+                            'type': 'google_lens',
+                            'toolId': 'google_lens',
+                            'label': 'Google Lens 👁️',
+                          },
+                        ]
+                      : null,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.tap(find.text('الأدوات الذكية ⚡'));
+        await tester.pumpAndSettle();
+        expect(find.text('عدسة Google'), findsOneWidget);
+        await tester.tap(find.text('عدسة Google'));
+        await tester.pump();
+        expect(service.lensCalls, 1);
+        expect(service.images.single.path, '/new-product.jpg');
+        expect(agent.latestUploadPath.value, '/old-label.jpg');
+        service.lensResult.complete([]);
+        await tester.pumpAndSettle(
+          const Duration(milliseconds: 100),
+          EnginePhase.sendSemanticsUpdate,
+          const Duration(seconds: 5),
+        );
+      },
+    );
+  }
 
   testWidgets(
     'Model copy preserves literal identifiers instead of running legacy text cleanup',
