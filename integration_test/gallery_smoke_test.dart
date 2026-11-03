@@ -11,6 +11,7 @@ import 'package:smart_content_creator/gallery/gallery_library_screen.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  WidgetController.hitTestWarningShouldBeFatal = true;
   testWidgets(
     'Android gallery persists copies, thumbnails, analysis, albums and renames across restart',
     (tester) async {
@@ -194,6 +195,15 @@ void main() {
         await waitFor(find.text('المكتبة'));
       }
 
+      Future<void> selectPhoto(String id, int selectedCount) async {
+        final tile = find.byKey(ValueKey('library-photo-$id'));
+        await tester.ensureVisible(tile);
+        await tester.pumpAndSettle();
+        await tester.tap(tile.hitTestable());
+        await tester.pumpAndSettle();
+        expect(find.text('إرفاق ($selectedCount)'), findsOneWidget);
+      }
+
       await openLibrary();
       expect(find.text('video.mp4'), findsNothing);
       expect(find.text('red.jpg'), findsOneWidget);
@@ -201,7 +211,7 @@ void main() {
       await tester.tap(find.text('منتجاتي'));
       await tester.pumpAndSettle();
       expect(find.text('blue.jpg'), findsNothing);
-      await tester.tap(find.byKey(ValueKey('library-photo-${red.id}')));
+      await selectPhoto(red.id, 1);
       await tester.tap(find.text('الكل'));
       await tester.enterText(
         find.byKey(const ValueKey('library-search')),
@@ -209,7 +219,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('red.jpg'), findsNothing);
-      await tester.tap(find.byKey(ValueKey('library-photo-${blue.id}')));
+      await selectPhoto(blue.id, 2);
       expect(selections, isEmpty);
       await tester.tap(find.byKey(const ValueKey('library-attach')));
       await waitFor(find.text('افتح المكتبة'));
@@ -222,13 +232,13 @@ void main() {
       expect(await redFile.readAsBytes(), redBytes);
 
       await openLibrary();
-      await tester.tap(find.byKey(ValueKey('library-photo-${red.id}')));
+      await selectPhoto(red.id, 1);
       await tester.pageBack();
       await tester.pumpAndSettle();
       expect(selections.length, 1, reason: 'Back cancels without attaching');
 
       await openLibrary();
-      await tester.tap(find.byKey(ValueKey('library-photo-${red.id}')));
+      await selectPhoto(red.id, 1);
       await redFile.delete();
       await tester.tap(find.byKey(const ValueKey('library-attach')));
       await waitFor(find.textContaining('لم تعد موجودة'));
@@ -238,7 +248,7 @@ void main() {
       await redFile.writeAsBytes(redBytes);
 
       await openLibrary();
-      await tester.tap(find.byKey(ValueKey('library-photo-${blue.id}')));
+      await selectPhoto(blue.id, 1);
       owner = 'owner-two';
       await tester.tap(find.byKey(const ValueKey('library-attach')));
       await waitFor(find.textContaining('تغير الحساب'));
