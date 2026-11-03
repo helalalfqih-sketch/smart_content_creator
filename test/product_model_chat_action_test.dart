@@ -8,6 +8,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smart_content_creator/ai/chat_smart_agent.dart';
 import 'package:smart_content_creator/core/models/chat_message.dart';
+import 'package:smart_content_creator/core/models/chat_attachment.dart';
 import 'package:smart_content_creator/core/utils/ai_request_exception.dart';
 import 'package:smart_content_creator/models/product_model_reading.dart';
 import 'package:smart_content_creator/services/ai/product_model_image_service.dart';
@@ -188,7 +189,10 @@ void main() {
     () async {
       agent.key = '';
       agent.history[0] = ChatMessage.user(
-        images: [File('/front.jpg'), File('/back.jpg')],
+        attachments: [
+          ChatAttachment.fromLocalFile(file: File('/front.jpg')),
+          ChatAttachment.fromLocalFile(file: File('/back.jpg')),
+        ],
       );
       final work = agent.handleAction(
         'model_lens_search',
@@ -381,7 +385,10 @@ void main() {
       ChatMessage.assistant(
         content: 'لم يظهر اسم أو رقم موديل',
         type: 'model_result',
-        images: [File('/front.jpg'), File('/back.jpg')],
+        attachments: [
+          ChatAttachment.fromLocalFile(file: File('/front.jpg')),
+          ChatAttachment.fromLocalFile(file: File('/back.jpg')),
+        ],
       ).toMap(),
     );
     agent.history.insert(2, saved);
