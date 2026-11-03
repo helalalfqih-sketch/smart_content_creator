@@ -105,7 +105,7 @@ void main() {
         'extract_sku',
         payload: {'messageId': answer.id},
       );
-      await service.started.future;
+      await service.started.future.timeout(const Duration(seconds: 2));
       expect(agent.activeActionId.value, 'extract_sku');
       expect(agent.isLoading.value, isTrue);
       await agent.handleAction(
@@ -156,7 +156,7 @@ void main() {
   for (final change in ['account', 'session', 'deleted']) {
     test('late result is not written after $change change', () async {
       final work = agent.extractSkuForMessage(answer.id);
-      await service.started.future;
+      await service.started.future.timeout(const Duration(seconds: 2));
       if (change == 'deleted') {
         agent.history.removeWhere((m) => m.id == answer.id);
       } else {
@@ -172,7 +172,7 @@ void main() {
 
   test('stop cancels transport and ignores a late provider result', () async {
     final work = agent.extractSkuForMessage(answer.id);
-    await service.started.future;
+    await service.started.future.timeout(const Duration(seconds: 2));
     agent.cancelCurrentOperation();
     expect(service.cancel!.isCancelled, isTrue);
     service.result.complete(reading);
@@ -184,7 +184,7 @@ void main() {
 
   test('provider errors remain errors and clear the busy state', () async {
     final work = agent.extractSkuForMessage(answer.id);
-    await service.started.future;
+    await service.started.future.timeout(const Duration(seconds: 2));
     service.result.completeError(AiRequestException.http(402));
     await work;
     expect(agent.history.last.state, MessageState.error);
@@ -210,14 +210,14 @@ void main() {
         ),
       );
       await tester.tap(find.text('الأدوات الذكية ⚡'));
-      await tester.pumpAndSettle();
+      await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 5));
       expect(find.text('استخراج SKU'), findsOneWidget);
       await tester.tap(find.text('استخراج SKU'));
       await tester.pump();
-      await service.started.future;
+      expect(service.calls, 1, reason: 'The visible SKU button must start extraction');
       expect(service.images.single.path, '/old-label.jpg');
       service.result.complete(reading);
-      await tester.pumpAndSettle();
+      await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 5));
       expect(agent.history.last.content, contains('N/A-001'));
     },
   );
@@ -247,7 +247,7 @@ void main() {
         ),
       );
       await tester.tap(find.text('نسخ'));
-      await tester.pumpAndSettle();
+      await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 5));
       expect(copied, contains('N/A-001'));
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
         SystemChannels.platform,
