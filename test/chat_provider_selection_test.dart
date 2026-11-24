@@ -35,7 +35,7 @@ void main() {
   });
 
   test('existing OpenRouter and SerpApi choices survive the update', () async {
-    expect(AIBackendRouter.chatBackends, ['openrouter', 'serpapi']);
+    expect(AIBackendRouter.chatBackends, ['vertex_direct', 'openrouter', 'serpapi']);
     for (final active in AIBackendRouter.chatBackends) {
       Get.reset();
       Get.put<AppStorageService>(SelectionStorage(active));
