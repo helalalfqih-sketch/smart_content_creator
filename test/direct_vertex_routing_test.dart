@@ -53,8 +53,8 @@ void main() {
     Get.put<FirebaseAiLogicService>(fake);
   });
 
-  tearDown(() async {
-    await Get.reset();
+  tearDown(() {
+    Get.reset();
   });
 
   test('Provider identity matches the explicit build setting', () {
