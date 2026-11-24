@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
@@ -172,7 +173,10 @@ class VertexAiService extends GetxService implements AIProvider {
         };
       }).toList();
 
+      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+      if (token == null || token.isEmpty) throw Exception('VertexAI (401): Authentication required');
       final body = <String, dynamic>{
+        'firebaseIdToken': token,
         'prompt': prompt,
         'model': model ?? _defaultModel,
         'max_tokens': maxTokens,
@@ -222,17 +226,18 @@ class VertexAiService extends GetxService implements AIProvider {
           return AiResult(
             description: text,
             provider:
-                'Vertex AI (${meta['model'] ?? model ?? _defaultModel})',
+                '${meta['provider'] == 'vertex' ? 'Vertex AI' : 'Gemini'} (${meta['model'] ?? model ?? _defaultModel})',
           );
         }
       }
 
       // معالجة الأخطاء
       final errorData = json.decode(response.body);
-      final errorMsg = errorData['error'] ??
+      final gatewayResult = errorData['result'];
+      final errorMsg = (gatewayResult is Map ? gatewayResult['error'] : null) ?? errorData['error'] ??
           errorData['message'] ??
           'Unknown Vertex Gateway Error';
-      final errorCode = errorData['code'] ?? response.statusCode;
+      final errorCode = (gatewayResult is Map ? gatewayResult['code'] : null) ?? errorData['code'] ?? response.statusCode;
 
       if (kDebugMode) {
         debugPrint('❌ [Vertex-Gateway]: Error $errorCode: $errorMsg');
