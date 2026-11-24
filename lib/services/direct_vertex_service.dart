@@ -14,9 +14,11 @@ class DirectVertexService {
 
   static bool permits(Map<String, dynamic>? config, String? uid) =>
       uid != null &&
+      uid.trim().isNotEmpty &&
       config?['enabled'] == true &&
-      config?['allowed_uids'] is List &&
-      (config!['allowed_uids'] as List).contains(uid);
+      (config?['allow_all_authenticated'] == true ||
+          (config?['allowed_uids'] is List &&
+              (config!['allowed_uids'] as List).contains(uid)));
 
   Future<bool> isAllowed() async {
     try {
