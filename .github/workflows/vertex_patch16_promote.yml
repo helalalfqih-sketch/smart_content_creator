@@ -1,0 +1,47 @@
+name: Promote verified Vertex Patch 16
+on:
+  push:
+    branches: [release/patch16-vertex-promote]
+    paths:
+      - '.github/workflows/vertex_patch16_promote.yml'
+permissions:
+  contents: read
+concurrency:
+  group: vertex-patch16-promotion
+  cancel-in-progress: false
+jobs:
+  promote:
+    if: github.ref == 'refs/heads/release/patch16-vertex-promote' && github.run_attempt == 1 && github.event.head_commit.message == 'Promote verified Patch 16 to stable'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      RELEASE_VERSION: '1.3.1-rc.2+8'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify exact staged application source
+        run: |
+          set -euo pipefail
+          git diff --exit-code 4b5f27d3a2ca637c8935fb182c1364fb2e4250b2 HEAD -- . ':(exclude).github/workflows/vertex_patch16_promote.yml'
+          grep -Fx 'app_id: 50f79796-407c-4909-a7c2-8ed8d05d25b3' shorebird.yaml
+      - uses: shorebirdtech/setup-shorebird@8b1059ddb56a926f0146edf4133cc647775c162f
+      - name: Promote only verified Patch 16
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${SHOREBIRD_TOKEN:?Missing Shorebird token}"
+          shorebird patches list --release-version "$RELEASE_VERSION" | tee "$RUNNER_TEMP/patches-before.txt"
+          grep -E '838448[[:space:]]+#15[[:space:]]+track:[[:space:]]+stable' "$RUNNER_TEMP/patches-before.txt"
+          grep -E '838656[[:space:]]+#16[[:space:]]+track:[[:space:]]+staging' "$RUNNER_TEMP/patches-before.txt"
+          if grep -E '#(1[7-9]|[2-9][0-9]|[0-9]{3,})[[:space:]]+track:' "$RUNNER_TEMP/patches-before.txt"; then
+            echo 'Newer patch exists; refusing to promote'
+            exit 1
+          fi
+          shorebird patches promote --release-version "$RELEASE_VERSION" --patch-number 16
+          shorebird patches list --release-version "$RELEASE_VERSION" | tee "$RUNNER_TEMP/patches-after.txt"
+          grep -E '838656[[:space:]]+#16[[:space:]]+track:[[:space:]]+stable' "$RUNNER_TEMP/patches-after.txt"
