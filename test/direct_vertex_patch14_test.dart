@@ -60,6 +60,22 @@ void main() {
     expect(DirectVertexService.permits(config, 'owner'), isTrue);
   });
 
+  test('global rollout includes new authenticated accounts only when enabled', () {
+    final config = <String, dynamic>{
+      'enabled': true,
+      'allow_all_authenticated': true,
+    };
+    expect(DirectVertexService.permits(config, 'existing'), isTrue);
+    expect(DirectVertexService.permits(config, 'new-account'), isTrue);
+    expect(DirectVertexService.permits(config, null), isFalse);
+    expect(DirectVertexService.permits(config, ''), isFalse);
+    expect(DirectVertexService.permits({...config, 'enabled': false}, 'existing'), isFalse);
+    expect(DirectVertexService.permits({'allow_all_authenticated': true}, 'existing'), isFalse);
+    expect(DirectVertexService.permits({'enabled': true, 'allow_all_authenticated': 'true'}, 'existing'), isFalse);
+    expect(DirectVertexService.permits({'enabled': true, 'allow_all_authenticated': false, 'allowed_uids': ['owner']}, 'owner'), isTrue);
+    expect(DirectVertexService.permits({'enabled': true, 'allow_all_authenticated': false, 'allowed_uids': ['owner']}, 'other'), isFalse);
+  });
+
   test('disabled provider does not issue a live request', () async {
     final service = DisabledVertex();
     final router = AIBackendRouter(directVertexService: service);
