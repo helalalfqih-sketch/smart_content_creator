@@ -798,9 +798,90 @@ Parse.Cloud.define("aiGateway", async (request) => {
   return await handleGeminiRequest(request.params);
 });
 
-Parse.Cloud.define("aiVertexGateway", async (request) => {
-  return await handleGeminiRequest(request.params);
-});
+// Vertex uses its own OAuth identity and endpoint. Never silently bill through it.
+let vertexAccessToken = null;
+let vertexTokenExpiresAt = 0;
+let vertexTokenPending = null;
+async function getVertexAccessToken() {
+  if (vertexAccessToken && Date.now() < vertexTokenExpiresAt - 60000) return vertexAccessToken;
+  if (vertexTokenPending) return vertexTokenPending;
+  vertexTokenPending = (async () => {
+    const credentials = JSON.parse(process.env.VERTEX_SERVICE_ACCOUNT_JSON || "{}");
+    if (credentials.type !== "service_account" || credentials.client_email !==
+        "vertex-ai-gateway@smartcontentcreator2.iam.gserviceaccount.com" || !credentials.private_key) {
+      throw new Parse.Error(503, "Vertex credentials not configured");
+    }
+    const now = Math.floor(Date.now() / 1000);
+    const encode = value => Buffer.from(JSON.stringify(value)).toString("base64url");
+    const unsigned = encode({alg: "RS256", typ: "JWT"}) + "." + encode({
+      iss: credentials.client_email,
+      scope: "https://www.googleapis.com/auth/cloud-platform",
+      aud: "https://oauth2.googleapis.com/token",
+      iat: now, exp: now + 3600
+    });
+    const signature = crypto.sign("RSA-SHA256", Buffer.from(unsigned), credentials.private_key).toString("base64url");
+    const form = new URLSearchParams({grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: unsigned + "." + signature});
+    const response = await axios.post("https://oauth2.googleapis.com/token", form.toString(), {
+      timeout: 10000, headers: {"Content-Type": "application/x-www-form-urlencoded"}
+    });
+    if (!response.data?.access_token || !Number.isFinite(Number(response.data.expires_in))) {
+      throw new Parse.Error(503, "Vertex OAuth token unavailable");
+    }
+    vertexAccessToken = response.data.access_token;
+    vertexTokenExpiresAt = Date.now() + Number(response.data.expires_in) * 1000;
+    return vertexAccessToken;
+  })();
+  try { return await vertexTokenPending; } finally { vertexTokenPending = null; }
+}
+
+async function handleVertexRequest(request) {
+  // Explicit operator opt-in only after independently verifying billing/spend controls.
+  // This is NOT a spend cap or a free-tier detector.
+  if (process.env.VERTEX_REQUESTS_ENABLED !== "true") {
+    throw new Parse.Error(402, "Vertex requests disabled until billing and usage controls are verified");
+  }
+  const identity = await extractAuthUser(request);
+  // Restricted pilot: don't expose a billable endpoint to all authenticated users.
+  if (!identity || identity.admin !== true) {
+    throw new Parse.Error(403, "Vertex pilot requires an authorized administrator");
+  }
+  const model = process.env.VERTEX_MODEL || "";
+  const location = process.env.VERTEX_LOCATION || "global";
+  if (!/^gemini-[a-z0-9.-]+$/.test(model) || !/^(global|[a-z]+-[a-z]+[0-9]+)$/.test(location)) {
+    throw new Parse.Error(503, "Vertex model or location not configured");
+  }
+  const params = sanitizeGemini(request.params || {});
+  if (request.params?.image && !params.image) throw new Parse.Error(400, "Image exceeds gateway size limit");
+  if (!params.prompt && !params.image) throw new Parse.Error(400, "Prompt or image required");
+  if (params.image && !["image/jpeg", "image/png", "image/webp"].includes(params.mimeType)) {
+    throw new Parse.Error(400, "Unsupported image MIME type");
+  }
+  const contents = params.history.map(h => ({role: h.role, parts: [{text: h.content}]}));
+  const parts = [];
+  if (params.image) parts.push({inlineData: {mimeType: params.mimeType, data: params.image}});
+  if (params.prompt) parts.push({text: params.prompt});
+  contents.push({role: "user", parts});
+  const host = location === "global" ? "aiplatform.googleapis.com" : location + "-aiplatform.googleapis.com";
+  const url = "https://" + host + "/v1/projects/smartcontentcreator2/locations/" + location +
+    "/publishers/google/models/" + model + ":generateContent";
+  try {
+    const token = await getVertexAccessToken();
+    const response = await axios.post(url, {contents, generationConfig: {
+      temperature: params.temperature, maxOutputTokens: params.max_tokens
+    }}, {timeout: GEMINI_TIMEOUT, headers: {Authorization: "Bearer " + token, "Content-Type": "application/json"}});
+    const output = response.data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("").trim();
+    if (!output) throw new Parse.Error(502, "Empty Vertex response");
+    return {success: true, data: output, meta: {provider: "vertex_ai", model, status: "active"}};
+  } catch (error) {
+    const status = Number(error?.response?.status || error?.code);
+    const safeStatus = [400, 401, 402, 403, 404, 429, 500, 502, 503, 504].includes(status) ? status : 502;
+    // Never log tokens, credentials, image bytes or axios request configurations.
+    console.warn("[VERTEX_GATEWAY] request failed", safeStatus);
+    throw new Parse.Error(safeStatus, "Vertex request failed (http_" + safeStatus + ")");
+  }
+}
+
+Parse.Cloud.define("aiVertexGateway", handleVertexRequest);
 
 Parse.Cloud.define("aiGenerateText", async (request) => {
   return await handleGeminiRequest(request.params);
