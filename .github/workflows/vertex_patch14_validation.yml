@@ -204,6 +204,20 @@ jobs:
               Path(sys.argv[4]).write_text(json.dumps(report, indent=2) + "\n")
               print(json.dumps(report))
           PY
+      - name: Publish verified patch to staging only
+        if: github.event_name == 'push' && github.ref == 'refs/heads/migration/patch14-vertex-direct' && github.run_attempt == 1 && github.event.head_commit.message == 'Publish validated Vertex patch to staging only'
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Require the exact previously validated application source.
+          git diff --exit-code 29fb20a4a0b64f526459a63c1e17b97129b5c8cc HEAD -- . ':(exclude).github/workflows/vertex_patch14_validation.yml'
+          git diff --exit-code -- pubspec.lock
+          test -s "$RUNNER_TEMP/vertex-asset-compatibility.json"
+          python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["status"] == "compatible"' "$RUNNER_TEMP/vertex-asset-compatibility.json"
+          shorebird patch android --release-version "$RELEASE_VERSION" --track=staging --target lib/main.dart --allow-asset-diffs
+          shorebird patches list --release-version "$RELEASE_VERSION"
       - name: Remove temporary signing files
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks" android/key.properties
