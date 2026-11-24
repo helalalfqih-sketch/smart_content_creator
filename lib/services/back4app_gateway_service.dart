@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:get/get.dart';
@@ -33,70 +34,39 @@ class Back4AppGatewayService extends GetxService {
     double temperature = 0.7,
     String model = 'gemini-2.5-flash',
   }) async {
-    // 1️⃣ المحاولة الأولى: Vertex AI Gateway
-    try {
-      if (kDebugMode) print('🚀 [Back4App-Vertex]: Trying aiVertexGateway...');
-      
-      final url = Uri.parse('$_parseBaseUrl/functions/aiVertexGateway');
-      
-      final List<Map<String, String>>? formattedHistory = history?.map((h) {
-        return <String, String>{
-          'role': h['role'] == 'model' ? 'assistant' : (h['role'] ?? 'user'),
-          'content': h['content'] ?? '',
-        };
-      }).toList();
-
-      final body = {
-        'prompt': prompt,
-        'model': model,
-        'max_tokens': maxTokens,
-        'temperature': temperature,
-        if (formattedHistory != null && formattedHistory.isNotEmpty)
-          'history': formattedHistory,
-        if (image != null) 'image': image,
-        if (mimeType != null) 'mimeType': mimeType,
-      };
-
-      final response = await http.post(
-        url,
-        headers: _headers,
-        body: json.encode(body),
-      ).timeout(const Duration(seconds: 90));
-
-      if (kDebugMode) {
-        print('📡 [Back4App-Vertex]: Status: ${response.statusCode}');
-      }
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final result = data['result'];
-        if (result != null && result['success'] == true) {
-          final text = result['data'] ?? '';
-          final meta = result['meta'] ?? {};
-          if (kDebugMode) print('✅ [Back4App-Vertex]: SUCCESS via Vertex AI! Model: ${meta["model"]}');
-          return AiResult(
-            description: text,
-            provider: 'Vertex AI (${meta["model"] ?? model})',
-          );
-        }
-      }
-      
-      // Vertex returned non-200 or non-success, fall through to aiGateway
-      if (kDebugMode) print('⚠️ [Back4App-Vertex]: Vertex returned error, falling back to aiGateway...');
-    } catch (e) {
-      if (kDebugMode) print('⚠️ [Back4App-Vertex]: Vertex error: $e → Falling back to aiGateway...');
+    final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('VertexAI (401): Authentication required');
     }
-
-    // 2️⃣ Fallback: aiGateway (مفاتيح مجانية)
-    return generateText(
-      prompt,
-      history: history,
-      image: image,
-      mimeType: mimeType,
-      maxTokens: maxTokens,
-      temperature: temperature,
-      model: model,
-    );
+    final url = Uri.parse('$_parseBaseUrl/functions/aiVertexGateway');
+    final body = {
+      'firebaseIdToken': token,
+      'prompt': prompt,
+      'model': model,
+      'max_tokens': maxTokens,
+      'temperature': temperature,
+      if (history != null && history.isNotEmpty)
+        'history': history.map((h) => <String, String>{
+          'role': h['role'] == 'model' ? 'assistant' : (h['role'] ?? 'user'),
+          'content': h['content'] ?? h['text'] ?? '',
+        }).toList(),
+      if (image != null) 'image': image,
+      if (mimeType != null) 'mimeType': mimeType,
+    };
+    final response = await http.post(url, headers: _headers, body: json.encode(body))
+        .timeout(const Duration(seconds: 90));
+    final data = json.decode(response.body);
+    final result = data['result'];
+    if (response.statusCode == 200 && result is Map && result['success'] == true) {
+      final meta = result['meta'] ?? {};
+      final provider = meta['provider'] == 'vertex' ? 'Vertex AI' : 'Gemini';
+      return AiResult(description: result['data']?.toString() ?? '',
+          provider: '$provider (${meta["model"] ?? "unknown"})');
+    }
+    final code = result is Map ? result['code'] ?? response.statusCode : data['code'] ?? response.statusCode;
+    final message = result is Map ? result['error'] ?? 'Gateway failed' : data['error'] ?? 'Gateway failed';
+    // Server alone decides whether a verified fallback is permitted.
+    throw Exception('VertexAI ($code): $message');
   }
 
   /// 🧠 توليد نص عبر aiGateway (يستخدم تدوير المفاتيح التلقائي - Fallback فقط)
@@ -228,6 +198,7 @@ class Back4AppGatewayService extends GetxService {
     try {
       final url = Uri.parse('$_parseBaseUrl/functions/aiVertexGateway');
       final body = {
+        'firebaseIdToken': await FirebaseAuth.instance.currentUser?.getIdToken(),
         'prompt': 'Say the word OK only.',
         'model': 'gemini-2.5-flash',
         'max_tokens': 10,
@@ -245,8 +216,8 @@ class Back4AppGatewayService extends GetxService {
             final meta = result['meta'] ?? {};
             return {
               'success': true,
-              'path': 'Vertex AI (Primary)',
-              'provider': 'Vertex AI',
+              'path': meta['provider'] == 'vertex' ? 'Vertex AI (Primary)' : 'Gemini (Fallback)',
+              'provider': meta['provider'] == 'vertex' ? 'Vertex AI' : 'Gemini',
               'model': meta['model'] ?? 'gemini-2.5-flash',
               'keyIndex': null,
               'keyName': 'Google Vertex AI Service Account',
@@ -360,6 +331,7 @@ class Back4AppGatewayService extends GetxService {
     try {
       final url = Uri.parse('$_parseBaseUrl/functions/aiVertexGateway');
       final body = {
+        'firebaseIdToken': await FirebaseAuth.instance.currentUser?.getIdToken(),
         'prompt': 'Say the word OK only.',
         'model': 'gemini-2.5-flash',
         'max_tokens': 10,
@@ -376,7 +348,7 @@ class Back4AppGatewayService extends GetxService {
           final meta = result['meta'] ?? {};
           return {
             'success': true,
-            'provider': 'Vertex AI (بوابة أساسية)',
+            'provider': meta['provider'] == 'vertex' ? 'Vertex AI' : 'Gemini (Fallback)',
             'model': meta['model'] ?? 'gemini-2.5-flash',
             'keyName': 'Google Vertex Service Account',
             'latencyMs': sw.elapsedMilliseconds,
