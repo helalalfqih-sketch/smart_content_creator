@@ -204,6 +204,25 @@ jobs:
               Path(sys.argv[4]).write_text(json.dumps(report, indent=2) + "\n")
               print(json.dumps(report))
           PY
+      - name: Publish verified global eligibility patch to staging only
+        if: github.event_name == 'push' && github.ref == 'refs/heads/migration/patch15-vertex-all-accounts' && github.run_attempt == 1 && github.event.head_commit.message == 'Publish verified all-account patch to staging only'
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code 45896bd9fe95ab1143c1977912163b24102d4041 HEAD -- . ':(exclude).github/workflows/vertex_patch14_validation.yml'
+          git diff --exit-code -- pubspec.lock
+          test -s "$RUNNER_TEMP/vertex-asset-compatibility.json"
+          python3 -c 'import json,sys; assert json.load(open(sys.argv[1]))["status"] == "compatible"' "$RUNNER_TEMP/vertex-asset-compatibility.json"
+          shorebird patches list --release-version "$RELEASE_VERSION" | tee "$RUNNER_TEMP/patches-before.txt"
+          grep -E '838448[[:space:]]+#15[[:space:]]+track:[[:space:]]+stable' "$RUNNER_TEMP/patches-before.txt"
+          if grep -E '#(1[6-9]|[2-9][0-9]|[0-9]{3,})[[:space:]]+track:' "$RUNNER_TEMP/patches-before.txt"; then
+            echo 'A newer patch already exists; refusing duplicate publication'
+            exit 1
+          fi
+          shorebird patch android --release-version "$RELEASE_VERSION" --track=staging --target lib/main.dart --allow-asset-diffs
+          shorebird patches list --release-version "$RELEASE_VERSION"
       - name: Remove temporary signing files
         if: always()
         run: rm -f "$RUNNER_TEMP/release.jks" android/key.properties
