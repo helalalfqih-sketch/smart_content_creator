@@ -798,9 +798,119 @@ Parse.Cloud.define("aiGateway", async (request) => {
   return await handleGeminiRequest(request.params);
 });
 
-Parse.Cloud.define("aiVertexGateway", async (request) => {
-  return await handleGeminiRequest(request.params);
-});
+
+/**
+ * Vertex transport. Both potentially billable transports are disabled unless
+ * independently enabled by the operator after checking billing and quotas.
+ * The switches are NOT a Google Cloud hard spending cap.
+ */
+let vertexTokenCache = null;
+async function getVertexAccessToken() {
+  if (vertexTokenCache && vertexTokenCache.expiresAt > Date.now() + 60000) {
+    return vertexTokenCache.token;
+  }
+  const raw = process.env.VERTEX_SERVICE_ACCOUNT_JSON;
+  if (!raw) throw new Error("Vertex service account is not configured");
+  const account = JSON.parse(raw);
+  if (!account.client_email || !account.private_key) throw new Error("Invalid Vertex service account");
+  const now = Math.floor(Date.now() / 1000);
+  const tokenUrl = "https://oauth2.googleapis.com/token";
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const unsigned = encode({ alg: "RS256", typ: "JWT" }) + "." + encode({
+    iss: account.client_email,
+    scope: "https://www.googleapis.com/auth/cloud-platform",
+    aud: tokenUrl,
+    iat: now,
+    exp: now + 3600,
+  });
+  const assertion = unsigned + "." + crypto.sign("RSA-SHA256", Buffer.from(unsigned), account.private_key).toString("base64url");
+  const body = new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion });
+  const response = await axios.post(tokenUrl, body.toString(), {
+    timeout: 10000,
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+  });
+  const token = response.data && response.data.access_token;
+  if (!token) throw new Error("Vertex OAuth response has no token");
+  vertexTokenCache = {
+    token,
+    expiresAt: Date.now() + Math.min(Number(response.data.expires_in) || 300, 3600) * 1000,
+  };
+  return token;
+}
+
+function vertexFailure(code, error) {
+  return { success: false, code, error, meta: { provider: "vertex", status: "error" } };
+}
+
+async function handleVertexRequest(request) {
+  const uid = await deriveTrustedUserId(request);
+  if (!uid) return vertexFailure(401, "Authentication required for Vertex AI");
+  const raw = request.params || {};
+  const params = sanitizeGemini(raw);
+  if (!params.prompt && !params.image) return vertexFailure(400, "Prompt or image is required");
+  if (raw.image && !params.image) return vertexFailure(400, "Image exceeds gateway size limit");
+  if (params.image && !["image/jpeg", "image/png", "image/webp"].includes(params.mimeType)) {
+    return vertexFailure(400, "Unsupported image MIME type");
+  }
+  const fallbackAllowed = process.env.VERTEX_GEMINI_FALLBACK_ENABLED === "true";
+  let failure;
+  if (process.env.VERTEX_REQUESTS_ENABLED !== "true") {
+    failure = vertexFailure(412, "Vertex requests disabled until billing and quota are verified");
+  } else {
+    const project = process.env.VERTEX_PROJECT_ID || FIREBASE_PROJECT_ID;
+    const location = process.env.VERTEX_LOCATION || "global";
+    // The operator controls the model, not an untrusted client parameter.
+    const model = process.env.VERTEX_MODEL;
+    if (!/^[a-z][a-z0-9-]{4,62}$/.test(project) ||
+        !/^(global|[a-z]+-[a-z]+[0-9]+)$/.test(location) ||
+        !model || !/^gemini-[a-z0-9.-]+$/.test(model)) {
+      return vertexFailure(412, "Vertex project, location or approved Gemini model is not configured");
+    }
+    const host = location === "global" ? "aiplatform.googleapis.com" : location + "-aiplatform.googleapis.com";
+    const url = "https://" + host + "/v1/projects/" + project + "/locations/" + location +
+      "/publishers/google/models/" + model + ":generateContent";
+    const contents = params.history.map(h => ({ role: h.role, parts: [{ text: h.content }] }));
+    const parts = [];
+    if (params.image) parts.push({ inlineData: { mimeType: params.mimeType, data: params.image } });
+    if (params.prompt) parts.push({ text: params.prompt });
+    contents.push({ role: "user", parts });
+    const payload = { contents, generationConfig: { temperature: params.temperature, maxOutputTokens: params.max_tokens } };
+    if (typeof raw.system_persona === "string" && raw.system_persona.trim()) {
+      payload.systemInstruction = { parts: [{ text: raw.system_persona.slice(0, 12000) }] };
+    }
+    try {
+      const token = await getVertexAccessToken();
+      const response = await axios.post(url, payload, {
+        timeout: GEMINI_TIMEOUT,
+        headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+      });
+      const result = response.data?.candidates?.[0]?.content?.parts
+        ?.map(p => p.thought ? "" : (p.text || "")).join("").trim() || "";
+      if (!result) return vertexFailure(502, "Vertex returned no text");
+      return { success: true, data: result, meta: { provider: "vertex", model, status: "active" } };
+    } catch (err) {
+      const status = Number(err?.response?.status) || 502;
+      // Never serialize Axios errors, credentials, request headers, or image data.
+      console.warn("[VERTEX_GATEWAY] request failed", status);
+      failure = vertexFailure(status, "Vertex request failed (HTTP " + status + ")");
+    }
+  }
+  // No retry on ambiguous network failures, authentication or permission errors.
+  if (fallbackAllowed && [402, 429, 412].includes(failure.code)) {
+    try {
+      const result = await handleGeminiRequest(raw);
+      return { ...result, meta: { ...result.meta, provider: "gemini", fallback_from: "vertex", vertex_code: failure.code } };
+    } catch (err) {
+      const code = Number(err?.code) || 502;
+      return { ...vertexFailure(code, "Gemini fallback failed (code " + code + ")"), meta: {
+        provider: "gemini", fallback_from: "vertex", vertex_code: failure.code, status: "error"
+      } };
+    }
+  }
+  return failure;
+}
+
+Parse.Cloud.define("aiVertexGateway", handleVertexRequest);
 
 Parse.Cloud.define("aiGenerateText", async (request) => {
   return await handleGeminiRequest(request.params);
