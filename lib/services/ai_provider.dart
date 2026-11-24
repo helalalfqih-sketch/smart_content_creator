@@ -368,14 +368,14 @@ class AIProviderFactory {
     }
 
     if (FirebaseAiLogicService.directVertexEnabled) {
-      cancelToken?.throwIfCancellationRequested();
+      if (cancelToken?.isCancelled == true) throw cancelToken!.cancelError!;
       final service = Get.isRegistered<FirebaseAiLogicService>()
           ? Get.find<FirebaseAiLogicService>()
           : Get.put(FirebaseAiLogicService());
       final result = await service.generateText(
         prompt: safePrompt, history: history, systemPersona: systemPersona,
       );
-      cancelToken?.throwIfCancellationRequested();
+      if (cancelToken?.isCancelled == true) throw cancelToken!.cancelError!;
       if (result['success'] != true) {
         throw Exception(result['error'] ?? 'Vertex text request failed');
       }
@@ -500,14 +500,14 @@ class AIProviderFactory {
     dio.CancelToken? cancelToken,
   }) async {
     if (FirebaseAiLogicService.directVertexEnabled) {
-      cancelToken?.throwIfCancellationRequested();
+      if (cancelToken?.isCancelled == true) throw cancelToken!.cancelError!;
       final service = Get.isRegistered<FirebaseAiLogicService>()
           ? Get.find<FirebaseAiLogicService>()
           : Get.put(FirebaseAiLogicService());
       final result = await service.analyzeProductVision(
         prompt: prompt, imageBytes: bytes,
       );
-      cancelToken?.throwIfCancellationRequested();
+      if (cancelToken?.isCancelled == true) throw cancelToken!.cancelError!;
       if (result['success'] != true) {
         throw Exception(result['error'] ?? 'Vertex vision request failed');
       }
