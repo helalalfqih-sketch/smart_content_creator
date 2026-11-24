@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'firebase_ai_logic_service.dart';
+import 'direct_vertex_service.dart';
 import 'back4app_gateway_service.dart';
 import 'manus_ai_service.dart';
 import 'ai_provider.dart';
@@ -28,12 +29,14 @@ import 'serpapi_gateway_service.dart';
 /// - `"manus"` → ManusAiService (Manus API v2 Gateway)
 /// - `"openrouter"` → Claude Opus 5.5 on Google Vertex using a local user key
 class AIBackendRouter extends GetxService {
+  final DirectVertexService _directVertexService;
   final AIProvider? _openRouterService;
   final AIProvider? _serpApiService;
   final String Function()? _openRouterKeyReader;
 
-  AIBackendRouter({AIProvider? openRouterService, AIProvider? serpApiService, String Function()? openRouterKeyReader})
-      : _openRouterService = openRouterService,
+  AIBackendRouter({AIProvider? openRouterService, AIProvider? serpApiService, String Function()? openRouterKeyReader, DirectVertexService? directVertexService})
+      : _directVertexService = directVertexService ?? DirectVertexService(),
+        _openRouterService = openRouterService,
         _serpApiService = serpApiService,
         _openRouterKeyReader = openRouterKeyReader;
 
@@ -41,12 +44,13 @@ class AIBackendRouter extends GetxService {
   // A removed saved provider must require an explicit selection, never silently
   // move a user onto a paid provider or reactivate a hidden one.
   static const String defaultBackend = 'unselected';
-  static const List<String> chatBackends = ['openrouter', 'serpapi'];
+  static const List<String> chatBackends = [DirectVertexService.backend, 'openrouter', 'serpapi'];
   static String normalizeChatBackend(String? value) =>
       chatBackends.contains(value) ? value! : defaultBackend;
 
   /// القيم المسموحة
   static const List<String> validBackends = [
+    DirectVertexService.backend,
     'firebase_ai',
     'backend',
     'manus',
@@ -62,6 +66,7 @@ class AIBackendRouter extends GetxService {
     'firebase_ai': 'gemini_primary',
     'backend': 'gemini_primary',
     'manus': 'manus',
+    DirectVertexService.backend: 'vertex_project_billing',
     'openrouter': 'openrouter_paid',
     'serpapi': 'serpapi_paid',
   };
@@ -107,6 +112,8 @@ class AIBackendRouter extends GetxService {
   /// 🔄 تبديل مسار الذكاء الاصطناعي وتحديثه في Firestore
   Future<bool> switchBackend(String newBackend) async {
     if (!chatBackends.contains(newBackend)) return false;
+    if (newBackend == DirectVertexService.backend &&
+        !await _directVertexService.isAllowed()) return false;
     if (newBackend == 'openrouter' && !_hasUsableOpenRouterKey()) return false;
     if (newBackend == 'serpapi') {
       if (!Get.isRegistered<SerpApiGatewayService>() ||
@@ -118,7 +125,7 @@ class AIBackendRouter extends GetxService {
     currentBackend.value = newBackend;
     if (Get.isRegistered<AppStorageService>()) {
       final storage = Get.find<AppStorageService>();
-      if (newBackend == 'openrouter' || newBackend == 'serpapi') {
+      if (chatBackends.contains(newBackend)) {
         await storage.writeString(_localBackendStorageKey, newBackend);
       } else {
         await storage.remove(_localBackendStorageKey);
@@ -128,7 +135,7 @@ class AIBackendRouter extends GetxService {
     final uid = currentUserId;
     // OpenRouter is intentionally local: Firestore rules do not accept this
     // backend value, and the paid API key never belongs in the user document.
-    if (uid != null && newBackend != 'openrouter' && newBackend != 'serpapi') {
+    if (uid != null && !chatBackends.contains(newBackend)) {
       try {
         await FirebaseFirestore.instance.collection('users').doc(uid).update({
           'ai_backend': newBackend,
@@ -326,6 +333,8 @@ class AIBackendRouter extends GetxService {
     required Future<Map<String, dynamic>> Function() requestAction,
     bool autoRetry = true,
   }) async {
+    // No automatic retry or fallback for direct Vertex; preserve typed errors.
+    if (backend == DirectVertexService.backend) return await requestAction();
     // 1️⃣ إذا كان المزود في فترة انتظار طويلة (> 4 ثوانٍ)، نرجع فوراً لمنع تعليق التطبيق
     if (isBackendCoolingDown(backend)) {
       final remaining = remainingCooldownSeconds(backend);
@@ -417,6 +426,28 @@ class AIBackendRouter extends GetxService {
     Map<String, Object?>? templateInputs,
   }) {
     if (backend == defaultBackend) return Future.value(_chatProviderRequired());
+    if (backend == DirectVertexService.backend) {
+      if (templateId != null) {
+        return Future.value(DirectVertexService.failure(const AiRequestException(
+          'unsupported_template', 'القالب السحابي غير متاح في مسار Vertex المباشر.',
+        )));
+      }
+      final images = <Uint8List>[];
+      if (image != null) {
+        try {
+          images.add(base64Decode(image));
+        } catch (_) {
+          return Future.value(DirectVertexService.failure(const AiRequestException(
+            'unsupported_media', 'تعذر قراءة الصورة المرفقة.',
+          )));
+        }
+      }
+      return _directVertexService.generate(
+        prompt: prompt, history: history, images: images,
+        systemPersona: systemPersona, isModificationMode: isModificationMode,
+        maxTokens: maxTokens, temperature: temperature,
+      );
+    }
     if (backend == 'serpapi') {
       if (image != null) return Future.value(_serpApiImageUnsupported());
       return _routeToSerpApi(prompt);
@@ -470,6 +501,12 @@ class AIBackendRouter extends GetxService {
     dio.CancelToken? cancelToken,
   }) {
     if (backend == defaultBackend) return Future.value(_chatProviderRequired());
+    if (backend == DirectVertexService.backend) {
+      return _routeToDirectVertexVision(
+        prompt: prompt, images: [imageBytes, ...additionalImages],
+        history: history, systemPersona: systemPersona, cancelToken: cancelToken,
+      );
+    }
     if (backend == 'serpapi') return Future.value(_serpApiImageUnsupported());
     if (backend == 'openrouter') {
       return _routeToOpenRouter(
@@ -509,17 +546,32 @@ class AIBackendRouter extends GetxService {
     }
   }
 
+  Future<Map<String, dynamic>> _routeToDirectVertexVision({
+    required String prompt,
+    required List<Uint8List> images,
+    List<Map<String, String>>? history,
+    String? systemPersona,
+    dio.CancelToken? cancelToken,
+  }) async {
+    if (cancelToken?.isCancelled == true) throw cancelToken!.cancelError!;
+    final result = await _directVertexService.generate(
+      prompt: prompt, images: images, history: history, systemPersona: systemPersona,
+    );
+    if (cancelToken?.isCancelled == true) throw cancelToken!.cancelError!;
+    return result;
+  }
+
   /// 💬 توليد نص (نقطة الدخول الرئيسية مع التبديل التلقائي الذكي)
   static Map<String, dynamic> _chatProviderRequired() {
     const error = AiRequestException('provider_selection_required',
-        'اختر OpenRouter أو SerpApi من قائمة المحركات أولاً.');
+        'اختر Vertex أو OpenRouter أو SerpApi من قائمة المحركات أولاً.');
     return {'success': false, 'error': error.message, 'request_failure': error,
       'meta': {'provider': 'unselected', 'status': 'selection_required'}};
   }
 
   static Map<String, dynamic> _serpApiImageUnsupported() {
     const error = AiRequestException('unsupported_media',
-        'للبحث بالصورة افتح الأدوات الذكية ← عدسة Google. لتحليل محتوى الصورة اختر OpenRouter.');
+        'للبحث بالصورة افتح الأدوات الذكية ← عدسة Google. لتحليل محتوى الصورة اختر Vertex أو OpenRouter.');
     return {'success': false, 'error': error.message, 'request_failure': error,
       'meta': {'provider': 'serpapi', 'status': 'unsupported_media'}};
   }
