@@ -531,9 +531,12 @@ class ChatInputArea extends StatelessWidget {
       final Color chipColor;
       final String chipLabel;
 
-      if (backend == 'openrouter') {
+      if (backend == 'vertex_direct') {
+        chipColor = const Color(0xFF8B5CF6);
+        chipLabel = "Gemini • Vertex";
+      } else if (backend == 'openrouter') {
         chipColor = const Color(0xFFFF8A65);
-        chipLabel = "Opus 5.5 • Vertex 🟠";
+        chipLabel = "Opus 5.5 • OpenRouter";
       } else if (backend == 'serpapi') {
         chipColor = const Color(0xFF00BFA5);
         chipLabel = "Google AI • SerpApi";
@@ -585,6 +588,7 @@ class ChatInputArea extends StatelessWidget {
         ? Get.find<AIBackendRouter>()
         : null;
     final backend = router?.currentBackend.value;
+    if (backend == 'vertex_direct') return "اسأل Gemini عبر Vertex...";
     if (backend == 'openrouter') return "اسأل Claude Opus 5.5...";
     if (backend == 'serpapi') return "ابحث مع Google AI Mode...";
     return "اختر مزودًا للمتابعة...";
@@ -641,9 +645,18 @@ class ChatInputArea extends StatelessWidget {
                   ),
 
 
-                  // 2. Claude Opus 5.5 through OpenRouter on Google Vertex
+                  // Preferred direct route; requires explicit project-admin enablement.
                   Obx(() => _buildBackendMenuItem(
-                    label: "Claude Opus 5.5 • Google Vertex 🟠",
+                    label: "Gemini • Google Vertex AI",
+                    sublabel: "اتصال مباشر عبر Firebase • نص وصور • حسب الفوترة",
+                    icon: Icons.auto_awesome_rounded,
+                    backendKey: 'vertex_direct',
+                    aiRouter: aiRouter,
+                  )),
+
+                  // Claude Opus 5.5 through OpenRouter
+                  Obx(() => _buildBackendMenuItem(
+                    label: "Claude Opus 5.5 • OpenRouter 🟠",
                     sublabel: "عبر OpenRouter • نص وتحليل صور",
                     icon: Icons.auto_awesome_rounded,
                     backendKey: 'openrouter',
@@ -669,10 +682,14 @@ class ChatInputArea extends StatelessWidget {
                     final IconData statusIcon;
                     final String statusText;
 
-                    if (current == 'openrouter') {
+                    if (current == 'vertex_direct') {
+                      statusColor = const Color(0xFF8B5CF6);
+                      statusIcon = Icons.auto_awesome_rounded;
+                      statusText = "المحرك المحدد: Gemini عبر Vertex المباشر";
+                    } else if (current == 'openrouter') {
                       statusColor = const Color(0xFFFF8A65);
                       statusIcon = Icons.auto_awesome_rounded;
-                      statusText = "المحرك النشط: Claude Opus 5.5 عبر Google Vertex";
+                      statusText = "المحرك النشط: Claude Opus 5.5 عبر OpenRouter";
                     } else if (current == 'serpapi') {
                       statusColor = const Color(0xFF00BFA5);
                       statusIcon = Icons.auto_awesome_rounded;
@@ -680,7 +697,7 @@ class ChatInputArea extends StatelessWidget {
                     } else {
                       statusColor = const Color(0xFF00E5FF);
                       statusIcon = Icons.auto_awesome_rounded;
-                      statusText = "اختر OpenRouter أو SerpApi للمتابعة";
+                      statusText = "اختر Vertex أو OpenRouter أو SerpApi للمتابعة";
                     }
 
                     return Container(
@@ -730,7 +747,7 @@ class ChatInputArea extends StatelessWidget {
   }) {
     final bool isSelected = aiRouter.currentBackend.value == backendKey;
     final Color accentColor;
-    if (backendKey == 'firebase_ai') {
+    if (backendKey == 'firebase_ai' || backendKey == 'vertex_direct') {
       accentColor = const Color(0xFF8B5CF6);
     } else if (backendKey == 'openrouter') {
       accentColor = const Color(0xFFFF8A65);
@@ -757,14 +774,16 @@ class ChatInputArea extends StatelessWidget {
           if (!switched) {
             Get.back();
             SnackBarUtils.showWarning(
-              backendKey == 'serpapi' ? "لم يكتمل ربط SerpApi" : "مفتاح OpenRouter مطلوب",
-              backendKey == 'serpapi' ? "افتح إعدادات الخدمات ← Google AI Mode لعرض حالة الحساب والاتصال." : "أضف مفتاح sk-or-v1-... من الإعدادات أولاً، ثم اختر Claude Opus 5.5.",
+              backendKey == 'vertex_direct' ? "Vertex غير مفعّل" : backendKey == 'serpapi' ? "لم يكتمل ربط SerpApi" : "مفتاح OpenRouter مطلوب",
+              backendKey == 'vertex_direct' ? "يلزم تفعيل الخدمة لهذا الحساب من المسؤول بعد مراجعة الفوترة." : backendKey == 'serpapi' ? "افتح إعدادات الخدمات ← Google AI Mode لعرض حالة الحساب والاتصال." : "أضف مفتاح sk-or-v1-... من الإعدادات أولاً، ثم اختر Claude Opus 5.5.",
             );
             return;
           }
           Get.back();
-          final switchMsg = backendKey == 'openrouter'
-              ? "تم التبديل إلى Claude Opus 5.5 عبر Google Vertex 🟠"
+          final switchMsg = backendKey == 'vertex_direct'
+              ? "تم التبديل إلى Gemini عبر Vertex المباشر"
+              : backendKey == 'openrouter'
+              ? "تم التبديل إلى Claude Opus 5.5 عبر OpenRouter 🟠"
               : "تم التبديل إلى Google AI Mode عبر SerpApi";
           SnackBarUtils.showSuccess("تم تبديل المحرك", switchMsg);
         },
