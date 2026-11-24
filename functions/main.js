@@ -798,9 +798,85 @@ Parse.Cloud.define("aiGateway", async (request) => {
   return await handleGeminiRequest(request.params);
 });
 
-Parse.Cloud.define("aiVertexGateway", async (request) => {
-  return await handleGeminiRequest(request.params);
-});
+// Vertex can incur charges. Fail closed until the operator explicitly approves usage.
+let vertexTokenCache = null;
+
+async function vertexAccessToken() {
+  if (vertexTokenCache && vertexTokenCache.expiresAt > Date.now() + 60000) {
+    return vertexTokenCache.token;
+  }
+  const raw = process.env.VERTEX_SERVICE_ACCOUNT_JSON;
+  if (!raw) throw new Parse.Error(503, "Vertex credentials are not configured");
+  let account;
+  try {
+    account = JSON.parse(raw);
+    if (!account.client_email || !account.private_key) throw new Error("missing credentials");
+  } catch (_) {
+    throw new Parse.Error(503, "Invalid Vertex credential configuration");
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const encode = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  const unsigned = encode({ alg: "RS256", typ: "JWT" }) + "." + encode({
+    iss: account.client_email,
+    scope: "https://www.googleapis.com/auth/cloud-platform",
+    aud: "https://oauth2.googleapis.com/token",
+    iat: now,
+    exp: now + 3600
+  });
+  const signature = crypto.sign("RSA-SHA256", Buffer.from(unsigned), account.private_key).toString("base64url");
+  const response = await axios.post("https://oauth2.googleapis.com/token",
+    new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: unsigned + "." + signature }).toString(),
+    { timeout: 15000, headers: { "Content-Type": "application/x-www-form-urlencoded" } });
+  if (!response.data?.access_token) throw new Parse.Error(503, "Vertex OAuth token unavailable");
+  vertexTokenCache = { token: response.data.access_token, expiresAt: Date.now() + Number(response.data.expires_in || 3600) * 1000 };
+  return vertexTokenCache.token;
+}
+
+async function handleVertexRequest(request) {
+  if (process.env.VERTEX_ALLOW_BILLABLE_REQUESTS !== "true") {
+    throw new Parse.Error(402, "Vertex disabled pending explicit billing approval");
+  }
+  if (!await deriveTrustedUserId(request)) {
+    throw new Parse.Error(403, "Authenticated user required");
+  }
+  const project = process.env.VERTEX_PROJECT_ID || FIREBASE_PROJECT_ID;
+  const location = process.env.VERTEX_LOCATION || "global";
+  const model = process.env.VERTEX_MODEL;
+  if (!model || !/^[a-z0-9-]+$/.test(model) || !/^[a-z0-9-]+$/.test(project) || !/^[a-z0-9-]+$/.test(location)) {
+    throw new Parse.Error(503, "Vertex model or project configuration invalid");
+  }
+  const params = sanitizeGemini(request.params || {});
+  if (request.params?.image && !params.image) throw new Parse.Error(400, "Image exceeds gateway limit");
+  if (!params.prompt && !params.image) throw new Parse.Error(400, "Prompt or image required");
+  const contents = params.history.map(h => ({ role: h.role, parts: [{ text: h.content }] }));
+  const parts = [];
+  if (params.image) {
+    if (!["image/jpeg", "image/png", "image/webp"].includes(params.mimeType)) throw new Parse.Error(400, "Unsupported image format");
+    parts.push({ inlineData: { mimeType: params.mimeType, data: params.image } });
+  }
+  if (params.prompt) parts.push({ text: params.prompt });
+  contents.push({ role: "user", parts });
+  const host = location === "global" ? "aiplatform.googleapis.com" : location + "-aiplatform.googleapis.com";
+  const url = "https://" + host + "/v1/projects/" + project + "/locations/" + location + "/publishers/google/models/" + model + ":generateContent";
+  try {
+    const token = await vertexAccessToken();
+    const response = await axios.post(url, {
+      contents,
+      generationConfig: { temperature: params.temperature, maxOutputTokens: Math.min(params.max_tokens, 2048) },
+      ...(request.params?.system_persona ? { systemInstruction: { parts: [{ text: String(request.params.system_persona).slice(0, 12000) }] } } : {})
+    }, { timeout: GEMINI_TIMEOUT, headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" } });
+    const text = response.data?.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text || "").join("\n").trim();
+    if (!text) throw new Parse.Error(502, "Empty Vertex response");
+    return { success: true, data: text, meta: { provider: "vertex", model, status: "active" } };
+  } catch (error) {
+    const status = error?.response?.status || error?.code || 503;
+    // Never log credentials, tokens, prompts, or upstream request objects.
+    console.error("[VERTEX_GATEWAY] status:", status);
+    throw new Parse.Error(Number.isInteger(status) ? status : 503, "Vertex request failed");
+  }
+}
+
+Parse.Cloud.define("aiVertexGateway", handleVertexRequest);
 
 Parse.Cloud.define("aiGenerateText", async (request) => {
   return await handleGeminiRequest(request.params);
