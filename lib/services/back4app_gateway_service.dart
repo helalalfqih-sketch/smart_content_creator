@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:get/get.dart';
@@ -46,7 +47,9 @@ class Back4AppGatewayService extends GetxService {
         };
       }).toList();
 
+      final firebaseIdToken = await FirebaseAuth.instance.currentUser?.getIdToken();
       final body = {
+        if (firebaseIdToken != null) 'firebaseIdToken': firebaseIdToken,
         'prompt': prompt,
         'model': model,
         'max_tokens': maxTokens,
