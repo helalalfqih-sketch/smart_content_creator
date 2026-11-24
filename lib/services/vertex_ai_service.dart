@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:dio/dio.dart' as dio;
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
@@ -172,7 +173,9 @@ class VertexAiService extends GetxService implements AIProvider {
         };
       }).toList();
 
+      final firebaseIdToken = await FirebaseAuth.instance.currentUser?.getIdToken();
       final body = <String, dynamic>{
+        if (firebaseIdToken != null) 'firebaseIdToken': firebaseIdToken,
         'prompt': prompt,
         'model': model ?? _defaultModel,
         'max_tokens': maxTokens,
