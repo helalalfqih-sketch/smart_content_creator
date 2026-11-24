@@ -114,6 +114,7 @@ class AIBackendRouter extends GetxService {
 
   /// 🧠 الحصول على مسار المستخدم الحالي من Firestore (استعلام مباشر)
   Future<String> resolveBackend() async {
+    if (FirebaseAiLogicService.directVertexEnabled) return 'firebase_ai';
     try {
       final uid = currentUserId;
       if (uid == null) {
@@ -441,7 +442,7 @@ class AIBackendRouter extends GetxService {
     );
 
     // 🔀 Smart Auto-Failover: إذا فشل المحرك الأساسي بسبب الحصة (وليس Auth/App Check)، نتحول فوراً لمحرّك من حوض حصة مستقل
-    if (enableAutoFailover &&
+    if (!FirebaseAiLogicService.directVertexEnabled && enableAutoFailover &&
         result['success'] != true &&
         !isAppCheckOrAuthError(result['error']?.toString()) &&
         (result['is_throttled'] == true ||
@@ -562,7 +563,7 @@ class AIBackendRouter extends GetxService {
     );
 
     // 🔀 Smart Auto-Failover: إذا فشل المحرك الأساسي بسبب الحصة (وليس Auth/App Check)، نتحول فوراً لمحرّك من حوض حصة مستقل
-    if (enableAutoFailover &&
+    if (!FirebaseAiLogicService.directVertexEnabled && enableAutoFailover &&
         result['success'] != true &&
         !isAppCheckOrAuthError(result['error']?.toString()) &&
         (result['is_throttled'] == true ||

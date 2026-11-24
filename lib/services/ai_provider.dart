@@ -16,6 +16,7 @@ import 'azure_openai_service.dart';
 import 'ai/google_ai_mode_service.dart';
 import 'back4app_gateway_service.dart';
 import 'vertex_ai_service.dart';
+import 'firebase_ai_logic_service.dart';
 
 abstract class AIProvider {
   Future<AiResult> generateText(String prompt,
@@ -366,6 +367,24 @@ class AIProviderFactory {
           "${safePrompt.substring(0, maxPayloadLimit)}\n\n...[Truncated for safety]...";
     }
 
+    if (FirebaseAiLogicService.directVertexEnabled) {
+      if (cancelToken?.isCancelled == true) throw cancelToken!.cancelError!;
+      final service = Get.isRegistered<FirebaseAiLogicService>()
+          ? Get.find<FirebaseAiLogicService>()
+          : Get.put(FirebaseAiLogicService());
+      final result = await service.generateText(
+        prompt: safePrompt, history: history, systemPersona: systemPersona,
+      );
+      if (cancelToken?.isCancelled == true) throw cancelToken!.cancelError!;
+      if (result['success'] != true) {
+        throw Exception(result['error'] ?? 'Vertex text request failed');
+      }
+      final res = AiResult(description: result['data'].toString(),
+          provider: FirebaseAiLogicService.providerName);
+      _updateLastTextProvider(res.provider);
+      return res;
+    }
+
     // ☁️ [BACK4APP PRIMARY]: Try Back4App Gateway FIRST (18 keys with rotation)
     // هذا يضمن الحصول على سرعة Vertex AI وعدم تشتيت المستخدم بتأخير دوران المفاتيح المحلية
     try {
@@ -480,6 +499,24 @@ class AIProviderFactory {
     int? maxTokens,
     dio.CancelToken? cancelToken,
   }) async {
+    if (FirebaseAiLogicService.directVertexEnabled) {
+      if (cancelToken?.isCancelled == true) throw cancelToken!.cancelError!;
+      final service = Get.isRegistered<FirebaseAiLogicService>()
+          ? Get.find<FirebaseAiLogicService>()
+          : Get.put(FirebaseAiLogicService());
+      final result = await service.analyzeProductVision(
+        prompt: prompt, imageBytes: bytes,
+      );
+      if (cancelToken?.isCancelled == true) throw cancelToken!.cancelError!;
+      if (result['success'] != true) {
+        throw Exception(result['error'] ?? 'Vertex vision request failed');
+      }
+      final res = AiResult(description: result['data'].toString(),
+          provider: FirebaseAiLogicService.providerName);
+      _updateLastImageProvider(res.provider);
+      return res;
+    }
+
     // ☁️ [BACK4APP VISION PRIMARY]: Try Back4App Gateway FIRST for image analysis
     try {
       final gateway = Get.find<Back4AppGatewayService>();

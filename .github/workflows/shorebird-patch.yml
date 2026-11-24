@@ -1,0 +1,89 @@
+name: Flutter checks and Shorebird dry run
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'test/**'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/shorebird-patch.yml'
+  workflow_dispatch:
+    inputs:
+      validate_patch:
+        description: 'Dry run only; no upload'
+        type: boolean
+        default: false
+      release_source_verified:
+        description: 'I verified the original release source, Patch 14 changes and build flags'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  flutter-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - run: flutter analyze --no-fatal-warnings --no-fatal-infos
+      - run: flutter test --dart-define=ENABLE_DIRECT_VERTEX_AI=true test/direct_vertex_routing_test.dart
+
+  patch-dry-run:
+    if: github.event_name == 'workflow_dispatch' && inputs.validate_patch && inputs.release_source_verified && github.ref_name == 'migration/firebase-agent-platform-direct'
+    needs: flutter-checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: shorebirdtech/setup-shorebird@v1
+      - name: Configure Android signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          : "${KEYSTORE_BASE64:?Missing keystore}" "${KEYSTORE_PASSWORD:?Missing store password}" "${KEY_ALIAS:?Missing alias}" "${KEY_PASSWORD:?Missing key password}"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          def escape(value):
+              return value.replace('\\', '\\\\').replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t').replace(' ', '\\ ').replace('=', '\\=').replace(':', '\\:').replace('#', '\\#').replace('!', '\\!')
+          values = {
+              'storeFile': os.path.join(os.environ['RUNNER_TEMP'], 'release.jks'),
+              'storePassword': os.environ['KEYSTORE_PASSWORD'],
+              'keyAlias': os.environ['KEY_ALIAS'],
+              'keyPassword': os.environ['KEY_PASSWORD'],
+          }
+          Path('android/key.properties').write_text(''.join(f'{k}={escape(v)}\n' for k,v in values.items()), encoding='utf-8')
+          PY
+      - name: Validate existing Android release (no publication)
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        run: |
+          set -euo pipefail
+          : "${SHOREBIRD_TOKEN:?Missing Shorebird API key}"
+          shorebird patch android --release-version=1.3.1-rc.2+8 --track=staging --dry-run
+      - name: Remove temporary signing files
+        if: always()
+        run: rm -f "$RUNNER_TEMP/release.jks" android/key.properties

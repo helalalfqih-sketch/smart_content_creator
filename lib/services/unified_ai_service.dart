@@ -15,6 +15,7 @@ import '../core/utils/json_utils.dart';
 import '../core/utils/image_utils.dart';
 import './serpapi_services.dart';
 import 'ai_backend_router.dart';
+import 'firebase_ai_logic_service.dart';
 
 import '../ai/core/agent_models.dart';
 import '../models/brand_identity_model.dart';
@@ -497,6 +498,15 @@ NO MARKDOWN. NO EXTRA TEXT.
 
     // ⚡ تصغير الصورة وتشفيرها لتقليل استهلاك التوكنز والوقت
     final bytes = await ImageUtils.compressAndResizeForVision(image);
+
+    // A direct Vertex failure must not silently trigger other billable providers.
+    if (FirebaseAiLogicService.directVertexEnabled) {
+      final result = await AIProviderFactory.analyzeWithSmartFallback(
+        bytes, prompt, history: history, cancelToken: cancelToken,
+      );
+      lastUsedProvider = result.provider;
+      return result;
+    }
 
     try {
       // 🚀 استخدام نظام التبديل الذكي للرؤية (Vision Smart Fallback)

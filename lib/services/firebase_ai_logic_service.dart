@@ -16,7 +16,20 @@ class FirebaseAiLogicService extends GetxService {
   TemplateGenerativeModel? _templateModelInstance;
   ChatSession? _chatSession;
 
-  static const String _defaultModel = 'gemini-3.6-flash';
+  // Explicit build-time opt-in: Vertex/Agent Platform requests are billable.
+  // Keep disabled until the project owner has approved billing and App Check.
+  static const bool directVertexEnabled = bool.fromEnvironment(
+    'ENABLE_DIRECT_VERTEX_AI',
+    defaultValue: false,
+  );
+  static const String _defaultModel = 'gemini-3.8-flash';
+
+  static String get providerName =>
+      directVertexEnabled ? 'firebase_agent_platform' : 'firebase_ai_logic';
+
+  FirebaseAI _api() => directVertexEnabled
+      ? FirebaseAI.agentPlatform(location: 'global')
+      : FirebaseAI.googleAI();
 
   /// ⚙️ مفتاح تفعيل استدعاء قوالب البرومبت السحابية (Wave 1A)
   /// - `false`: الحفاظ على السلوك المحلي الحالي (System Instructions محلية عبر GenerativeModel)
@@ -70,7 +83,7 @@ class FirebaseAiLogicService extends GetxService {
       return _defaultModelInstance!;
     }
 
-    final model = FirebaseAI.googleAI().generativeModel(
+    final model = _api().generativeModel(
       model: _defaultModel,
       systemInstruction: Content.system(systemText),
       generationConfig: (maxTokens != null || temperature != null)
@@ -94,7 +107,7 @@ class FirebaseAiLogicService extends GetxService {
   /// ☁️ تهيئة نموذج القوالب السحابية (Template Generative Model)
   TemplateGenerativeModel _getTemplateModel() {
     _templateModelInstance ??=
-        FirebaseAI.googleAI().templateGenerativeModel();
+        _api().templateGenerativeModel();
     return _templateModelInstance!;
   }
 
@@ -135,7 +148,7 @@ class FirebaseAiLogicService extends GetxService {
       if (history != null && history.isNotEmpty) {
         _chatSession = model.startChat(
           history: history.map((h) {
-            return Content(h['role'] ?? 'user', [TextPart(h['text'] ?? '')]);
+            return Content(h['role'] == 'assistant' || h['role'] == 'model' ? 'model' : 'user', [TextPart(h['text'] ?? h['content'] ?? '')]);
           }).toList(),
         );
 
@@ -148,7 +161,7 @@ class FirebaseAiLogicService extends GetxService {
           'success': true,
           'data': text,
           'meta': {
-            'provider': 'firebase_ai_logic',
+            'provider': providerName,
             'model': _defaultModel,
             'status': 'active',
             'is_modification_mode': isModificationMode,
@@ -166,7 +179,7 @@ class FirebaseAiLogicService extends GetxService {
         'success': true,
         'data': text,
         'meta': {
-          'provider': 'firebase_ai_logic',
+          'provider': providerName,
           'model': _defaultModel,
           'status': 'active',
           'is_modification_mode': isModificationMode,
@@ -178,7 +191,7 @@ class FirebaseAiLogicService extends GetxService {
         'success': false,
         'error': e.toString(),
         'meta': {
-          'provider': 'firebase_ai_logic',
+          'provider': providerName,
           'model': _defaultModel,
           'status': 'error',
         },
@@ -219,7 +232,7 @@ class FirebaseAiLogicService extends GetxService {
         'success': true,
         'data': text,
         'meta': {
-          'provider': 'firebase_ai_template',
+          'provider': '${providerName}_template',
           'template_id': templateId,
           'status': 'active',
         },
@@ -232,7 +245,7 @@ class FirebaseAiLogicService extends GetxService {
         'success': false,
         'error': e.toString(),
         'meta': {
-          'provider': 'firebase_ai_template',
+          'provider': '${providerName}_template',
           'template_id': templateId,
           'status': 'error',
         },
@@ -261,7 +274,7 @@ class FirebaseAiLogicService extends GetxService {
         'success': true,
         'data': text,
         'meta': {
-          'provider': 'firebase_ai_logic',
+          'provider': providerName,
           'model': _defaultModel,
           'status': 'active',
         },
@@ -272,7 +285,7 @@ class FirebaseAiLogicService extends GetxService {
         'success': false,
         'error': e.toString(),
         'meta': {
-          'provider': 'firebase_ai_logic',
+          'provider': providerName,
           'model': _defaultModel,
           'status': 'error',
         },
