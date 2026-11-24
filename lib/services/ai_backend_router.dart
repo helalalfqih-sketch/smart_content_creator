@@ -20,7 +20,7 @@ import '../controllers/chat_history_controller.dart';
 /// - `"manus"` → ManusAiService (Manus API v2 Gateway)
 class AIBackendRouter extends GetxService {
   /// القيمة الافتراضية لمسار الذكاء الاصطناعي
-  static const String defaultBackend = 'firebase_ai';
+  static const String defaultBackend = 'backend';
 
   /// القيم المسموحة
   static const List<String> validBackends = ['firebase_ai', 'backend', 'manus'];
@@ -29,7 +29,7 @@ class AIBackendRouter extends GetxService {
   /// يمنع استهلاك محاولات فاشلة على نفس الحصة عند نفاذ الرصيد
   static const Map<String, String> quotaPools = {
     'firebase_ai': 'gemini_primary',
-    'backend': 'gemini_primary',
+    'backend': 'vertex_primary',
     'manus': 'manus',
   };
 
@@ -297,6 +297,8 @@ class AIBackendRouter extends GetxService {
 
   /// 🔍 البحث عن محرك بديل من حوض حصة (Quota Pool) مستقل غير متأثر بالضغط
   String? findFailoverBackend(String failedBackend) {
+    // Vertex gateway owns its fallback policy; do not auto-route to paid Manus or other providers.
+    if (failedBackend == 'backend') return null;
     final failedPool = quotaPools[failedBackend] ?? failedBackend;
     // 1. محاولة اختيار محرك من حوض حصة مختلف أولاً
     for (final candidate in validBackends) {
